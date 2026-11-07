@@ -30,6 +30,10 @@ spec:
               port: http
             initialDelaySeconds: 2
             periodSeconds: 5
+          {{- if .Values.backend.env }}
+          env: {{ toYaml .Values.backend.env | nindent 10 }}
+          {{- end }}
+
 ---
 apiVersion: v1
 kind: Service
