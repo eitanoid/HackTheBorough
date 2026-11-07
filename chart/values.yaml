@@ -90,27 +90,8 @@ crawl4ai:
     repository: unclecode/crawl4ai
     tag: "0.9.5"
     pullPolicy: IfNotPresent
-  auth:
-    # Replace before deploying; the backend reads the same Secret.
-    token: "hacktheburgh-crawl4ai-token"
   llm:
     # OpenAI only. The Crawl4AI pod receives the key as OPENAI_API_KEY.
     provider: "openai/gpt-4o-mini"
   service:
     port: 11235
-  shmSize: 512Mi
-  resources:
-    requests:
-      cpu: 250m
-      memory: 512Mi
-    limits:
-      memory: 2Gi
-  config:
-    llm:
-      provider: "openai/gpt-4o-mini"
-      allowed_providers:
-        - openai
-    crawler:
-      memory_threshold_percent: 80
-      pool:
-        max_pages: 5

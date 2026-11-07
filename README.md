@@ -18,8 +18,9 @@ Requirements:
 The chart uses the `openai-key` Secret (`API_KEY`) for OpenAI and the
 `hacktheburgh-crawl4ai` Secret (`CRAWL4AI_API_TOKEN`) for Crawl4AI bearer
 authentication. Replace the placeholders in
-`chart/templates/secrets/openai-key.yaml` and `chart/values.yaml` before
-deploying. Do not commit real credentials.
+`chart/templates/secrets/openai-key.yaml` and
+`chart/templates/secrets/crawl4ai.yaml` before deploying. Do not commit real
+credentials.
 
 ### Deploying
 
@@ -28,9 +29,10 @@ Skaffold. The Helm chart in `chart/` also deploys PostgreSQL and Crawl4AI
 (`unclecode/crawl4ai:0.9.5`) to the `hacktheburgh` kind cluster. No image
 registry is needed.
 
-Crawl4AI needs at least 4 GB available to its container. On a smaller Docker
-VM web ingestion will be unreliable; RSS and CSV polling still work. Skaffold
-does not build Crawl4AI; the kind node pulls the pinned upstream image.
+Crawl4AI is memory-heavy and the chart does not set resource requests or
+limits. On a small Docker VM web ingestion may be unreliable; RSS and CSV
+polling still work. Skaffold does not build Crawl4AI; the kind node pulls the
+pinned upstream image.
 
 ```sh
 make setup      # create the kind cluster and deploy once
