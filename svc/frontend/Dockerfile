@@ -1,6 +1,18 @@
-FROM python:3.12-slim
+FROM node:22-alpine
 
-RUN pip install --no-cache-dir httpbin gunicorn
+RUN apk add --no-cache libc6-compat \
+    && corepack enable
 
-EXPOSE 5173
-CMD ["gunicorn", "--bind", "0.0.0.0:5173", "httpbin:app"]
+WORKDIR /app
+
+# Install dependencies separately so source edits can reuse this layer.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+ENV NODE_ENV=development \
+    PORT=3000
+
+EXPOSE 3000
+CMD ["pnpm", "dev", "--hostname", "0.0.0.0"]
