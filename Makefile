@@ -5,13 +5,13 @@ cluster-up:
 
 # Create the cluster and install both services once.
 setup: cluster-up
-	skaffold dev
+	skaffold run
 
 deploy: setup
 
 # Run Skaffold's file sync / hot-reload loop until interrupted.
 dev: cluster-up
-	skaffold run
+	skaffold dev
 
 delete:
 	skaffold delete
