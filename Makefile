@@ -5,7 +5,7 @@ cluster-up:
 
 # Create the cluster and install both services once.
 setup: cluster-up
-	skaffold run
+	skaffold dev
 
 deploy: setup
 
