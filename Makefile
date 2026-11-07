@@ -21,3 +21,6 @@ teardown:
 	bash dev/down.sh
 
 down: teardown
+
+# Generate gRPC stubs
+generate:

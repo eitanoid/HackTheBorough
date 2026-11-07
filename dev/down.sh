@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if kind get clusters | grep -qx hacktheborough; then
-  kind delete cluster --name hacktheborough
+if kind get clusters | grep -qx hacktheburgh; then
+  kind delete cluster --name hacktheburgh
 else
-  echo "kind cluster 'hacktheborough' does not exist"
+  echo "kind cluster 'hacktheburgh' does not exist"
 fi

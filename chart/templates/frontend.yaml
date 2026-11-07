@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "hacktheborough.fullname" . }}-frontend
+  name: {{ include "hacktheburgh.fullname" . }}-frontend
   labels:
     app.kubernetes.io/name: frontend
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -26,7 +26,7 @@ spec:
               containerPort: {{ .Values.frontend.service.targetPort }}
           env:
             - name: BACKEND_URL
-              value: "http://{{ include "hacktheborough.fullname" . }}-backend:{{ .Values.backend.service.port }}"
+              value: "http://{{ include "hacktheburgh.fullname" . }}-backend:{{ .Values.backend.service.port }}"
           readinessProbe:
             httpGet:
               path: /
@@ -37,7 +37,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "hacktheborough.fullname" . }}-frontend
+  name: {{ include "hacktheburgh.fullname" . }}-frontend
   labels:
     app.kubernetes.io/name: frontend
     app.kubernetes.io/instance: {{ .Release.Name }}

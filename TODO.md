@@ -9,6 +9,13 @@
 - [ ] API typesafe contracts (eg. OpenAPI or gRPC)
 - [ ] Secret management method decided (eg. remote vault with ESO or sops)
 
+# API
+
+- [ ] Stubs for go and react-ts
+- [ ] Codegen with modules
+- [ ] Agree on repo-name
+
 # Stretch goals
 
 - [ ] GHCR artefacts and cloud deployment
+

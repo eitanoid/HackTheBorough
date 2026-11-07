@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package hacktheburgh.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "pb/hacktheburghv1";
+
+service HackTheBurgh();
+  rpc HelloRequest() HelloResponse
+}

@@ -1,5 +1,5 @@
 apiVersion: v2
-name: hacktheborough
+name: hacktheburgh
 description: React frontend and Go backend for local kind development
 type: application
 version: 0.1.0

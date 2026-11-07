@@ -1,12 +1,15 @@
-# TTE-HackTheBorough
+# TTE-HackTheBurgh
+
+Requirements:
+- Infra: Docker, kubectl, kind, Skaffold, and Helm.
+- API: buf, protoc.
 
 ## Local Kubernetes development
 
 The `frontend` (React) and `backend` (Go) images are built locally by
-Skaffold and deployed with the Helm chart in `chart/` to the `hacktheborough`
+Skaffold and deployed with the Helm chart in `chart/` to the `hacktheburgh`
 kind cluster. No image registry is needed.
 
-Requirements: Docker, kubectl, kind, Skaffold, and Helm.
 ```sh
 make setup      # create the kind cluster and deploy both services
 make dev        # create the cluster if needed; deploy and watch for code changes

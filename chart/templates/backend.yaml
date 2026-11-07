@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "hacktheborough.fullname" . }}-backend
+  name: {{ include "hacktheburgh.fullname" . }}-backend
   labels:
     app.kubernetes.io/name: backend
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -34,7 +34,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "hacktheborough.fullname" . }}-backend
+  name: {{ include "hacktheburgh.fullname" . }}-backend
   labels:
     app.kubernetes.io/name: backend
     app.kubernetes.io/instance: {{ .Release.Name }}

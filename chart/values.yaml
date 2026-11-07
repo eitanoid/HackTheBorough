@@ -1,7 +1,7 @@
 frontend:
   replicaCount: 1
   image:
-    repository: hacktheborough/frontend
+    repository: hacktheburgh/frontend
     tag: latest
     pullPolicy: IfNotPresent
   service:
@@ -12,7 +12,7 @@ frontend:
 backend:
   replicaCount: 1
   image:
-    repository: hacktheborough/backend
+    repository: hacktheburgh/backend
     tag: latest
     pullPolicy: IfNotPresent
   service:
