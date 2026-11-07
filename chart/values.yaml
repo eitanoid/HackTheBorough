@@ -42,6 +42,20 @@ backend:
         secretKeyRef:
           name: openai-key
           key: API_KEY
+    - name: LLM_BASE_URL
+      value: "https://api.openai.com/v1"
+    - name: LLM_MODEL_PROFILER
+      value: "gpt-4.1-mini"
+    - name: LLM_MODEL_AUTHOR
+      value: "gpt-4.1"
+    - name: LLM_MODEL_INVESTIGATOR
+      value: "gpt-4.1"
+    - name: LLM_MODEL_REVIEWER
+      value: "gpt-4.1"
+    - name: LLM_MODEL_NARRATOR
+      value: "gpt-4.1-mini"
+    - name: LLM_DEBUG # "1" exposes POST /api/debug/chat; turn off outside dev
+      value: "1"
 
 postgres:
   image:
