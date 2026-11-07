@@ -13,9 +13,12 @@ build:
         dockerfile: Dockerfile
       sync:
         infer:
+          - app/**/*
           - src/**/*
-          - index.html
-          - vite.config.js
+          - components/**/*
+          - lib/**/*
+          - styles/**/*
+          - public/**/*
     - image: hacktheburgh/backend
       context: svc/backend
       docker:
