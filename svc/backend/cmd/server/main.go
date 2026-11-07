@@ -12,6 +12,7 @@ import (
 
 	"hacktheburgh/backend/internal/api"
 	"hacktheburgh/backend/internal/config"
+	"hacktheburgh/backend/internal/db"
 	"hacktheburgh/backend/internal/events"
 )
 
@@ -20,12 +21,23 @@ func main() {
 	cfg := config.Load()
 	bus := events.NewBus()
 
-	// TODO: open pgxpool, run migrations, start the ingest loop and run loop.
-
-	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{Bus: bus}).Routes()}
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		slog.Error("database connection failed", "err", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+	if err := db.Migrate(ctx, pool); err != nil {
+		slog.Error("migrations failed", "err", err)
+		os.Exit(1)
+	}
+
+	// TODO: start the ingest loop and run loop.
+
+	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{Bus: bus}).Routes()}
 	go func() {
 		slog.Info("backend listening", "addr", cfg.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
