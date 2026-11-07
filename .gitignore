@@ -1,2 +1,5 @@
 .idea
+svc/backend/tmp/
+svc/backend/llm_calls.jsonl
+.env
 dev/storage/
