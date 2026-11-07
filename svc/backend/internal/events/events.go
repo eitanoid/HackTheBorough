@@ -5,9 +5,11 @@ package events
 import "sync"
 
 const (
-	SourceUpdated  = "source_updated"
-	ProjectUpdated = "project_updated"
-	RunFailed      = "run_failed"
+	SourceUpdated       = "source_updated"
+	ProjectUpdated      = "project_updated"
+	WorkflowRegenerated = "workflow_regenerated"
+	InvestigationStep   = "investigation_step"
+	RunFailed           = "run_failed"
 )
 
 // Event carries ids only; clients refetch from the API.

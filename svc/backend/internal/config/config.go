@@ -16,14 +16,12 @@ type Config struct {
 
 	// Provider-neutral LLM settings. Model ids are read from the environment
 	// and live here and nowhere else.
-	LLMAPIKey     string
-	ModelProfiler string
-	ModelAuthor   string
-	ModelNarrator string
-	ModelReviewer string
-
-	// ReviewMinInterval is the minimum time between reviews of one finding.
-	ReviewMinInterval time.Duration
+	LLMAPIKey         string
+	ModelProfiler     string
+	ModelAuthor       string
+	ModelInvestigator string
+	ModelReviewer     string
+	ModelNarrator     string
 
 	IngestTick    time.Duration
 	IngestMaxPar  int
@@ -31,7 +29,13 @@ type Config struct {
 	RunSweep      time.Duration
 	LLMTimeout    time.Duration
 	StatsTimeout  time.Duration
+	ToolTimeout   time.Duration
 	MaxNarrations int
+
+	// Regeneration limits live in config, not in prompts.
+	ReviewMinInterval time.Duration // at most one review per workflow per interval
+	MaxRegenerations  int           // per workflow per day
+	MaxInvestigatorIt int           // tool-runner iterations
 }
 
 func Load() Config {
@@ -42,13 +46,12 @@ func Load() Config {
 		LLMStub:     env("LLM_STUB", "") == "1",
 		LLMLogPath:  env("LLM_LOG_PATH", "llm_calls.jsonl"),
 
-		LLMAPIKey:     env("LLM_API_KEY", ""),
-		ModelProfiler: env("LLM_MODEL_PROFILER", ""),
-		ModelAuthor:   env("LLM_MODEL_AUTHOR", ""),
-		ModelNarrator: env("LLM_MODEL_NARRATOR", ""),
-		ModelReviewer: env("LLM_MODEL_REVIEWER", ""),
-
-		ReviewMinInterval: 60 * time.Second,
+		LLMAPIKey:         env("LLM_API_KEY", ""),
+		ModelProfiler:     env("LLM_MODEL_PROFILER", ""),
+		ModelAuthor:       env("LLM_MODEL_AUTHOR", ""),
+		ModelInvestigator: env("LLM_MODEL_INVESTIGATOR", ""),
+		ModelReviewer:     env("LLM_MODEL_REVIEWER", ""),
+		ModelNarrator:     env("LLM_MODEL_NARRATOR", ""),
 
 		IngestTick:    10 * time.Second,
 		IngestMaxPar:  envInt("INGEST_MAX_PAR", 4),
@@ -56,7 +59,12 @@ func Load() Config {
 		RunSweep:      5 * time.Minute,
 		LLMTimeout:    60 * time.Second,
 		StatsTimeout:  60 * time.Second,
+		ToolTimeout:   5 * time.Second,
 		MaxNarrations: 5,
+
+		ReviewMinInterval: time.Duration(envInt("REVIEW_MIN_INTERVAL", 60)) * time.Second,
+		MaxRegenerations:  envInt("MAX_REGENERATIONS", 3),
+		MaxInvestigatorIt: 12,
 	}
 }
 

@@ -31,7 +31,9 @@ func (s *Server) Routes() http.Handler {
 		"GET /api/projects",
 		"GET /api/projects/{id}",
 		"GET /api/projects/{id}/insights",
-		"POST /api/projects/{id}/workflow/regenerate",
+		"GET /api/projects/{id}/workflows",
+		"GET /api/workflows/{id}/steps",
+		"POST /api/projects/{id}/workflows/{kind}/regenerate",
 		"POST /api/replay",
 	} {
 		mux.HandleFunc(route, notImplemented)

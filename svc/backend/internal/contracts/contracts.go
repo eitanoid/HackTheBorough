@@ -3,7 +3,10 @@
 // worker mirrors these in stats/spec.py.
 package contracts
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // ---- Source profiling ----
 
@@ -21,7 +24,7 @@ type SourceProfile struct {
 	Summary       string         `json:"summary"`
 }
 
-// ---- Analysis spec ----
+// ---- Analysis spec (statistical workflow) ----
 
 type Filter struct {
 	Path   string `json:"path"`
@@ -50,7 +53,7 @@ type AnalysisSpec struct {
 	Series     []SeriesDef `json:"series"`      // 2..12
 	Pairs      []Pair      `json:"pairs"`       // empty = all pairs
 	MaxLag     int         `json:"max_lag"`     // 0..14, in grain units
-	Tests      []string    `json:"tests"`       // lagged_correlation | anomaly | trend_change
+	Tests      []string    `json:"tests"`       // lagged_correlation | anomaly
 }
 
 type WorkflowDraft struct {
@@ -61,9 +64,19 @@ type WorkflowDraft struct {
 
 // ---- Analysis result (from the stats worker) ----
 
+// Health is what the reviewer reads about a statistical run.
+type Health struct {
+	SkippedSeries  []string            `json:"skipped_series"`
+	StaleSeries    []string            `json:"stale_series"`
+	Coverage       map[string]float64  `json:"coverage"`
+	LagsAtBoundary []string            `json:"lags_at_boundary"`
+	UnprofiledKeys map[string][]string `json:"unprofiled_keys"` // source_id -> payload keys missing from its profile
+	SpanPeriods    int                 `json:"span_periods"`
+}
+
 type Finding struct {
 	FindingKey  string         `json:"finding_key"`
-	Kind        string         `json:"kind"` // correlation | anomaly | trend_change
+	Kind        string         `json:"kind"` // correlation | anomaly
 	Series      []string       `json:"series"`
 	Stats       map[string]any `json:"stats"`
 	PeriodStart time.Time      `json:"period_start"`
@@ -74,12 +87,12 @@ type AnalysisResult struct {
 	DataUpTo  time.Time                   `json:"data_up_to"`
 	Findings  []Finding                   `json:"findings"`
 	Funnel    map[string]int              `json:"funnel"`
-	Skipped   []string                    `json:"skipped"`
 	Rejected  []Finding                   `json:"rejected"`
 	ChartData map[string][]map[string]any `json:"chart_data"`
+	Health    Health                      `json:"health"`
 }
 
-// ---- Narration ----
+// ---- Narration (statistical findings) ----
 
 type InsightDraft struct {
 	FindingKey  string   `json:"finding_key"`
@@ -88,22 +101,52 @@ type InsightDraft struct {
 	Direction   string   `json:"direction" jsonschema:"enum=positive,enum=negative,enum=up,enum=down"`
 	Leader      *string  `json:"leader"`
 	Caveats     []string `json:"caveats"`
-	Chart       string   `json:"chart" jsonschema:"enum=dual_line,enum=lag_scatter,enum=anomaly_band,enum=trend_split"`
+	Chart       string   `json:"chart" jsonschema:"enum=dual_line,enum=lag_scatter,enum=anomaly_band"`
 }
 
 type Narration struct {
 	Insights []InsightDraft `json:"insights"`
 }
 
-// ---- Review ----
+// ---- Investigation workflow ----
 
-type ReviewItem struct {
-	FindingKey string        `json:"finding_key"`
-	Decision   string        `json:"decision" jsonschema:"enum=keep,enum=revise"`
-	Reason     string        `json:"reason"`   // one line, shown on the card
-	Revision   *InsightDraft `json:"revision"` // required when decision = revise
+// Claim points at one number in a recorded step's output.
+type Claim struct {
+	Seq  int    `json:"seq"`  // workflow_steps.seq this number comes from
+	Path string `json:"path"` // dotted path into that step's output, e.g. "lags.3.rho"
 }
 
-type Review struct {
-	Items []ReviewItem `json:"items"`
+type InvestigationFinding struct {
+	Headline    string   `json:"headline"`
+	Explanation string   `json:"explanation"`
+	Claims      []Claim  `json:"claims"`
+	Caveats     []string `json:"caveats"`
+	Chart       string   `json:"chart" jsonschema:"enum=dual_line,enum=lag_scatter,enum=series_line"`
+	ChartSeq    int      `json:"chart_seq"` // step whose output the chart is built from
+}
+
+type InvestigationReport struct {
+	Rationale string                 `json:"rationale"`
+	Findings  []InvestigationFinding `json:"findings"`
+}
+
+// StepOutput is one replayed step.
+type StepOutput struct {
+	Seq    int             `json:"seq"`
+	Output json.RawMessage `json:"output"`
+}
+
+// ReplayResult is returned by the worker's POST /replay.
+// NOTE: not specified field-by-field in the plan; proposed shape.
+type ReplayResult struct {
+	DataUpTo time.Time    `json:"data_up_to"`
+	Steps    []StepOutput `json:"steps"` // one output per recorded step
+}
+
+// ---- Reviewer ----
+
+type ReviewDecision struct {
+	Decision       string `json:"decision" jsonschema:"enum=keep,enum=regenerate"`
+	ReasonCategory string `json:"reason_category" jsonschema:"enum=none,enum=schema_drift,enum=stale_series,enum=coverage,enum=lag_boundary,enum=effect_faded,enum=explanation_mismatch,enum=new_scope"`
+	Reason         string `json:"reason"` // one line, shown in the workflow history
 }
