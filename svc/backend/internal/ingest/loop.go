@@ -78,24 +78,25 @@ func (l *Loop) PollOnce(ctx context.Context, sourceID string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	markCtx := context.WithoutCancel(ctx)
 	adapter, ok := l.Adapters[source.Kind]
 	if !ok {
 		err := fmt.Errorf("unsupported source kind %q", source.Kind)
-		_ = l.Store.MarkPolled(ctx, source.ID, time.Now().UTC(), err)
+		_ = l.Store.MarkPolled(markCtx, source.ID, time.Now().UTC(), err)
 		return 0, err
 	}
 	polledAt := time.Now().UTC()
 	records, fetchErr := adapter.Fetch(ctx, source.Config, source.LastPolledAt)
 	if fetchErr != nil {
-		_ = l.Store.MarkPolled(ctx, source.ID, polledAt, fetchErr)
+		_ = l.Store.MarkPolled(markCtx, source.ID, polledAt, fetchErr)
 		return 0, fetchErr
 	}
 	inserted, insertErr := l.Store.InsertRecords(ctx, source.ID, records)
 	if insertErr != nil {
-		_ = l.Store.MarkPolled(ctx, source.ID, polledAt, insertErr)
+		_ = l.Store.MarkPolled(markCtx, source.ID, polledAt, insertErr)
 		return 0, insertErr
 	}
-	if err := l.Store.MarkPolled(ctx, source.ID, polledAt, nil); err != nil {
+	if err := l.Store.MarkPolled(markCtx, source.ID, polledAt, nil); err != nil {
 		return inserted, err
 	}
 	if inserted > 0 && l.Bus != nil {

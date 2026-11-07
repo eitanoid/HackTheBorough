@@ -27,28 +27,15 @@ const webSchema = `{
   }
 }`
 
-func main() {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
-	cfg := config.Load()
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	pool, err := db.Open(ctx, cfg.DatabaseURL)
-	if err != nil {
-		slog.Error("database connection failed", "err", err)
-		os.Exit(1)
-	}
-	defer pool.Close()
-	if err := db.Migrate(ctx, pool); err != nil {
-		slog.Error("migrations failed", "err", err)
-		os.Exit(1)
-	}
-	store := ingest.NewStore(pool)
-	sources := []struct {
-		name     string
-		kind     string
-		interval int
-		config   any
-	}{
+type seedSource struct {
+	name     string
+	kind     string
+	interval int
+	config   any
+}
+
+func demoSources() []seedSource {
+	return []seedSource{
 		{
 			name: "Yahoo Finance", kind: "web", interval: 300,
 			config: map[string]any{
@@ -73,7 +60,25 @@ func main() {
 			},
 		},
 	}
-	for _, item := range sources {
+}
+
+func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	cfg := config.Load()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pool, err := db.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		slog.Error("database connection failed", "err", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+	if err := db.Migrate(ctx, pool); err != nil {
+		slog.Error("migrations failed", "err", err)
+		os.Exit(1)
+	}
+	store := ingest.NewStore(pool)
+	for _, item := range demoSources() {
 		raw, err := json.Marshal(item.config)
 		if err != nil {
 			slog.Error("encode source config", "source", item.name, "err", err)

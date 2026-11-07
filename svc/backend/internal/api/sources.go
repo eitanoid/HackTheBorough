@@ -89,6 +89,9 @@ func (s *Server) listSources(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
+	if sources == nil {
+		sources = []ingest.Source{}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"sources": sources})
 }
 

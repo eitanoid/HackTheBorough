@@ -283,7 +283,7 @@ func parseRelativeAge(value string) (int, time.Duration, bool) {
 	if len(fields) == 0 {
 		return 0, 0, false
 	}
-	if _, err := fmt.Sscanf(fields[0], "%d%s", &n, &unit); err != nil || n < 0 {
+	if _, err := fmt.Sscanf(value, "%d%s", &n, &unit); err != nil || n < 0 {
 		return 0, 0, false
 	}
 	switch unit {

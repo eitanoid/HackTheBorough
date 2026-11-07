@@ -704,11 +704,28 @@ func findPageLinks(links []pageLink, selector string) []string {
 	return pages
 }
 
-func matchesPageSelector(link pageLink, selector string) bool {
-	last := strings.TrimSpace(selector)
-	if index := strings.LastIndexAny(last, " >"); index >= 0 {
-		last = last[index+1:]
+func lastSelectorSegment(selector string) string {
+	depth := 0
+	start := 0
+	for index, char := range selector {
+		switch char {
+		case '[':
+			depth++
+		case ']':
+			if depth > 0 {
+				depth--
+			}
+		case ' ', '>':
+			if depth == 0 {
+				start = index + 1
+			}
+		}
 	}
+	return strings.TrimSpace(selector[start:])
+}
+
+func matchesPageSelector(link pageLink, selector string) bool {
+	last := lastSelectorSegment(selector)
 	if last == "" || last == "*" {
 		return true
 	}
