@@ -2,7 +2,7 @@
 
 ## Helm chart rules
 
-- In `chart/templates/backend.yaml`, the backend container's env block must stay exactly as below. Never remove or replace it with hardcoded `env:` entries; add plain env vars to `backend.env` in `chart/values.yaml`.
+- In `chart/templates/backend.yaml`, the backend container's env block must stay exactly as below. Never remove or replace it with hardcoded `env:` entries.
 
   ```yaml
   {{- if .Values.backend.env }}
@@ -10,4 +10,4 @@
   {{- end }}
   ```
 
-- Env vars that skaffold fills in (the `LLM_*` ones) live under `backend.llm` in `values.yaml`, are set in `skaffold.yaml` `setValueTemplates`, and reach the container through the `<release>-backend-llm` ConfigMap via `envFrom`. Don't set list items like `backend.env[N]` from skaffold: Helm's `--set` replaces the whole list.
+- Add backend env vars (including the `LLM_*` ones) as entries in `backend.env` in `chart/values.yaml`. Don't set them from skaffold, and don't add ConfigMaps or `envFrom` for them.
