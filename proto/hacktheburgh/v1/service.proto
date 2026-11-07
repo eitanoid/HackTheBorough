@@ -68,6 +68,7 @@ enum InsightKind {
   INSIGHT_KIND_CORRELATION = 1;
   INSIGHT_KIND_ANOMALY = 2;
   INSIGHT_KIND_OBSERVATION = 3;
+  INSIGHT_KIND_CUSTOM = 4;
 }
 
 enum InsightOrigin {
@@ -206,7 +207,7 @@ message Workflow {
   google.protobuf.Timestamp created_at = 8;
   // These JSON-shaped fields mirror the existing frozen Go/Python contracts.
   // Promote them to typed messages only with a coordinated contract change.
-  google.protobuf.Struct analysis_spec = 9;
+  string analysis_script = 9; // Python; statistical workflows only
   google.protobuf.Struct report = 10;
 }
 
