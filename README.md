@@ -10,7 +10,7 @@ Inspired by Palantir
 ## Local Kubernetes development
 
 Requirements:
-- Infra: Docker, kubectl, kind, Skaffold, and Helm.
+- Infra: Docker, kubectl, kind, Skaffold, Helm, and Mike Farah yq v4.
 - API: buf, protoc.
 
 

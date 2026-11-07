@@ -11,7 +11,7 @@ deploy: setup
 
 # Run Skaffold's file sync / hot-reload loop until interrupted.
 dev: cluster-up
-	skaffold dev
+	skaffold run
 
 delete:
 	skaffold delete
