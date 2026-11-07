@@ -33,6 +33,16 @@ spec:
           env:
             - name: LLM_BASE_URL
               value: {{ .Values.backend.llm.baseUrl | quote }}
+            - name: LLM_MODEL_PROFILER
+              value: {{ .Values.backend.llm.models.profiler | quote }}
+            - name: LLM_MODEL_AUTHOR
+              value: {{ .Values.backend.llm.models.author | quote }}
+            - name: LLM_MODEL_INVESTIGATOR
+              value: {{ .Values.backend.llm.models.investigator | quote }}
+            - name: LLM_MODEL_REVIEWER
+              value: {{ .Values.backend.llm.models.reviewer | quote }}
+            - name: LLM_MODEL_NARRATOR
+              value: {{ .Values.backend.llm.models.narrator | quote }}
             - name: LLM_DEBUG
               value: {{ ternary "1" "0" .Values.backend.llm.debug | quote }}
             {{- if .Values.backend.env }}

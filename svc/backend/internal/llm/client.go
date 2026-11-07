@@ -53,6 +53,9 @@ func New(cfg config.Config) (*Client, error) {
 	if cfg.LLMAPIKey == "" {
 		return nil, errors.New("llm: OPENAPI_KEY is not set")
 	}
+	if cfg.LLMBaseURL == "" {
+		return nil, errors.New("llm: LLM_BASE_URL is not set")
+	}
 	c.Provider = &OpenAI{APIKey: cfg.LLMAPIKey, BaseURL: cfg.LLMBaseURL, HTTP: &http.Client{}}
 	return c, nil
 }

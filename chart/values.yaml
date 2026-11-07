@@ -20,7 +20,13 @@ backend:
     targetPort: 8080
     nodePort: 30081
   llm:
-    baseUrl: https://api.openai.com/v1
+    baseUrl: ""      # set by skaffold (LLM_BASE_URL)
+    models:          # set by skaffold (LLM_MODEL_*)
+      profiler: ""
+      author: ""
+      investigator: ""
+      reviewer: ""
+      narrator: ""
     debug: true   # exposes POST /api/debug/chat; turn off outside dev
   env:
     - name: PG_USER

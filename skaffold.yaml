@@ -37,8 +37,13 @@ manifests:
           frontend.image.tag: "{{.IMAGE_TAG_hacktheburgh_frontend}}"
           backend.image.repository: "{{.IMAGE_REPO_hacktheburgh_backend}}"
           backend.image.tag: "{{.IMAGE_TAG_hacktheburgh_backend}}"
-          # Override with `LLM_BASE_URL=... skaffold dev`; defaults to OpenAI.
+          # LLM settings: export LLM_BASE_URL / LLM_MODEL_* before `skaffold dev` to override.
           backend.llm.baseUrl: '{{or .LLM_BASE_URL "https://api.openai.com/v1"}}'
+          backend.llm.models.profiler: '{{or .LLM_MODEL_PROFILER "gpt-4.1-mini"}}'
+          backend.llm.models.author: '{{or .LLM_MODEL_AUTHOR "gpt-4.1"}}'
+          backend.llm.models.investigator: '{{or .LLM_MODEL_INVESTIGATOR "gpt-4.1"}}'
+          backend.llm.models.reviewer: '{{or .LLM_MODEL_REVIEWER "gpt-4.1"}}'
+          backend.llm.models.narrator: '{{or .LLM_MODEL_NARRATOR "gpt-4.1-mini"}}'
 
 deploy:
   helm: {}
