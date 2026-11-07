@@ -14,6 +14,7 @@ import (
 	"hacktheburgh/backend/internal/config"
 	"hacktheburgh/backend/internal/db"
 	"hacktheburgh/backend/internal/events"
+	"hacktheburgh/backend/internal/ingest"
 	"hacktheburgh/backend/internal/llm"
 )
 
@@ -36,7 +37,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO: start the ingest loop and run loop.
+	store := ingest.NewStore(pool)
+	adapters := map[string]ingest.SourceAdapter{
+		"rss": &ingest.RSSAdapter{},
+		"web": &ingest.WebAdapter{
+			Crawl4AIURL: cfg.Crawl4AIURL,
+			Token:       cfg.Crawl4AIToken,
+			Provider:    cfg.Crawl4AIProvider,
+		},
+	}
+	loop := ingest.NewLoop(store, bus, adapters, cfg.IngestTick, cfg.IngestMaxPar)
+	go loop.Run(ctx)
+
+	// TODO: start the run loop.
 
 	llmClient, err := llm.New(cfg)
 	if err != nil {
@@ -44,7 +57,9 @@ func main() {
 		slog.Warn("llm disabled", "err", err)
 	}
 
-	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{Bus: bus, LLM: llmClient, DebugLLM: cfg.LLMDebug}).Routes()}
+	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{
+		Bus: bus, LLM: llmClient, DebugLLM: cfg.LLMDebug, Store: store, Ingest: loop,
+	}).Routes()}
 	go func() {
 		slog.Info("backend listening", "addr", cfg.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
