@@ -19,6 +19,12 @@ backend:
     port: 8080
     targetPort: 8080
     nodePort: 30081
+  env:
+    - name: OPENAPI_KEY
+      valueFrom:
+        secretKeyRef:
+          name: openapi-key
+          key: API_KEY
 
 postgres:
   image:

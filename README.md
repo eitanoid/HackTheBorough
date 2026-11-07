@@ -13,6 +13,12 @@ Requirements:
 - Infra: Docker, kubectl, kind, Skaffold, Helm, and Mike Farah yq v4.
 - API: buf, protoc.
 
+### Secrets
+
+Replace the placeholder values in `chart/templates/secrets/` with your actual
+credentials. Do not commit real credentials. 
+
+### Deploying
 
 The `frontend` (React) and `backend` (Go) images are built locally by
 Skaffold and deployed with the Helm chart in `chart/` to the `hacktheburgh`
