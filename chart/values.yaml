@@ -19,3 +19,17 @@ backend:
     port: 8080
     targetPort: 8080
     nodePort: 30081
+
+postgres:
+  image:
+    repository: postgres
+    tag: "16"
+    pullPolicy: IfNotPresent
+  auth:
+    username: hacktheburgh
+    password: hacktheburgh
+    database: hacktheburgh
+  persistence:
+    size: 1Gi
+  service:
+    port: 5432

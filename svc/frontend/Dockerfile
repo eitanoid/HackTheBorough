@@ -1,11 +1,6 @@
-FROM node:20-alpine
+FROM python:3.12-slim
 
-WORKDIR /app
-# COPY package.json ./
-# RUN npm install
-
-COPY . .
+RUN pip install --no-cache-dir httpbin gunicorn
 
 EXPOSE 5173
-# CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
-CMD ["sleep", "1d"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5173", "httpbin:app"]
