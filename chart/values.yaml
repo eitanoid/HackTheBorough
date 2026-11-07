@@ -1,3 +1,5 @@
+# Resource names and in-cluster URLs assume the Skaffold release name
+# "hacktheburgh" (see skaffold.yaml).
 frontend:
   replicaCount: 1
   image:
@@ -56,6 +58,17 @@ backend:
       value: "gpt-4.1-mini"
     - name: LLM_DEBUG # "1" exposes POST /api/debug/chat; turn off outside dev
       value: "1"
+    - name: CRAWL4AI_API
+      value: "http://hacktheburgh-crawl4ai:11235"
+    - name: CRAWL4AI_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: hacktheburgh-crawl4ai
+          key: CRAWL4AI_API_TOKEN
+    - name: CRAWL4AI_PROVIDER
+      value: "openai/gpt-4o-mini"
+    - name: INGEST_MAX_PAR
+      value: "1"
 
 postgres:
   image:
@@ -70,3 +83,34 @@ postgres:
     size: 1Gi
   service:
     port: 5432
+
+crawl4ai:
+  replicaCount: 1
+  image:
+    repository: unclecode/crawl4ai
+    tag: "0.9.5"
+    pullPolicy: IfNotPresent
+  auth:
+    # Replace before deploying; the backend reads the same Secret.
+    token: "hacktheburgh-crawl4ai-token"
+  llm:
+    # OpenAI only. The Crawl4AI pod receives the key as OPENAI_API_KEY.
+    provider: "openai/gpt-4o-mini"
+  service:
+    port: 11235
+  shmSize: 512Mi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 2Gi
+  config:
+    llm:
+      provider: "openai/gpt-4o-mini"
+      allowed_providers:
+        - openai
+    crawler:
+      memory_threshold_percent: 80
+      pool:
+        max_pages: 5

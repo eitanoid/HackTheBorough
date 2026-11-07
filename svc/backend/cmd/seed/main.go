@@ -50,17 +50,6 @@ func main() {
 		config   any
 	}{
 		{
-			name: "BleepingComputer", kind: "web", interval: 300,
-			config: map[string]any{
-				// Cloudflare blocks Crawl4AI directly; Jina Reader serves the same page.
-				"url":        "https://r.jina.ai/https://www.bleepingcomputer.com/",
-				"query":      "Extract up to 10 latest BleepingComputer articles. Use absolute links and RFC3339 publication dates when present.",
-				"schema":     json.RawMessage(webSchema),
-				"id_field":   "url",
-				"time_field": "published_at",
-			},
-		},
-		{
 			name: "Yahoo Finance", kind: "web", interval: 300,
 			config: map[string]any{
 				"url":        "https://finance.yahoo.com/news/",

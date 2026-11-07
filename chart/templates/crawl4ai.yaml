@@ -1,0 +1,119 @@
+{{- if .Values.crawl4ai.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hacktheburgh-crawl4ai-config
+  labels:
+    app.kubernetes.io/name: crawl4ai
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  config.yml: |
+    {{- toYaml .Values.crawl4ai.config | nindent 4 }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hacktheburgh-crawl4ai
+  labels:
+    app.kubernetes.io/name: crawl4ai
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.crawl4ai.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: crawl4ai
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: crawl4ai
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: crawl4ai
+          image: "{{ .Values.crawl4ai.image.repository }}:{{ .Values.crawl4ai.image.tag }}"
+          imagePullPolicy: {{ .Values.crawl4ai.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.crawl4ai.service.port }}
+          env:
+            - name: CRAWL4AI_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hacktheburgh-crawl4ai
+                  key: CRAWL4AI_API_TOKEN
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-key
+                  key: API_KEY
+            - name: LLM_PROVIDER
+              value: {{ .Values.crawl4ai.llm.provider | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 36
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.crawl4ai.resources | nindent 12 }}
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+            {{- if .Values.crawl4ai.config }}
+            - name: config
+              mountPath: /app/config.yml
+              subPath: config.yml
+            {{- end }}
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{ .Values.crawl4ai.shmSize }}
+        {{- if .Values.crawl4ai.config }}
+        - name: config
+          configMap:
+            name: hacktheburgh-crawl4ai-config
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hacktheburgh-crawl4ai
+  labels:
+    app.kubernetes.io/name: crawl4ai
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: crawl4ai
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ .Values.crawl4ai.service.port }}
+      targetPort: http
