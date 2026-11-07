@@ -1,10 +1,18 @@
-# TTE-HackTheBurgh
+# Anduin
+
+Just like the great river that spans all of Middle-earth, Anduin seamlessly
+integrates heterogeneous data flows with real-time AI synthesis, dynamically
+generating statistical analyses to expose unseen correlations and deliver
+actionable intelligence.
+
+Inspired by Palantir
+
+## Local Kubernetes development
 
 Requirements:
 - Infra: Docker, kubectl, kind, Skaffold, and Helm.
 - API: buf, protoc.
 
-## Local Kubernetes development
 
 The `frontend` (React) and `backend` (Go) images are built locally by
 Skaffold and deployed with the Helm chart in `chart/` to the `hacktheburgh`
