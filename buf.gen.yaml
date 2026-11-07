@@ -1,10 +1,19 @@
 version: v2
 managed:
   enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: hacktheburgh/backend/gen
 plugins:
   - remote: buf.build/protocolbuffers/go:v1.36.12
-    out: backend/generated
+    out: svc/backend/gen
+    opt:
+      - paths=source_relative
+  - remote: buf.build/connectrpc/go:v2.0.0
+    out: svc/backend/gen
+    opt:
+      - paths=source_relative
   - remote: buf.build/bufbuild/es:v2.15.0
-    out: apps/tally/generated
+    out: svc/frontend/gen
     opt:
       - target=ts

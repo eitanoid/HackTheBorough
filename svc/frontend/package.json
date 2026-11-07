@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@bufbuild/protobuf": "^2.17.0",
+    "@connectrpc/connect": "^2.3.0",
+    "@connectrpc/connect-web": "^2.3.0",
     "next": "16.4.5",
     "react": "19.3.0",
     "react-dom": "19.3.0"
