@@ -1,4 +1,4 @@
-.PHONY: cluster-up setup deploy dev delete teardown down
+.PHONY: cluster-up setup deploy dev delete teardown down generate
 
 cluster-up:
 	./dev/up.sh
@@ -22,5 +22,7 @@ teardown:
 
 down: teardown
 
-# Generate gRPC stubs
+# Generate protobuf, Connect-Go, and TypeScript stubs.
 generate:
+	buf lint
+	buf generate

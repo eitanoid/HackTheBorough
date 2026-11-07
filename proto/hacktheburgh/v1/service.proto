@@ -2,10 +2,310 @@ syntax = "proto3";
 
 package hacktheburgh.v1;
 
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "pb/hacktheburghv1";
+// Anduin's browser-facing API. The existing SSE endpoint remains HTTP while
+// project/source operations move to Connect RPC (also compatible with gRPC-Web).
+service AnduinService {
+  rpc CreateSource(CreateSourceRequest) returns (CreateSourceResponse);
+  rpc UploadCSVSource(UploadCSVSourceRequest) returns (UploadCSVSourceResponse);
+  rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse);
+  rpc GetSource(GetSourceRequest) returns (GetSourceResponse);
 
-service HackTheBurgh();
-  rpc HelloRequest() HelloResponse
+  rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
+  rpc ListInsights(ListInsightsRequest) returns (ListInsightsResponse);
+
+  rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse);
+  rpc ListWorkflowSteps(ListWorkflowStepsRequest) returns (ListWorkflowStepsResponse);
+  rpc RegenerateWorkflow(RegenerateWorkflowRequest) returns (RegenerateWorkflowResponse);
+
+  rpc Replay(ReplayRequest) returns (ReplayResponse);
+}
+
+enum SourceKind {
+  SOURCE_KIND_UNSPECIFIED = 0;
+  SOURCE_KIND_CSV = 1;
+  SOURCE_KIND_RSS = 2;
+  SOURCE_KIND_HTTP_JSON = 3;
+}
+
+enum FieldRole {
+  FIELD_ROLE_UNSPECIFIED = 0;
+  FIELD_ROLE_TIMESTAMP = 1;
+  FIELD_ROLE_MEASURE = 2;
+  FIELD_ROLE_CATEGORY = 3;
+  FIELD_ROLE_TEXT = 4;
+  FIELD_ROLE_ID = 5;
+  FIELD_ROLE_IGNORE = 6;
+}
+
+enum Aggregation {
+  AGGREGATION_UNSPECIFIED = 0;
+  AGGREGATION_MEAN = 1;
+  AGGREGATION_SUM = 2;
+  AGGREGATION_LAST = 3;
+  AGGREGATION_COUNT = 4;
+}
+
+enum WorkflowKind {
+  WORKFLOW_KIND_UNSPECIFIED = 0;
+  WORKFLOW_KIND_STATISTICAL = 1;
+  WORKFLOW_KIND_INVESTIGATION = 2;
+}
+
+enum RunStatus {
+  RUN_STATUS_UNSPECIFIED = 0;
+  RUN_STATUS_RUNNING = 1;
+  RUN_STATUS_SUCCEEDED = 2;
+  RUN_STATUS_FAILED = 3;
+}
+
+enum InsightKind {
+  INSIGHT_KIND_UNSPECIFIED = 0;
+  INSIGHT_KIND_CORRELATION = 1;
+  INSIGHT_KIND_ANOMALY = 2;
+  INSIGHT_KIND_OBSERVATION = 3;
+}
+
+enum InsightOrigin {
+  INSIGHT_ORIGIN_UNSPECIFIED = 0;
+  INSIGHT_ORIGIN_STATISTICAL = 1;
+  INSIGHT_ORIGIN_INVESTIGATION = 2;
+}
+
+enum NarratedBy {
+  NARRATED_BY_UNSPECIFIED = 0;
+  NARRATED_BY_LLM = 1;
+  NARRATED_BY_TEMPLATE = 2;
+}
+
+message SourceConfig {
+  // URL is used by RSS and HTTP JSON sources.
+  string url = 1;
+  // HTTP JSON adapter settings. These are ignored for RSS sources.
+  string records_path = 2;
+  string id_field = 3;
+  string time_field = 4;
+}
+
+message FieldProfile {
+  string path = 1;
+  FieldRole role = 2;
+  optional string unit = 3;
+  Aggregation aggregation = 4;
+  string description = 5;
+}
+
+message SourceProfile {
+  repeated FieldProfile fields = 1;
+  optional string timestamp_path = 2;
+  string summary = 3;
+}
+
+message Source {
+  string id = 1;
+  string name = 2;
+  SourceKind kind = 3;
+  int64 record_count = 4;
+  google.protobuf.Timestamp last_polled_at = 5;
+  string last_error = 6;
+  SourceProfile profile = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message DataRecord {
+  int64 id = 1;
+  string external_id = 2;
+  google.protobuf.Timestamp observed_at = 3;
+  google.protobuf.Struct payload = 4;
+}
+
+message CreateSourceRequest {
+  string name = 1;
+  SourceKind kind = 2;
+  SourceConfig config = 3;
+  // Zero selects the source adapter's default polling interval.
+  int32 poll_interval_seconds = 4;
+}
+
+message CreateSourceResponse {
+  Source source = 1;
+}
+
+message UploadCSVSourceRequest {
+  string name = 1;
+  string file_name = 2;
+  bytes csv_data = 3;
+}
+
+message UploadCSVSourceResponse {
+  Source source = 1;
+}
+
+message ListSourcesRequest {}
+
+message ListSourcesResponse {
+  repeated Source sources = 1;
+}
+
+message GetSourceRequest {
+  string id = 1;
+}
+
+message GetSourceResponse {
+  Source source = 1;
+  repeated DataRecord recent_records = 2;
+}
+
+message Project {
+  string id = 1;
+  string name = 2;
+  string goal = 3;
+  repeated string source_ids = 4;
+  string last_error = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message Run {
+  string id = 1;
+  string workflow_id = 2;
+  google.protobuf.Timestamp data_up_to = 3;
+  RunStatus status = 4;
+  // The persisted run result is a union of AnalysisResult and ReplayResult.
+  // Replace with typed result messages when that shared contract is finalized.
+  google.protobuf.Struct result = 5;
+  string error = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp finished_at = 8;
+}
+
+message AnalysisFunnel {
+  int32 tests_run = 1;
+  int32 raw_p_lt_05 = 2;
+  int32 passed_fdr = 3;
+  int32 passed_stability = 4;
+}
+
+message ProjectSummary {
+  Project project = 1;
+  RunStatus latest_run_status = 2;
+  int32 finding_count = 3;
+}
+
+message Workflow {
+  string id = 1;
+  string project_id = 2;
+  WorkflowKind kind = 3;
+  int32 version = 4;
+  bool is_active = 5;
+  string insight_prompt = 6;
+  string rationale = 7;
+  google.protobuf.Timestamp created_at = 8;
+  // These JSON-shaped fields mirror the existing frozen Go/Python contracts.
+  // Promote them to typed messages only with a coordinated contract change.
+  google.protobuf.Struct analysis_spec = 9;
+  google.protobuf.Struct report = 10;
+}
+
+message Insight {
+  string id = 1;
+  string run_id = 2;
+  string project_id = 3;
+  InsightOrigin origin = 4;
+  string finding_key = 5;
+  InsightKind kind = 6;
+  string headline = 7;
+  string explanation = 8;
+  repeated string caveats = 9;
+  google.protobuf.Struct stats = 10;
+  google.protobuf.Value evidence = 11;
+  google.protobuf.Struct chart_spec = 12;
+  NarratedBy narrated_by = 13;
+  google.protobuf.Timestamp created_at = 14;
+}
+
+message WorkflowStep {
+  string workflow_id = 1;
+  int32 seq = 2;
+  string tool = 3;
+  google.protobuf.Struct input = 4;
+  google.protobuf.Struct output = 5;
+}
+
+message CreateProjectRequest {
+  string name = 1;
+  string goal = 2;
+  repeated string source_ids = 3;
+}
+
+message CreateProjectResponse {
+  Project project = 1;
+  Workflow active_workflow = 2;
+  Run latest_run = 3;
+}
+
+message ListProjectsRequest {}
+
+message ListProjectsResponse {
+  repeated ProjectSummary projects = 1;
+}
+
+message GetProjectRequest {
+  string id = 1;
+}
+
+message GetProjectResponse {
+  Project project = 1;
+  repeated Workflow active_workflows = 2;
+  Run latest_run = 3;
+  AnalysisFunnel funnel = 4;
+}
+
+message ListInsightsRequest {
+  string project_id = 1;
+}
+
+message ListInsightsResponse {
+  repeated Insight insights = 1;
+}
+
+message ListWorkflowsRequest {
+  string project_id = 1;
+}
+
+message ListWorkflowsResponse {
+  repeated Workflow workflows = 1;
+}
+
+message ListWorkflowStepsRequest {
+  string workflow_id = 1;
+}
+
+message ListWorkflowStepsResponse {
+  repeated WorkflowStep steps = 1;
+}
+
+message RegenerateWorkflowRequest {
+  string project_id = 1;
+  WorkflowKind kind = 2;
+}
+
+message RegenerateWorkflowResponse {
+  Workflow workflow = 1;
+}
+
+message ReplayRequest {
+  repeated string source_ids = 1;
+  int32 periods_per_second = 2;
+  // Zero requests the server default.
+  double start_fraction = 3;
+}
+
+message ReplayResponse {
+  // Placeholder response until the replay handler contract is implemented.
+  bool accepted = 1;
+  string message = 2;
 }
