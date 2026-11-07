@@ -19,15 +19,15 @@ backend:
     port: 8080
     targetPort: 8080
     nodePort: 30081
-  llm:
-    baseUrl: ""      # set by skaffold (LLM_BASE_URL)
-    models:          # set by skaffold (LLM_MODEL_*)
+  llm:               # all set from skaffold.yaml; becomes the <release>-backend-llm ConfigMap
+    baseUrl: ""      # LLM_BASE_URL
+    models:          # LLM_MODEL_*
       profiler: ""
       author: ""
       investigator: ""
       reviewer: ""
       narrator: ""
-    debug: true   # exposes POST /api/debug/chat; turn off outside dev
+    debug: true      # LLM_DEBUG: exposes POST /api/debug/chat; turn off outside dev
   env:
     - name: PG_USER
       valueFrom:

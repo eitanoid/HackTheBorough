@@ -30,24 +30,29 @@ spec:
               port: http
             initialDelaySeconds: 2
             periodSeconds: 5
-          env:
-            - name: LLM_BASE_URL
-              value: {{ .Values.backend.llm.baseUrl | quote }}
-            - name: LLM_MODEL_PROFILER
-              value: {{ .Values.backend.llm.models.profiler | quote }}
-            - name: LLM_MODEL_AUTHOR
-              value: {{ .Values.backend.llm.models.author | quote }}
-            - name: LLM_MODEL_INVESTIGATOR
-              value: {{ .Values.backend.llm.models.investigator | quote }}
-            - name: LLM_MODEL_REVIEWER
-              value: {{ .Values.backend.llm.models.reviewer | quote }}
-            - name: LLM_MODEL_NARRATOR
-              value: {{ .Values.backend.llm.models.narrator | quote }}
-            - name: LLM_DEBUG
-              value: {{ ternary "1" "0" .Values.backend.llm.debug | quote }}
-            {{- if .Values.backend.env }}
-            {{- toYaml .Values.backend.env | nindent 12 }}
-            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "hacktheburgh.fullname" . }}-backend-llm
+          {{- if .Values.backend.env }}
+          env: {{ toYaml .Values.backend.env | nindent 10 }}
+          {{- end }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "hacktheburgh.fullname" . }}-backend-llm
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  LLM_BASE_URL: {{ .Values.backend.llm.baseUrl | quote }}
+  LLM_MODEL_PROFILER: {{ .Values.backend.llm.models.profiler | quote }}
+  LLM_MODEL_AUTHOR: {{ .Values.backend.llm.models.author | quote }}
+  LLM_MODEL_INVESTIGATOR: {{ .Values.backend.llm.models.investigator | quote }}
+  LLM_MODEL_REVIEWER: {{ .Values.backend.llm.models.reviewer | quote }}
+  LLM_MODEL_NARRATOR: {{ .Values.backend.llm.models.narrator | quote }}
+  LLM_DEBUG: {{ ternary "1" "0" .Values.backend.llm.debug | quote }}
 
 ---
 apiVersion: v1
