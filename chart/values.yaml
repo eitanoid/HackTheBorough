@@ -19,6 +19,9 @@ backend:
     port: 8080
     targetPort: 8080
     nodePort: 30081
+  llm:
+    baseUrl: https://api.openai.com/v1
+    debug: true   # exposes POST /api/debug/chat; turn off outside dev
   env:
     - name: PG_USER
       valueFrom:

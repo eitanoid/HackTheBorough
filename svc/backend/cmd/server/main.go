@@ -14,6 +14,7 @@ import (
 	"hacktheburgh/backend/internal/config"
 	"hacktheburgh/backend/internal/db"
 	"hacktheburgh/backend/internal/events"
+	"hacktheburgh/backend/internal/llm"
 )
 
 func main() {
@@ -37,7 +38,13 @@ func main() {
 
 	// TODO: start the ingest loop and run loop.
 
-	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{Bus: bus}).Routes()}
+	llmClient, err := llm.New(cfg)
+	if err != nil {
+		// Keep serving without an LLM so the rest of the app still works.
+		slog.Warn("llm disabled", "err", err)
+	}
+
+	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{Bus: bus, LLM: llmClient, DebugLLM: cfg.LLMDebug}).Routes()}
 	go func() {
 		slog.Info("backend listening", "addr", cfg.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

@@ -7,10 +7,41 @@ import (
 	"net/http"
 
 	"hacktheburgh/backend/internal/events"
+	"hacktheburgh/backend/internal/llm"
 )
 
 type Server struct {
 	Bus *events.Bus
+	LLM *llm.Client // nil disables /api/debug/chat
+	// DebugLLM enables /api/debug/chat, which spends the API key on any caller.
+	DebugLLM bool
+}
+
+type debugChatReq struct {
+	System  string `json:"system"`
+	Message string `json:"message"`
+	Model   string `json:"model"` // optional override
+}
+
+// debugChat passes one chat turn straight through to the configured LLM.
+func (s *Server) debugChat(w http.ResponseWriter, r *http.Request) {
+	var req debugChatReq
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&req); err != nil || req.Message == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": `body must be {"message": "...", "system"?: "...", "model"?: "..."}`})
+		return
+	}
+	msgs := []llm.Message{{Role: "user", Content: req.Message}}
+	if req.System != "" {
+		msgs = append([]llm.Message{{Role: "system", Content: req.System}}, msgs...)
+	}
+	resp, err := s.LLM.Chat(r.Context(), llm.Author, req.Model, msgs)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"reply": resp.Content, "input_tokens": resp.InputTokens, "output_tokens": resp.OutputTokens,
+	})
 }
 
 func (s *Server) Routes() http.Handler {
@@ -20,6 +51,9 @@ func (s *Server) Routes() http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"message": "Hello from the Go backend!"})
 	})
 	mux.HandleFunc("GET /api/stream", s.stream)
+	if s.DebugLLM && s.LLM != nil {
+		mux.HandleFunc("POST /api/debug/chat", s.debugChat)
+	}
 
 	// Stubs: 501 until workstream A implements them.
 	for _, route := range []string{

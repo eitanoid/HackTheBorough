@@ -30,9 +30,14 @@ spec:
               port: http
             initialDelaySeconds: 2
             periodSeconds: 5
-          {{- if .Values.backend.env }}
-          env: {{ toYaml .Values.backend.env | nindent 10 }}
-          {{- end }}
+          env:
+            - name: LLM_BASE_URL
+              value: {{ .Values.backend.llm.baseUrl | quote }}
+            - name: LLM_DEBUG
+              value: {{ ternary "1" "0" .Values.backend.llm.debug | quote }}
+            {{- if .Values.backend.env }}
+            {{- toYaml .Values.backend.env | nindent 12 }}
+            {{- end }}
 
 ---
 apiVersion: v1

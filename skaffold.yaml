@@ -37,6 +37,8 @@ manifests:
           frontend.image.tag: "{{.IMAGE_TAG_hacktheburgh_frontend}}"
           backend.image.repository: "{{.IMAGE_REPO_hacktheburgh_backend}}"
           backend.image.tag: "{{.IMAGE_TAG_hacktheburgh_backend}}"
+          # Override with `LLM_BASE_URL=... skaffold dev`; defaults to OpenAI.
+          backend.llm.baseUrl: '{{or .LLM_BASE_URL "https://api.openai.com/v1"}}'
 
 deploy:
   helm: {}

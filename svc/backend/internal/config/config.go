@@ -17,6 +17,9 @@ type Config struct {
 	// Provider-neutral LLM settings. Model ids are read from the environment
 	// and live here and nowhere else.
 	LLMAPIKey         string
+	LLMBaseURL        string // OpenAI-compatible endpoint
+	LLMLogPrompts     bool   // include prompt text in the JSONL call log
+	LLMDebug          bool   // expose POST /api/debug/chat (off by default)
 	ModelProfiler     string
 	ModelAuthor       string
 	ModelInvestigator string
@@ -46,12 +49,15 @@ func Load() Config {
 		LLMStub:     env("LLM_STUB", "") == "1",
 		LLMLogPath:  env("LLM_LOG_PATH", "llm_calls.jsonl"),
 
-		LLMAPIKey:         env("LLM_API_KEY", ""),
-		ModelProfiler:     env("LLM_MODEL_PROFILER", ""),
-		ModelAuthor:       env("LLM_MODEL_AUTHOR", ""),
-		ModelInvestigator: env("LLM_MODEL_INVESTIGATOR", ""),
-		ModelReviewer:     env("LLM_MODEL_REVIEWER", ""),
-		ModelNarrator:     env("LLM_MODEL_NARRATOR", ""),
+		LLMAPIKey:         env("OPENAPI_KEY", ""),
+		LLMBaseURL:        env("LLM_BASE_URL", "https://api.openai.com/v1"),
+		LLMLogPrompts:     env("LLM_LOG_PROMPTS", "1") == "1",
+		LLMDebug:          env("LLM_DEBUG", "") == "1",
+		ModelProfiler:     env("LLM_MODEL_PROFILER", "gpt-4.1-mini"),
+		ModelAuthor:       env("LLM_MODEL_AUTHOR", "gpt-4.1"),
+		ModelInvestigator: env("LLM_MODEL_INVESTIGATOR", "gpt-4.1"),
+		ModelReviewer:     env("LLM_MODEL_REVIEWER", "gpt-4.1"),
+		ModelNarrator:     env("LLM_MODEL_NARRATOR", "gpt-4.1-mini"),
 
 		IngestTick:    10 * time.Second,
 		IngestMaxPar:  envInt("INGEST_MAX_PAR", 4),
