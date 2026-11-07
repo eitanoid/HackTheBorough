@@ -1,0 +1,21 @@
+frontend:
+  replicaCount: 1
+  image:
+    repository: hacktheborough/frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    port: 80
+    targetPort: 5173
+    nodePort: 30080
+
+backend:
+  replicaCount: 1
+  image:
+    repository: hacktheborough/backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    port: 8080
+    targetPort: 8080
+    nodePort: 30081

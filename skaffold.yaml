@@ -1,0 +1,39 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: hacktheborough
+
+build:
+  local:
+    push: false
+  artifacts:
+    - image: hacktheborough/frontend
+      context: frontend
+      docker:
+        dockerfile: Dockerfile
+      sync:
+        infer:
+          - src/**/*
+          - index.html
+          - vite.config.js
+    - image: hacktheborough/backend
+      context: backend
+      docker:
+        dockerfile: Dockerfile
+      sync:
+        infer:
+          - '**/*.go'
+
+manifests:
+  helm:
+    releases:
+      - name: hacktheborough
+        chartPath: chart
+        setValueTemplates:
+          frontend.image.repository: '{{.IMAGE_REPO_hacktheborough_frontend}}'
+          frontend.image.tag: '{{.IMAGE_TAG_hacktheborough_frontend}}'
+          backend.image.repository: '{{.IMAGE_REPO_hacktheborough_backend}}'
+          backend.image.tag: '{{.IMAGE_TAG_hacktheborough_backend}}'
+
+deploy:
+  helm: {}
