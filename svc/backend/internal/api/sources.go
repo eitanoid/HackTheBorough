@@ -52,8 +52,13 @@ func (s *Server) createSource(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
+	case "csv":
+		if _, err := ingest.ParseCSVConfig(request.Config); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
 	default:
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "kind must be web or rss"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "kind must be web, rss, or csv"})
 		return
 	}
 

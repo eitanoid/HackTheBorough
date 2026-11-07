@@ -71,6 +71,13 @@ func main() {
 			},
 		},
 		{
+			name: "Crude Oil Prices (OWID)", kind: "csv", interval: 3600,
+			config: map[string]any{
+				"url":        "https://ourworldindata.org/grapher/crude-oil-prices.csv?v=1&csvType=full&useColumnShortNames=true",
+				"time_field": "year",
+			},
+		},
+		{
 			name: "Trump's Truth RSS", kind: "rss", interval: 300,
 			config: map[string]any{
 				"url": "https://www.trumpstruth.org/feed",

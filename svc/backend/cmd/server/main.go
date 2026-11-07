@@ -40,6 +40,7 @@ func main() {
 	store := ingest.NewStore(pool)
 	adapters := map[string]ingest.SourceAdapter{
 		"rss": &ingest.RSSAdapter{},
+		"csv": &ingest.CSVAdapter{},
 		"web": &ingest.WebAdapter{
 			Crawl4AIURL: cfg.Crawl4AIURL,
 			Token:       cfg.Crawl4AIToken,

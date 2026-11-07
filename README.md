@@ -41,8 +41,8 @@ Use `make delete` to uninstall the Helm release but keep the cluster.
 
 ## Local ingestion backend
 
-The Go backend includes the polling loop and the `rss` and `web` ingestion
-adapters. Web sources use Crawl4AI's schema-constrained LLM extraction and can
+The Go backend includes the polling loop and the `rss`, CSV, and `web`
+ingestion adapters. Web sources use Crawl4AI's schema-constrained LLM extraction and can
 follow next-page or numbered pagination; records are deduplicated by their
 stable external ID before being written to `data_records`.
 
@@ -65,8 +65,9 @@ export CRAWL4AI_PROVIDER='openrouter/microsoft/phi-4'
 go run ./cmd/server
 ```
 
-In a second shell, register the three demo polling sources (BleepingComputer
-and Yahoo Finance through LLM extraction, and the Trump’s Truth RSS feed):
+In a second shell, register the demo polling sources (BleepingComputer and
+Yahoo Finance through LLM extraction, the Trump’s Truth RSS feed, and the OWID
+crude-oil CSV):
 
 ```sh
 cd svc/backend
