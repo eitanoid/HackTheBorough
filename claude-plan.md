@@ -12,7 +12,7 @@ In 24 hours, 3–4 people build a service where an agent writes each project's a
 - Projects: a goal in plain language plus a set of sources.
 - An agent-authored workflow per project: an analysis spec plus an insight prompt.
 - A deterministic stats engine that executes the spec: lagged correlation, anomalies and trend changes, with false-discovery control.
-- Narration of findings, checked by a deterministic verifier before anything is shown.
+- Narration of findings, checked by a deterministic verifier before anything is shown, and reviewed by an agent as new data arrives.
 - A React dashboard with finding cards, Vega-Lite charts and live updates over SSE.
 - A replay mode that streams historical data in fast, for the demo.
 
@@ -70,7 +70,7 @@ server/                      # Go module
     db/                      # pgxpool, migration runner, queries
     events/                  # in-process pub/sub
     contracts/               # SourceProfile, AnalysisSpec, AnalysisResult,
-                             #   WorkflowDraft, Narration (frozen after M0)
+                             #   WorkflowDraft, Narration, Review (frozen after M0)
     llm/                     # Anthropic client wrapper + JSONL call log
     ingest/
       adapter.go             # SourceAdapter interface, RawRecord
@@ -86,6 +86,7 @@ server/                      # Go module
     narration/
       narrator.go
       verifier.go
+      reviewer.go
     charts/                  # Vega-Lite builders from chart_data
     api/                     # handlers, SSE, replay
   cmd/seed/main.go           # loads demo sources
@@ -191,6 +192,9 @@ CREATE TABLE insights (
   stats       jsonb NOT NULL,            -- copied from AnalysisResult; the UI renders numbers from here
   chart_spec  jsonb,                     -- Vega-Lite
   narrated_by text NOT NULL CHECK (narrated_by IN ('llm', 'template')),
+  narrated_stats jsonb NOT NULL,         -- the stats the text was written against
+  reviewed_at    timestamptz,
+  review_reason  text,                   -- reviewer's one-line reason, shown on the card
   created_at  timestamptz NOT NULL DEFAULT now(),
   UNIQUE (run_id, finding_key)
 );
@@ -207,7 +211,7 @@ JOIN (
 ) latest ON latest.run_id = i.run_id;
 ```
 
-- Each run writes a full set of insight rows. For findings that haven't materially changed, the runner copies the previous run's text instead of calling the LLM again (see Workflow manager).
+- Each run writes a full set of insight rows. For findings whose text the reviewer keeps, the runner copies the text and narrated\_stats forward, with fresh stats and chart\_spec (see Narration).
 - Reading a measure out of JSONB: `(payload->>'temp_c')::double precision`. At hackathon volumes (tens of thousands of rows) no further indexing is needed.
 
 ## Ingestion
@@ -398,16 +402,19 @@ type WorkflowDraft struct {
 2. **Watermark:** newest `observed_at` across the project's sources. Run if there's no succeeded run for the active workflow, or the watermark is newer than the last run's `data_up_to`.
 3. **Lock:** at most one run per project, using a mutex-guarded set of running project ids (the Go service is a single process).
 4. **Execute:** insert a `running` row and call the worker's `POST /run` with the spec, project id and watermark.
-5. **Diff** against the previous succeeded run by `finding_key`. A finding is materially changed if it is new, ρ changed sign, the lag changed, |Δρ| ≥ 0.1, or it is a new anomaly.
-6. **Narrate** new or materially changed findings, at most 5 per run, ranked by |ρ| or |z| (next section). For unchanged findings, copy the previous text and refresh `stats` and `chart_spec`.
-7. **Store** the insight rows, mark the run `succeeded`, publish `project_updated`.
-8. **On error:** mark the run `failed` with the message and publish `run_failed`. The previous insights stay on the dashboard.
+5. **Diff** against the previous succeeded run by `finding_key`: each finding is new, still present, or gone.
+6. **Stats:** every finding's `stats` and `chart_spec` come from this run, always, whatever happens to its text.
+7. **Text:** new findings go to the narrator (at most 5 per run, ranked by |ρ| or |z|); gone findings are retired; present findings go to the reviewer, which keeps or revises their text (see Narration).
+8. **Store** the insight rows, mark the run `succeeded`, publish `project_updated`.
+9. **On error:** mark the run `failed` with the message and publish `run_failed`. The previous insights stay on the dashboard.
 
 **Acceptance checks.**
 
 - Creating a project over two seeded CSV sources yields a workflow and a succeeded run with no manual steps.
 - Triggering again with no new data creates no run.
-- Appending rows that don't change any finding creates a run that makes zero LLM calls, per the call log.
+- Appending rows to series no finding uses makes zero LLM calls, per the call log.
+- Appending rows that shift a finding makes one reviewer call, and the card's stats line updates whether its text is kept or revised.
+- Data that flips a finding's sign rewrites its text without a reviewer call.
 - A stub LLM returning an invalid draft is retried once, then the error shows on the project.
 
 ## Narration, verification and charts
@@ -442,6 +449,27 @@ type Narration struct {
 - `chart` doesn't suit the finding's kind.
 
 Rejected drafts get one retry with the reasons. If a draft fails again, or the LLM call errors, use a template such as "{a} and {b} move together, with {leader} moving first" and set `narrated_by = 'template'`.
+
+**Reviewer (`internal/narration/reviewer.go`).** When new data arrives, an agent decides whether each existing finding's text still fits. Stats lines, charts and the funnel are not its decision: they come from the engine and refresh on every run.
+
+1. **Hard rules first.** A finding missing from the new result is retired. A new finding goes to the narrator. Existing text that fails the verifier against current stats (sign flipped, leader changed) is rewritten without consulting the reviewer.
+2. **Who is reviewed.** Remaining findings whose series received new records since their last review, at most once per finding per `REVIEW_MIN_INTERVAL` (60 s), so a fast replay doesn't call the LLM on every run.
+3. **One call per run.** `claude-sonnet-5-5` gets, per finding: the current text, `narrated_stats` (the stats that text was written against), the current stats, and a delta summary (Δρ, Δn, Δq, each half's ρ). Comparing against `narrated_stats` rather than the previous run catches slow drift that no single run shows.
+4. **Instructions.** Revise when the strength band changes (|ρ| below 0.3, 0.3 to 0.6, above 0.6), a caveat stops or starts applying, or the explanation no longer describes the stats. Otherwise keep: needless rewrites make cards churn.
+5. **Verify and store.** Every revision goes through the verifier. A failed revision keeps the old text if that still verifies, else falls back to the template. `revise` replaces the text and `narrated_stats`; `keep` sets `reviewed_at` and `review_reason`. The card shows when its text was last checked, with the reason on hover.
+
+```go
+type ReviewItem struct {
+    FindingKey string        `json:"finding_key"`
+    Decision   string        `json:"decision" jsonschema:"enum=keep,enum=revise"`
+    Reason     string        `json:"reason"`   // one line, shown on the card
+    Revision   *InsightDraft `json:"revision"` // required when decision = revise
+}
+
+type Review struct {
+    Items []ReviewItem `json:"items"`
+}
+```
 
 **Charts (`internal/charts`).** This is the "AI Visualiser" box from the sketch, made deterministic. Each builder turns a finding's `chart_data` from the worker into Vega-Lite JSON with the data inlined, at most 500 points.
 
@@ -505,15 +533,15 @@ M0 fixes the contracts so the four workstreams can build in parallel through M1;
 | --- | --- | --- | --- | --- |
 | A. Data and API | Go | Migrations, `internal/db`, adapters, ingest loop, HTTP handlers, SSE, replay, demo seed | Compose file and migration | Nothing |
 | B. Stats worker | Python | `stats/`: spec mirror, frames, methods, `run_spec`, `POST /run`, engine tests | Synthetic-data tests, no database | The spec and result contracts |
-| C. Agent | Go | `internal/llm`, profiler, author, narrator, verifier, charts | Profiler on a fixture CSV | Contracts; B's `AnalysisResult` for narration |
+| C. Agent | Go | `internal/llm`, profiler, author, narrator, reviewer, verifier, charts | Profiler on a fixture CSV | Contracts; B's `AnalysisResult` for narration |
 | D. Frontend | TypeScript | Everything in `web/` | Pages against the API stubs' fixture JSON | API response shapes |
 
-With three people, A also takes the profiler and charts, and C's author, narrator and verifier go to whoever passes their M1 checks first.
+With three people, A also takes the profiler and charts, and C's author, narrator, reviewer and verifier go to whoever passes their M1 checks first.
 
 **Milestone gates.**
 
 - [ ] **M0, hours 0–2.** `docker compose up` starts Postgres, the Go service and the stats worker; migrations apply.
-- [ ] **M0.** `internal/contracts` defines `SourceProfile`, `AnalysisSpec`, `AnalysisResult`, `WorkflowDraft` and `Narration`; Go and the worker both round-trip the fixtures in `contracts/fixtures/`.
+- [ ] **M0.** `internal/contracts` defines `SourceProfile`, `AnalysisSpec`, `AnalysisResult`, `WorkflowDraft``, Narration and Review`; Go and the worker both round-trip the fixtures in `contracts/fixtures/`.
 - [ ] **M0.** Every endpoint returns fixture JSON, and the frontend renders a fixture project page.
 - [ ] **M0.** The demo dataset is chosen and downloaded.
 - [ ] **M1, hours 2–8.** CSV and RSS adapters ingest with deduplication; the Sources page lists real sources.
@@ -530,7 +558,7 @@ With three people, A also takes the profiler and charts, and C's author, narrato
 1. The migrations, `internal/contracts` and the worker's mirror models are frozen after M0. Propose changes to them and wait for a human.
 2. Never execute model output or splice it into code or SQL. An LLM only ever produces JSON that is unmarshalled into a contract struct and checked by `Validate()`.
 3. Every LLM call goes through `internal/llm`: structured outputs with the contract struct as the schema, a 60 s context timeout, one retry, and a JSONL log line with purpose, model, latency, tokens and validation result.
-4. Model ids live in `internal/config`: profiler `claude-haiku-5-5`; author and narrator `claude-sonnet-5-5`.
+4. Model ids live in `internal/config`: profiler `claude-haiku-5-5`; author, narrator and reviewer `claude-sonnet-5-5`.
 5. The stats worker connects with a read-only Postgres role and makes no other network calls.
 6. Every goroutine loop recovers panics per item, logs with `slog` and carries on.
 7. Tests never call the live network or the real LLM. Go tests use recorded fixtures and `httptest`, plus a stub client enabled by `LLM_STUB=1`; worker tests use synthetic data.
@@ -543,7 +571,7 @@ The demo shows the agent planning once, the engine updating live, and the funnel
 
 1. Add two or three sources live (CSV, RSS, JSON).
 2. Create a project with a one-sentence goal and open the "Analysis plan" to show what the agent chose and why.
-3. Start a replay; cards appear and update as data streams in.
+3. Start a replay; stats update on every run, while card text changes only when the reviewer judges it stale, with its reason shown.
 4. Point at the funnel line, then at one strong-looking candidate the engine rejected.
 
 **Dataset.** Choose a pair with a known, explainable lagged relationship and at least a year of daily data, for example a city's daily weather and its open bike-hire counts, plus a news RSS feed as the text source. Check each dataset's licence. Decide by hour 2, because the M1 gate depends on it.
@@ -560,6 +588,7 @@ The demo shows the agent planning once, the engine updating live, and the funnel
 | Live feeds don't change during the demo slot | Replay mode |
 | Scope creep (scraping, more adapters) | Stretch work only after the M3 gate |
 | Reading JSONB is too slow | Volumes are small; move to typed tables only if a run takes over 5 s |
+| The reviewer rewrites too often, so cards churn | Prompt biased to keep, a 60 s minimum interval, and the keep/revise ratio logged per run |
 
 ## Open questions
 
