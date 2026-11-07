@@ -24,7 +24,7 @@ type SourceProfile struct {
 	Summary       string         `json:"summary"`
 }
 
-// ---- Analysis spec (statistical workflow) ----
+// ---- Series definitions and statistical workflow ----
 
 type Filter struct {
 	Path   string `json:"path"`
@@ -42,30 +42,19 @@ type SeriesDef struct {
 	Unit     *string  `json:"unit"`
 }
 
-type Pair struct {
-	A string `json:"a"`
-	B string `json:"b"`
-}
-
-type AnalysisSpec struct {
-	Grain      string      `json:"grain" jsonschema:"enum=hour,enum=day,enum=week"`
-	WindowDays int         `json:"window_days"` // 7..730
-	Series     []SeriesDef `json:"series"`      // 2..12
-	Pairs      []Pair      `json:"pairs"`       // empty = all pairs
-	MaxLag     int         `json:"max_lag"`     // 0..14, in grain units
-	Tests      []string    `json:"tests"`       // lagged_correlation | anomaly
-}
-
+// WorkflowDraft is the author's output: a Python script run by the stats
+// worker against its stats library, plus narrator guidance.
 type WorkflowDraft struct {
-	AnalysisSpec  AnalysisSpec `json:"analysis_spec"`
-	InsightPrompt string       `json:"insight_prompt"`
-	Rationale     string       `json:"rationale"`
+	Script        string `json:"script"`         // Python using the stats library
+	InsightPrompt string `json:"insight_prompt"` // what the user cares about, for the narrator
+	Rationale     string `json:"rationale"`      // why these series and tests; shown in the UI
 }
 
 // ---- Analysis result (from the stats worker) ----
 
 // Health is what the reviewer reads about a statistical run.
 type Health struct {
+	LoadedSeries   map[string]string   `json:"loaded_series"` // series id -> source_id, from load_series calls
 	SkippedSeries  []string            `json:"skipped_series"`
 	StaleSeries    []string            `json:"stale_series"`
 	Coverage       map[string]float64  `json:"coverage"`
@@ -75,12 +64,14 @@ type Health struct {
 }
 
 type Finding struct {
-	FindingKey  string         `json:"finding_key"`
-	Kind        string         `json:"kind"` // correlation | anomaly
-	Series      []string       `json:"series"`
-	Stats       map[string]any `json:"stats"`
-	PeriodStart time.Time      `json:"period_start"`
-	PeriodEnd   time.Time      `json:"period_end"`
+	FindingKey string         `json:"finding_key"`
+	Kind       string         `json:"kind"` // correlation | anomaly | custom
+	Series     []string       `json:"series"`
+	Stats      map[string]any `json:"stats"`
+	// StabilityChecked is false for custom tests (no half-window check).
+	StabilityChecked bool      `json:"stability_checked"`
+	PeriodStart      time.Time `json:"period_start"`
+	PeriodEnd        time.Time `json:"period_end"`
 }
 
 type AnalysisResult struct {
