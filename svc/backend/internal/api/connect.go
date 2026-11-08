@@ -18,14 +18,16 @@ import (
 	v1 "hacktheburgh/backend/gen/hacktheburgh/v1"
 	v1connect "hacktheburgh/backend/gen/hacktheburgh/v1/hacktheburghv1connect"
 	"hacktheburgh/backend/internal/contracts"
+	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/ingest"
 )
 
-// ConnectService implements the browser-facing RPCs. Project creation,
-// workflow regeneration, and replay require domain services that are not yet
-// configured; the read RPCs are backed by the persisted database records.
+// ConnectService implements the browser-facing RPCs. Project creation persists
+// the project and its source links; workflow generation, regeneration, and
+// replay still require domain services that are not configured.
 type ConnectService struct {
 	Store *ingest.Store
+	Bus   *events.Bus
 }
 
 var _ v1connect.AnduinServiceHandler = (*ConnectService)(nil)

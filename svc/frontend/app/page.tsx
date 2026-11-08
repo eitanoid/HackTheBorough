@@ -1,3 +1,6 @@
+import ProjectBrowser from "@/components/project-browser";
+import SourceManager from "@/components/source-manager";
+
 function NavigationIcon({ kind }: { kind: "overview" | "sources" | "findings" | "plan" }) {
   if (kind === "overview") {
     return (
@@ -125,7 +128,7 @@ export default function Home() {
             <NavigationIcon kind="overview" /> <span>Overview</span>
           </a>
           <a className="nav-link" href="#sources">
-            <NavigationIcon kind="sources" /> <span>Sources</span><span className="nav-count">3</span>
+            <NavigationIcon kind="sources" /> <span>Sources</span>
           </a>
           <a className="nav-link" href="#findings">
             <NavigationIcon kind="findings" /> <span>Findings</span><span className="nav-count">2</span>
@@ -153,7 +156,7 @@ export default function Home() {
 
       <main className="main-content" id="project">
         <header className="topbar">
-          <div className="breadcrumbs"><span>Projects</span><span className="crumb-divider">/</span><strong>City mobility &amp; weather</strong></div>
+          <div className="breadcrumbs"><span>Projects</span><span className="crumb-divider">/</span><strong>Workspace overview</strong></div>
           <div className="topbar-actions">
             <span className="preview-badge"><span className="preview-dot" /> UI PREVIEW</span>
             <a className="button button-outline" href="#analysis-plan">Review analysis plan <span aria-hidden="true">↗</span></a>
@@ -161,29 +164,9 @@ export default function Home() {
         </header>
 
         <div className="page-content">
-          <section className="project-heading">
-            <div className="project-title-block">
-              <div className="eyebrow project-eyebrow">PROJECT OVERVIEW <span className="eyebrow-divider">/</span> DEMO DATASET</div>
-              <h1>City mobility <span>&amp;</span> weather</h1>
-              <p className="project-goal">Understand how local weather patterns relate to daily bike-hire demand.</p>
-            </div>
-            <div className="last-run">
-              <span className="last-run-icon" aria-hidden="true">✓</span>
-              <div><strong>Example run complete</strong><span>Updated moments ago</span></div>
-            </div>
-          </section>
+          <ProjectBrowser />
 
-          <section className="source-row" id="sources" aria-labelledby="sources-heading">
-            <div className="source-row-heading">
-              <div><span className="eyebrow">CONNECTED SOURCES</span><h2 id="sources-heading">A fuller picture, from three feeds</h2></div>
-              <a className="text-link" href="#sources-list">View sources <span aria-hidden="true">→</span></a>
-            </div>
-            <div className="source-list" id="sources-list">
-              <div className="source-item"><span className="source-icon source-csv">CSV</span><span><strong>Bike hire activity</strong><small>Daily counts · 180 days</small></span><i className="source-check">✓</i></div>
-              <div className="source-item"><span className="source-icon source-weather">°</span><span><strong>Local weather</strong><small>Temperature &amp; rainfall</small></span><i className="source-check">✓</i></div>
-              <div className="source-item"><span className="source-icon source-rss">RSS</span><span><strong>City news feed</strong><small>Contextual headlines</small></span><i className="source-check">✓</i></div>
-            </div>
-          </section>
+          <SourceManager />
 
           <section className="funnel-section" aria-labelledby="funnel-heading">
             <div className="section-heading">

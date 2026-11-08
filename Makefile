@@ -35,3 +35,4 @@ test:
 test-integration:
 	@test -n "$$TEST_DATABASE_URL" || (echo "TEST_DATABASE_URL is required" && exit 1)
 	cd svc/backend && go test -p 1 ./...
+

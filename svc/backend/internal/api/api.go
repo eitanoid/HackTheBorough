@@ -72,7 +72,7 @@ func (s *Server) Routes() http.Handler {
 		mux.HandleFunc("POST /api/debug/chat", s.debugChat)
 	}
 	connectServer := connect.NewServer()
-	v1connect.RegisterAnduinServiceHandler(connectServer, &ConnectService{Store: s.Store})
+	v1connect.RegisterAnduinServiceHandler(connectServer, &ConnectService{Store: s.Store, Bus: s.Bus})
 	connecthttp.Mount(mux, connectServer, connecthttp.WithReadMaxBytes(ingest.MaxCSVBytes*4/3+(1<<20)))
 
 	if s.AnalysisDebug && s.Pool != nil {
