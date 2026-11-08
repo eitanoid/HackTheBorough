@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   createSource,
   getSource,
@@ -11,6 +11,8 @@ import {
 } from "@/lib/source-api";
 import { getAnduinClient } from "@/lib/anduin-client";
 import ConfirmDeleteDialog from "@/components/confirm-delete-dialog";
+
+const maxCSVBytes = 20 * 1024 * 1024;
 
 const defaultSchema = JSON.stringify(
   {
@@ -94,6 +96,12 @@ function createdAt(source: Source) {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
 }
 
+function formatFileSize(bytes: number) {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
 export default function SourceManager() {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,9 +171,21 @@ export default function SourceManager() {
     query: string;
     schema: string;
     timeField: string;
+    file?: File;
   }) {
-    let config: Record<string, unknown>;
-    if (input.kind === "web") {
+    let created: Source;
+    if (input.kind === "csv") {
+      if (!input.file) throw new Error("Choose a CSV file to upload.");
+      const uploaded = await getAnduinClient().uploadCSVSource({
+        name: input.name.trim(),
+        fileName: input.file.name,
+        csvData: new Uint8Array(await input.file.arrayBuffer()),
+      });
+      if (!uploaded.source) throw new Error("The API returned no uploaded source.");
+      created = await getSource(uploaded.source.id);
+    } else {
+      let config: Record<string, unknown>;
+      if (input.kind === "web") {
       let schema: unknown;
       try {
         schema = JSON.parse(input.schema);
@@ -176,19 +196,18 @@ export default function SourceManager() {
         throw new Error("The extraction schema must be a JSON object.");
       }
       config = { url: input.url, query: input.query, schema };
-    } else if (input.kind === "csv") {
-      config = { url: input.url };
-      if (input.timeField.trim()) config.time_field = input.timeField.trim();
-    } else {
-      config = { url: input.url };
+      } else {
+        config = { url: input.url };
+      }
+
+      created = await createSource({
+        name: input.name.trim(),
+        kind: input.kind,
+        config,
+        pollIntervalSeconds: input.pollIntervalSeconds,
+      });
     }
 
-    const created = await createSource({
-      name: input.name.trim(),
-      kind: input.kind,
-      config,
-      pollIntervalSeconds: input.pollIntervalSeconds,
-    });
     setShowCreate(false);
     setLoading(true);
     await refreshSources();
@@ -413,17 +432,47 @@ function CreateSourceDialog({
     query: string;
     schema: string;
     timeField: string;
+    file?: File;
   }) => Promise<void>;
 }) {
   const [kind, setKind] = useState<SourceKind>("rss");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [draggingFile, setDraggingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function chooseFile(file?: File) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setSelectedFile(null);
+      setError("Choose a file with a .csv extension.");
+      return;
+    }
+    if (file.size === 0) {
+      setSelectedFile(null);
+      setError("The selected CSV file is empty.");
+      return;
+    }
+    if (file.size > maxCSVBytes) {
+      setSelectedFile(null);
+      setError(`CSV files must be 20 MB or smaller.`);
+      return;
+    }
+    setSelectedFile(file);
+    setError("");
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    setBusy(true);
     const form = new FormData(event.currentTarget);
+    const file = selectedFile ?? undefined;
+    if (kind === "csv" && !file) {
+      setError("Choose a CSV file to upload.");
+      return;
+    }
+    setBusy(true);
     try {
       await onCreate({
         name: String(form.get("name") ?? ""),
@@ -433,6 +482,7 @@ function CreateSourceDialog({
         query: String(form.get("query") ?? ""),
         schema: String(form.get("schema") ?? ""),
         timeField: String(form.get("timeField") ?? ""),
+        file,
       });
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Could not create this source.");
@@ -450,7 +500,7 @@ function CreateSourceDialog({
           <div>
             <span className="eyebrow">NEW CONNECTION</span>
             <h2 id="create-source-heading">Add a data source</h2>
-            <p>Connect a feed or URL and we’ll keep its records up to date.</p>
+            <p>{kind === "csv" ? "Drop in a CSV file and we’ll add its rows to your workspace." : "Connect a feed or URL and we’ll keep its records up to date."}</p>
           </div>
           <button type="button" className="source-dialog-close" onClick={onClose} aria-label="Close dialog" disabled={busy}>×</button>
         </div>
@@ -465,20 +515,63 @@ function CreateSourceDialog({
             <span>Source type</span>
             <select value={kind} onChange={(event) => setKind(event.target.value as SourceKind)}>
               <option value="rss">RSS feed</option>
-              <option value="csv">CSV URL</option>
+              <option value="csv">CSV file</option>
               <option value="web">Web page</option>
             </select>
           </label>
 
-          <label className="source-field">
-            <span>{kind === "rss" ? "Feed URL" : kind === "csv" ? "CSV URL" : "Page URL"}</span>
-            <input
-              name="url"
-              type="url"
-              required
-              placeholder={kind === "rss" ? "https://example.com/feed.xml" : "https://example.com/data"}
-            />
-          </label>
+          {kind === "csv" ? (
+            <div
+              className={`csv-dropzone ${draggingFile ? "is-dragging" : ""} ${selectedFile ? "has-file" : ""}`}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDraggingFile(true);
+              }}
+              onDragLeave={() => setDraggingFile(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setDraggingFile(false);
+                chooseFile(event.dataTransfer.files[0]);
+              }}
+            >
+              <input
+                ref={fileInputRef}
+                className="csv-file-input"
+                type="file"
+                accept=".csv,text/csv"
+                aria-label="Choose a CSV file"
+                onChange={(event) => {
+                  chooseFile(event.currentTarget.files?.[0]);
+                  event.currentTarget.value = "";
+                }}
+              />
+              {selectedFile ? (
+                <div className="csv-selected-file">
+                  <span className="source-icon source-csv">CSV</span>
+                  <span><strong>{selectedFile.name}</strong><small>{formatFileSize(selectedFile.size)}</small></span>
+                  <button type="button" className="csv-remove-file" onClick={() => setSelectedFile(null)} disabled={busy}>Remove</button>
+                </div>
+              ) : (
+                <div className="csv-dropzone-prompt">
+                  <span className="csv-upload-icon" aria-hidden="true">↑</span>
+                  <strong>Drop your CSV file here</strong>
+                  <span>or</span>
+                  <button type="button" className="csv-browse-button" onClick={() => fileInputRef.current?.click()} disabled={busy}>Browse files</button>
+                  <small>CSV format · up to 20 MB</small>
+                </div>
+              )}
+            </div>
+          ) : (
+            <label className="source-field">
+              <span>{kind === "rss" ? "Feed URL" : "Page URL"}</span>
+              <input
+                name="url"
+                type="url"
+                required
+                placeholder={kind === "rss" ? "https://example.com/feed.xml" : "https://example.com/data"}
+              />
+            </label>
+          )}
 
           {kind === "web" && (
             <>
@@ -494,30 +587,24 @@ function CreateSourceDialog({
             </>
           )}
 
-          {kind === "csv" && (
+          {kind !== "csv" && (
             <label className="source-field">
-              <span>Timestamp column <em>Optional</em></span>
-              <input name="timeField" placeholder="date" />
-              <small>Leave blank to detect a common date or time column.</small>
+              <span>Refresh interval</span>
+              <select name="pollIntervalSeconds" defaultValue="300">
+                <option value="300">Every 5 minutes</option>
+                <option value="900">Every 15 minutes</option>
+                <option value="3600">Every hour</option>
+                <option value="86400">Every 24 hours</option>
+              </select>
             </label>
           )}
-
-          <label className="source-field">
-            <span>Refresh interval</span>
-            <select name="pollIntervalSeconds" defaultValue="300">
-              <option value="300">Every 5 minutes</option>
-              <option value="900">Every 15 minutes</option>
-              <option value="3600">Every hour</option>
-              <option value="86400">Every 24 hours</option>
-            </select>
-          </label>
 
           {error && <p className="source-form-error" role="alert">{error}</p>}
 
           <div className="source-dialog-actions">
             <button type="button" className="button button-outline" onClick={onClose} disabled={busy}>Cancel</button>
             <button type="submit" className="button button-primary" disabled={busy}>
-              {busy ? <><i className="source-spinner" /> Connecting…</> : "Connect source"}
+              {busy ? <><i className="source-spinner" /> {kind === "csv" ? "Uploading…" : "Connecting…"}</> : kind === "csv" ? "Upload CSV" : "Connect source"}
             </button>
           </div>
         </form>

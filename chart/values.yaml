@@ -69,6 +69,10 @@ backend:
       value: "1"
     - name: FDR_Q # false-discovery level for the statistical findings
       value: "0.1"
+    - name: RUN_SWEEP_S # periodic catch-up sweep for statistical workflows
+      value: "300"
+    - name: RUN_DEBOUNCE_S # coalesce source updates before running workflows
+      value: "30"
     - name: ANALYSIS_DEBUG # "1" exposes /api/debug/seed, /generate and /state; dev only
       value: "1"
     - name: CRAWL4AI_API

@@ -13,6 +13,12 @@ analyzes data across sources to uncover correlations and hidden connections
 between events, then turns its findings into clear, human-readable
 insights—helping users spot important developments as they emerge.
 
+## Architecture
+
+Frontend React with NextJS, Backend Golang, Protobuf ConnectRPC API, Kubernetes deployments, Crawl4AI web scraper.
+
+![](assets/architecture.png)
+
 ## Local Kubernetes development
 
 Requirements:
@@ -43,17 +49,34 @@ make delete     # uninstall the helm release but keep the cluster
 By default the following endpoints are exposed:
 
 - Frontend: <http://localhost:8080>
+
 - Backend health check: <http://localhost:8081/healthz>
 - Backend API: <http://localhost:8081/api/hello>
 - Postgres Database: <localhost:8082>
 
-The Helm install does not seed sources. Register them through the REST
-examples in [Local ingestion backend](#local-ingestion-backend).
+The Helm install does not seed sources. Create and manage projects and sources
+through Connect RPC. Configured sources are polled automatically at their
+selected intervals.
 
 For manual Connect RPC checks, open [`tests/http/anduin.http`](tests/http/anduin.http)
 with httpyac while the backend and database are running (`cd tests/http && httpyac send anduin.http`).
-The file includes source CRUD, CSV upload, web source configuration, and expected
-errors for workflow regeneration and replay, which are not wired yet.
+The file covers source/project CRUD, CSV upload, web source configuration,
+forced statistical reruns, and the currently unconfigured workflow regeneration
+and demo replay RPCs.
+
+### Statistical runner settings
+
+The runner sweeps projects every five minutes and debounces `source_updated`
+events for 30 seconds by default. Override these intervals in seconds with
+`RUN_SWEEP_S` and `RUN_DEBOUNCE_S`. `FDR_Q` controls the Benjamini–Hochberg
+false-discovery threshold and defaults to `0.1` (`MIN_N` defaults to `30`).
+
+To run the active statistical workflow again without waiting for new data, call
+the Connect RPC `RunWorkflow` with a project ID and
+`WORKFLOW_KIND_STATISTICAL`. It queues a run of the existing workflow; it does
+not regenerate the analysis script. A linked source deletion removes that
+source's records and clears workflow results for affected projects; those
+projects remain and can rebuild analysis if they still have data.
 
 
 ## Local ingestion backend
@@ -67,10 +90,11 @@ Register the demo sources:
 
 ```sh
 cd svc/backend
-kpf deployments/hacktheburgh-postgres 5432:5432
-export DATABASE_URL='postgres://hacktheburgh:hacktheburgh@127.0.0.1:5432/hacktheburgh?sslmode=disable'
+export DATABASE_URL='postgres://hacktheburgh:hacktheburgh@127.0.0.1:8082/hacktheburgh?sslmode=disable'
 go run ./cmd/seed
-curl http://127.0.0.1:8081/api/sources
-# Force one immediate poll; normal polling runs every 300 seconds.
-curl -X POST http://127.0.0.1:8081/api/sources/<source-uuid>/poll
+curl -sS http://127.0.0.1:8081/hacktheburgh.v1.AnduinService/ListSources \
+  -H 'Content-Type: application/json' -d '{}'
 ```
+
+The seed sources are picked up by the normal ingestion loop according to their
+configured polling intervals.

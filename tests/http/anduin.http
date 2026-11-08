@@ -123,7 +123,7 @@ Connect-Protocol-Version: 1
 ?? status == 400
 ?? body code == invalid_argument
 
-### Legacy manual polling endpoint remains plain HTTP
+### Trigger an immediate source poll over HTTP
 # @ref createRssSource
 POST {{baseUrl}}/api/sources/{{createRssSource.source.id}}/poll
 
@@ -195,6 +195,10 @@ Connect-Protocol-Version: 1
 
 ### Manually replay the investigation's recorded steps (no LLM call; FailedPrecondition until an investigation exists)
 # @ref createProject
+### Force-run the active statistical workflow without requiring new data
+# Requires an active statistical workflow and data for the created project.
+# @ref createProject
+# @name forceRunWorkflow
 POST {{baseUrl}}/hacktheburgh.v1.AnduinService/RunWorkflow
 Content-Type: application/json
 Connect-Protocol-Version: 1
@@ -202,16 +206,54 @@ Connect-Protocol-Version: 1
 { "projectId": "{{createProject.project.id}}", "kind": "WORKFLOW_KIND_INVESTIGATION" }
 
 ### Regeneration and replay currently return FailedPrecondition until their services are wired
+{
+  "projectId": "{{createProject.project.id}}",
+  "kind": "WORKFLOW_KIND_STATISTICAL"
+}
+
+?? status == 200
+?? body.accepted == true
+
+### Delete an unlinked source (destructive)
+# Deleting a linked source also clears workflow runs and insights for affected projects.
+# @ref createRssSource
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/DeleteSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "id": "{{createRssSource.source.id}}" }
+
+?? status == 200
+?? body.deleted == true
+
+### Delete the project created above (destructive; data sources remain)
+# @ref createProject
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/DeleteProject
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "id": "{{createProject.project.id}}" }
+
+?? status == 200
+?? body.deleted == true
+
+### Workflow regeneration is not configured yet
 POST {{baseUrl}}/hacktheburgh.v1.AnduinService/RegenerateWorkflow
 Content-Type: application/json
 Connect-Protocol-Version: 1
 
 { "projectId": "{{projectId}}", "kind": "WORKFLOW_KIND_STATISTICAL" }
 
-### Replay
+?? status == 412
+?? body code == failed_precondition
+
+### Demo replay is not configured yet
 # @ref uploadCsv
 POST {{baseUrl}}/hacktheburgh.v1.AnduinService/Replay
 Content-Type: application/json
 Connect-Protocol-Version: 1
 
 { "sourceIds": [ "{{uploadCsv.source.id}}" ], "periodsPerSecond": 10, "startFraction": 0.5 }
+
+?? status == 412
+?? body code == failed_precondition
