@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    proxyClientMaxBodySize: "30mb",
+  },
   async rewrites() {
     const backendURL = (process.env.BACKEND_API_URL ?? "http://127.0.0.1:8081").replace(/\/$/, "");
     return [
