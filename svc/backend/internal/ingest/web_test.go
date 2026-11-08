@@ -390,6 +390,15 @@ func TestValidateExtracted(t *testing.T) {
 	if err := validateExtracted(map[string]any{}, schema); err == nil {
 		t.Fatal("expected error")
 	}
+	if err := validateExtracted([]any{map[string]any{"title": "A"}, map[string]any{"title": "B"}}, schema); err != nil {
+		t.Fatalf("unexpected error for array of records: %v", err)
+	}
+	if err := validateExtracted([]any{map[string]any{}}, schema); err == nil {
+		t.Fatal("expected error for array item missing required field")
+	}
+	if err := validateExtracted([]any{map[string]any{"title": 1}}, schema); err == nil {
+		t.Fatal("expected error for array item with wrong field type")
+	}
 }
 
 type fakeCrawl4AI struct {

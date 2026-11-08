@@ -428,6 +428,16 @@ func validateExtracted(value any, rawSchema json.RawMessage) error {
 	if !ok {
 		return errors.New("source schema must be a JSON object")
 	}
+	// Crawl4AI returns a list of records even when the schema describes a
+	// single record, so validate each element instead of the array itself.
+	if records, ok := value.([]any); ok && schema["type"] == "object" {
+		for i, record := range records {
+			if err := validateJSONSchema(record, schema); err != nil {
+				return fmt.Errorf("[%d]: %w", i, err)
+			}
+		}
+		return nil
+	}
 	return validateJSONSchema(value, schema)
 }
 
