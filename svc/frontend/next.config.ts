@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   async rewrites() {
     const backendURL = (process.env.BACKEND_API_URL ?? "http://127.0.0.1:8081").replace(/\/$/, "");
     return [
+      {
+        source: "/rpc/:path*",
+        destination: `${backendURL}/:path*`,
+      },
       { source: "/api/sources", destination: `${backendURL}/api/sources` },
       { source: "/api/sources/:path*", destination: `${backendURL}/api/sources/:path*` },
     ];
