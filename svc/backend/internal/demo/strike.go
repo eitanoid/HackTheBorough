@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	ProjectName = "Debug demo: strikes vs bus trips"
-	Goal        = "Do bus strike announcements in the local news lead to fewer bus trips, and if so how many days later? Also flag anything unusual in recent trips."
+	ProjectName = "Debug demo"
+	Goal        = "Find relationships between the local news, daily bus trips and rainfall data, and flag anything unusual in the recent data."
 
 	// PlantedLagDays is the true effect baked into the data: a strike
 	// headline cuts trips PlantedLagDays days later by about 28%.
