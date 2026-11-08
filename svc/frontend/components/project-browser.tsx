@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { create } from "@bufbuild/protobuf";
 import {
   RunStatus,
@@ -14,8 +15,14 @@ import {
   ProjectSummarySchema,
 } from "@/gen/hacktheburgh/v1/service_pb";
 import { getAnduinClient } from "@/lib/anduin-client";
+import { specFromStruct } from "@/lib/chart-spec";
 import NewProjectLauncher from "@/components/new-project-launcher";
 import ConfirmDeleteDialog from "@/components/confirm-delete-dialog";
+
+const InsightChart = dynamic(() => import("@/components/insight-chart"), {
+  ssr: false,
+  loading: () => <div className="insight-chart-skeleton" aria-hidden="true" />,
+});
 
 function runStatusLabel(status: RunStatus) {
   switch (status) {
@@ -45,6 +52,65 @@ function workflowKindLabel(kind: WorkflowKind) {
     default:
       return "Workflow";
   }
+}
+
+function InsightCard({ insight }: { insight: Insight }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const spec = specFromStruct(insight.chartSpec);
+  const panelId = `insight-chart-${insight.id}`;
+
+  return (
+    <article className="project-insight-card">
+      <div className="project-insight-heading">
+        <strong>{insight.headline}</strong>
+        {spec && (
+          <button
+            type="button"
+            className="chart-collapse"
+            aria-expanded={!collapsed}
+            aria-controls={panelId}
+            aria-label={`${collapsed ? "Expand" : "Collapse"} chart for ${insight.headline}`}
+            onClick={() => setCollapsed((current) => !current)}
+          >
+            {collapsed ? "Expand" : "Collapse"}
+          </button>
+        )}
+      </div>
+      <p>{insight.explanation}</p>
+      {!collapsed && spec && (
+        <div id={panelId}>
+          <InsightChart spec={spec} />
+        </div>
+      )}
+    </article>
+  );
+}
+
+function InsightsSection({ insights }: { insights: Insight[] }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <section className="project-insights" id="findings" aria-labelledby="insights-heading">
+      <div className="project-insights-heading">
+        <span className="eyebrow" id="insights-heading">LATEST INSIGHTS</span>
+        <button
+          type="button"
+          className="chart-collapse"
+          aria-expanded={!collapsed}
+          aria-controls="insights-panel"
+          aria-label={`${collapsed ? "Expand" : "Collapse"} insights`}
+          onClick={() => setCollapsed((current) => !current)}
+        >
+          {collapsed ? "Expand" : "Collapse"}
+        </button>
+      </div>
+      <div id="insights-panel" className="project-insights-grid" hidden={collapsed}>
+        {!collapsed && insights.map((insight) => (
+          <InsightCard key={insight.id} insight={insight} />
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function preferredProject(summaries: ProjectSummary[]) {
@@ -441,15 +507,7 @@ export default function ProjectBrowser() {
                 )}
 
                 {insights.length > 0 ? (
-                  <div className="project-insights" id="findings">
-                    <span className="eyebrow">LATEST INSIGHTS</span>
-                    {insights.map((insight) => (
-                      <article className="project-insight-card" key={insight.id}>
-                        <strong>{insight.headline}</strong>
-                        <p>{insight.explanation}</p>
-                      </article>
-                    ))}
-                  </div>
+                  <InsightsSection key={selectedId} insights={insights} />
                 ) : (
                   <p className="project-no-insights" id="findings">
                     {workflows.length ? "No insights have been published for this project yet." : "This project is saved; workflow generation has not been started."}
