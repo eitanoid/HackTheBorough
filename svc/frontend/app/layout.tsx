@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Anduin — Insight Studio",
-  description: "A live dashboard for evidence-backed insights.",
+	title: "Anduin — Data Flows",
+	description: "Analyze connected data with statistical workflows and evidence-backed insights.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -1,14 +1,25 @@
-FROM golang:1.27.3-alpine
+FROM golang:1.27.3-alpine3.24 AS builder
 
-# Python for the script runner (restricted child processes of the backend). pandas pulls in numpy.
-RUN apk add --no-cache python3 py3-pandas
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN go install github.com/air-verse/air@v1.61.7
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/backend ./cmd/server
+
+FROM alpine:3.24.4 AS runtime
+
+# Python runs the generated statistical scripts. py3-pandas also installs numpy.
+RUN apk add --no-cache ca-certificates python3 py3-pandas \
+    && addgroup -S app \
+    && adduser -S -G app app \
+    && mkdir -p /app \
+    && chown app:app /app
 
 WORKDIR /app
-COPY go.mod go.sum* ./
-RUN go mod download
-COPY . .
+COPY --from=builder --chown=app:app /out/backend /app/backend
 
+ENV PYTHON_BIN=python3
 EXPOSE 8080
-CMD ["air", "-c", ".air.toml"]
+USER app
+ENTRYPOINT ["/app/backend"]

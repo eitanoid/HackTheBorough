@@ -44,7 +44,8 @@ make delete     # uninstall the helm release but keep the cluster
 
 ```
 
-`make dev` keeps running and refreshes on code edits.
+`make dev` keeps running and rebuilds/redeploys the affected image when its
+source changes.
 
 By default the following endpoints are exposed:
 
