@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +23,14 @@ type Analyser struct {
 	Timeout  time.Duration // passed to the runner for each script run
 	History  time.Duration // how far back INPUT reaches from the watermark
 	MaxTests int
+}
+
+type sourceInputDiagnostic struct {
+	Key           string   `json:"source_key"`
+	ID            string   `json:"source_id"`
+	Records       int      `json:"records"`
+	ProfileFields []string `json:"profile_fields"`
+	PayloadFields []string `json:"payload_fields"`
 }
 
 // A *ScriptError means the script failed (raised, timed out, or reported an
@@ -70,11 +80,96 @@ func (a *Analyser) Run(ctx context.Context, projectID uuid.UUID, script string, 
 	}
 
 	findings, rejected, funnel := Correct(sr, a.Th)
-	return contracts.AnalysisResult{
+	result := contracts.AnalysisResult{
 		DataUpTo: dataUpTo,
 		Findings: findings,
 		Funnel:   funnel,
 		Rejected: rejected,
 		Health:   buildHealth(in, sr.Series),
-	}, nil
+	}
+	slog.Info("analysis script completed",
+		"project_id", projectID,
+		"source_count", len(in.Sources),
+		"record_count", inputRecordCount(in),
+		"series_count", len(sr.Series),
+		"tests_run", len(sr.Tests),
+		"anomalies", len(sr.Anomalies),
+		"findings", len(result.Findings),
+		"rejected", len(result.Rejected),
+	)
+	if len(sr.Tests) == 0 {
+		slog.Warn("analysis script reported no tests",
+			"project_id", projectID,
+			"reported_series", seriesIDs(sr.Series),
+			"input_sources", sourceInputDiagnostics(in),
+		)
+	}
+	if len(result.Findings) == 0 {
+		slog.Warn("analysis completed with no findings",
+			"project_id", projectID,
+			"tests_run", len(sr.Tests),
+			"funnel", result.Funnel,
+			"fdr_q", a.Th.FDRQ,
+			"min_n", a.Th.MinN,
+		)
+	}
+	return result, nil
+}
+
+func inputRecordCount(input Input) int {
+	count := 0
+	for _, source := range input.Sources {
+		count += len(source.Records)
+	}
+	return count
+}
+
+func seriesIDs(series []contracts.SeriesInfo) []string {
+	ids := make([]string, 0, len(series))
+	for _, item := range series {
+		ids = append(ids, item.ID)
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+// sourceInputDiagnostics reports field names and counts only, never record values.
+func sourceInputDiagnostics(input Input) []sourceInputDiagnostic {
+	keys := make([]string, 0, len(input.Sources))
+	for key := range input.Sources {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	out := make([]sourceInputDiagnostic, 0, len(keys))
+	for _, key := range keys {
+		source := input.Sources[key]
+		profileFields := make(map[string]struct{}, len(source.Fields))
+		payloadFields := make(map[string]struct{})
+		for _, field := range source.Fields {
+			profileFields[field.Path] = struct{}{}
+		}
+		for _, record := range source.Records {
+			for field := range record.Payload {
+				payloadFields[field] = struct{}{}
+			}
+		}
+		out = append(out, sourceInputDiagnostic{
+			Key:           key,
+			ID:            source.ID,
+			Records:       len(source.Records),
+			ProfileFields: sortedKeys(profileFields),
+			PayloadFields: sortedKeys(payloadFields),
+		})
+	}
+	return out
+}
+
+func sortedKeys(values map[string]struct{}) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }

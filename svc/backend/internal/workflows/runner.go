@@ -344,6 +344,28 @@ func (r *Runner) runWorkflow(ctx context.Context, workflow StatisticalWorkflow, 
 		r.failRun(workflow, runID, fmt.Errorf("save run: %w", err))
 		return
 	}
+	recordCount := 0
+	for _, source := range res.Health.Sources {
+		recordCount += source.Records
+	}
+	slog.Info("statistical workflow run completed",
+		"project_id", workflow.ProjectID,
+		"workflow_id", workflow.ID,
+		"run_id", runID,
+		"records", recordCount,
+		"series", len(res.Health.Series),
+		"tests_run", res.Funnel["tests_run"],
+		"findings", len(res.Findings),
+		"insights_saved", len(rows),
+	)
+	if len(res.Findings) > 0 && len(rows) == 0 {
+		slog.Warn("workflow run produced findings but no insights were saved",
+			"project_id", workflow.ProjectID,
+			"workflow_id", workflow.ID,
+			"run_id", runID,
+			"findings", len(res.Findings),
+		)
+	}
 	r.publish(events.ProjectUpdated, workflow.ProjectID)
 }
 

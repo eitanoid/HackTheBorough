@@ -166,6 +166,28 @@ func TestSourceKeys(t *testing.T) {
 	}
 }
 
+func TestSourceInputDiagnosticsSummarizesFieldsWithoutValues(t *testing.T) {
+	input := Input{Sources: map[string]InputSource{
+		"london_daily_weather": {
+			ID:      "source-weather",
+			Records: []InputRecord{{Payload: map[string]any{"rain_mm": 1.2, "temp_mean_c": 14.0, "date": "2026-01-01"}}},
+			Fields:  []contracts.FieldProfile{{Path: "date"}, {Path: "rain_mm"}},
+		},
+	}}
+
+	diagnostics := sourceInputDiagnostics(input)
+	want := []sourceInputDiagnostic{{
+		Key:           "london_daily_weather",
+		ID:            "source-weather",
+		Records:       1,
+		ProfileFields: []string{"date", "rain_mm"},
+		PayloadFields: []string{"date", "rain_mm", "temp_mean_c"},
+	}}
+	if !reflect.DeepEqual(diagnostics, want) {
+		t.Fatalf("diagnostics = %#v, want %#v", diagnostics, want)
+	}
+}
+
 func TestScriptErrors(t *testing.T) {
 	pid, st, _, _ := twoSources()
 	run := func(r pyrunner.Runner) error {
