@@ -26,8 +26,19 @@ type Config struct {
 	ModelProfiler     string
 	ModelAuthor       string
 	ModelInvestigator string
-	ModelReviewer     string
-	ModelNarrator     string
+	// EffortInvestigator is sent as reasoning_effort on investigator calls;
+	// empty omits it. Reasoning models need "none" to use function tools on
+	// chat completions.
+	EffortInvestigator string
+	// APIInvestigator is "responses" to call the investigator through the
+	// Responses API (reasoning models only take function tools there); empty
+	// or "chat" uses chat completions.
+	APIInvestigator string
+	// TimeoutInvestigator bounds one investigator model call; reasoning calls
+	// are slower than the default LLMTimeout allows.
+	TimeoutInvestigator time.Duration
+	ModelReviewer       string
+	ModelNarrator       string
 
 	PythonBin           string
 	RunnerMaxConcurrent int
@@ -65,16 +76,19 @@ func Load() Config {
 		LLMStub:          env("LLM_STUB", "") == "1",
 		LLMLogPath:       env("LLM_LOG_PATH", "llm_calls.jsonl"),
 
-		LLMAPIKey:         env("OPENAPI_KEY", ""),
-		LLMBaseURL:        env("LLM_BASE_URL", ""),
-		LLMLogPrompts:     env("LLM_LOG_PROMPTS", "1") == "1",
-		LLMDebug:          env("LLM_DEBUG", "") == "1",
-		AnalysisDebug:     env("ANALYSIS_DEBUG", "") == "1",
-		ModelProfiler:     env("LLM_MODEL_PROFILER", ""),
-		ModelAuthor:       env("LLM_MODEL_AUTHOR", ""),
-		ModelInvestigator: env("LLM_MODEL_INVESTIGATOR", ""),
-		ModelReviewer:     env("LLM_MODEL_REVIEWER", ""),
-		ModelNarrator:     env("LLM_MODEL_NARRATOR", ""),
+		LLMAPIKey:           env("OPENAPI_KEY", ""),
+		LLMBaseURL:          env("LLM_BASE_URL", ""),
+		LLMLogPrompts:       env("LLM_LOG_PROMPTS", "1") == "1",
+		LLMDebug:            env("LLM_DEBUG", "") == "1",
+		AnalysisDebug:       env("ANALYSIS_DEBUG", "") == "1",
+		ModelProfiler:       env("LLM_MODEL_PROFILER", ""),
+		ModelAuthor:         env("LLM_MODEL_AUTHOR", ""),
+		ModelInvestigator:   env("LLM_MODEL_INVESTIGATOR", ""),
+		EffortInvestigator:  env("LLM_REASONING_EFFORT_INVESTIGATOR", ""),
+		APIInvestigator:     env("LLM_API_INVESTIGATOR", ""),
+		TimeoutInvestigator: envSeconds("LLM_TIMEOUT_INVESTIGATOR_S", 180),
+		ModelReviewer:       env("LLM_MODEL_REVIEWER", ""),
+		ModelNarrator:       env("LLM_MODEL_NARRATOR", ""),
 
 		PythonBin:           env("PYTHON_BIN", "python3"),
 		RunnerMaxConcurrent: envInt("RUNNER_MAX_CONCURRENT", 2),

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { create } from "@bufbuild/protobuf";
 import {
+  InsightOrigin,
   RunStatus,
   WorkflowKind,
   type GetProjectResponse,
@@ -54,6 +55,31 @@ function workflowKindLabel(kind: WorkflowKind) {
   }
 }
 
+function InsightOriginBadge({ origin }: { origin: InsightOrigin }) {
+  switch (origin) {
+    case InsightOrigin.STATISTICAL:
+      return (
+        <span
+          className="insight-origin-badge insight-origin-statistical"
+          title="Found by a statistical test that is corrected for how many tests were run"
+        >
+          Statistical
+        </span>
+      );
+    case InsightOrigin.INVESTIGATION:
+      return (
+        <span
+          className="insight-origin-badge insight-origin-investigation"
+          title="Exploratory: found by an AI-led investigation of the data. Its numbers are recomputed on new data, but it is not corrected for multiple testing"
+        >
+          Investigation
+        </span>
+      );
+    default:
+      return null;
+  }
+}
+
 function InsightCard({ insight }: { insight: Insight }) {
   const [collapsed, setCollapsed] = useState(false);
   const spec = specFromStruct(insight.chartSpec);
@@ -62,6 +88,7 @@ function InsightCard({ insight }: { insight: Insight }) {
   return (
     <article className="project-insight-card">
       <div className="project-insight-heading">
+        <InsightOriginBadge origin={insight.origin} />
         <strong>{insight.headline}</strong>
         {spec && (
           <button

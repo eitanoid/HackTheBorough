@@ -49,3 +49,26 @@ func TestChatLogsProviderError(t *testing.T) {
 		t.Fatalf("unexpected log entry: %+v", entry)
 	}
 }
+
+type captureProvider struct{ got []ChatRequest }
+
+func (c *captureProvider) Chat(_ context.Context, r ChatRequest) (ChatResponse, error) {
+	c.got = append(c.got, r)
+	return ChatResponse{Content: `{}`}, nil
+}
+
+func TestReasoningEffortIsPerPurpose(t *testing.T) {
+	p := &captureProvider{}
+	c := &Client{Provider: p, Timeout: time.Second,
+		Models:  map[Purpose]string{Investigator: "m", Author: "m"},
+		Efforts: map[Purpose]string{Investigator: "none"}}
+	if _, err := c.call(context.Background(), Investigator, 1, ChatRequest{Model: "m"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.call(context.Background(), Author, 1, ChatRequest{Model: "m"}); err != nil {
+		t.Fatal(err)
+	}
+	if p.got[0].ReasoningEffort != "none" || p.got[1].ReasoningEffort != "" {
+		t.Fatalf("efforts = %q, %q", p.got[0].ReasoningEffort, p.got[1].ReasoningEffort)
+	}
+}
