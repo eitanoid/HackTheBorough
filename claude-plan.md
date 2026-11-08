@@ -489,7 +489,7 @@ Anything else the script prints, returns or puts in `result` is ignored.
 **Correction (`internal/analysis`).**
 
 1. Benjamini–Hochberg across the p-values of all reported tests gives each test a q.
-2. A test is a candidate if q ≤ `FDR_Q` (0.05) and n ≥ `MIN_N` (30). Tests under `MIN_N` still count in the family.
+2. A test is a candidate if q ≤ `FDR_Q` (0.1) and n ≥ `MIN_N` (30). Tests under `MIN_N` still count in the family.
 3. Of the candidate correlations on the same pair of series (typically one per lag), keep only the one with the largest |effect|.
 4. The remaining candidates become findings. Anomalies become findings as reported, at most 3 per series by |score|.
 5. `rejected` holds the 3 lowest-q tests that did not become findings, for the demo.

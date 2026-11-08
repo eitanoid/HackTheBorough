@@ -21,8 +21,10 @@ type Server struct {
 	Bus *events.Bus
 	LLM *llm.Client // nil disables /api/debug/chat
 	// Author generates statistical workflows; nil when the LLM is not
-	// configured. The project-create and regenerate handlers call Author.Start.
+	// configured. Project creation asks it to author an initial workflow.
 	Author *workflows.Author
+	// Runner executes active statistical workflows and supports manual reruns.
+	Runner *workflows.Runner
 	// DebugLLM enables /api/debug/chat, which spends the API key on any caller.
 	DebugLLM bool
 
@@ -72,7 +74,9 @@ func (s *Server) Routes() http.Handler {
 		mux.HandleFunc("POST /api/debug/chat", s.debugChat)
 	}
 	connectServer := connect.NewServer()
-	v1connect.RegisterAnduinServiceHandler(connectServer, &ConnectService{Store: s.Store, Bus: s.Bus})
+	v1connect.RegisterAnduinServiceHandler(connectServer, &ConnectService{
+		Store: s.Store, Bus: s.Bus, Author: s.Author, Runner: s.Runner,
+	})
 	connecthttp.Mount(mux, connectServer, connecthttp.WithReadMaxBytes(ingest.MaxCSVBytes*4/3+(1<<20)))
 
 	if s.AnalysisDebug && s.Pool != nil {

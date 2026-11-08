@@ -17,6 +17,7 @@ service AnduinService {
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
   rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
   rpc ListInsights(ListInsightsRequest) returns (ListInsightsResponse);
+  rpc RunWorkflow(RunWorkflowRequest) returns (RunWorkflowResponse);
 
   rpc ListWorkflows(ListWorkflowsRequest) returns (ListWorkflowsResponse);
   rpc ListWorkflowSteps(ListWorkflowStepsRequest) returns (ListWorkflowStepsResponse);
@@ -295,6 +296,16 @@ message GetProjectResponse {
   repeated Workflow active_workflows = 2;
   Run latest_run = 3;
   AnalysisFunnel funnel = 4;
+}
+
+message RunWorkflowRequest {
+  string project_id = 1;
+  WorkflowKind kind = 2;
+}
+
+message RunWorkflowResponse {
+  bool accepted = 1;
+  string message = 2;
 }
 
 message ListInsightsRequest {

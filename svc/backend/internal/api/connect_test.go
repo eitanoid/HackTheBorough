@@ -9,11 +9,15 @@ import (
 
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/structpb"
 	v1 "hacktheburgh/backend/gen/hacktheburgh/v1"
 	v1connect "hacktheburgh/backend/gen/hacktheburgh/v1/hacktheburghv1connect"
+	"hacktheburgh/backend/internal/analysis"
+	"hacktheburgh/backend/internal/contracts"
 	"hacktheburgh/backend/internal/ingest"
 	"hacktheburgh/backend/internal/testdb"
+	"hacktheburgh/backend/internal/workflows"
 )
 
 func TestConnectSourceConfigurationMapsWebAdapterFields(t *testing.T) {
@@ -307,7 +311,7 @@ func TestConnectCreateProjectIntegration(t *testing.T) {
 		t.Fatalf("source ids = %v, want [%s]", project.GetSourceIds(), source.ID)
 	}
 	if created.ActiveWorkflow != nil || created.LatestRun != nil {
-		t.Fatalf("workflows/runs should be absent until orchestration is wired: %#v", created)
+		t.Fatalf("workflows/runs should not be in the create response: %#v", created)
 	}
 
 	detail, err := client.GetProject(context.Background(), &v1.GetProjectRequest{Id: project.GetId()})
@@ -324,4 +328,141 @@ func TestConnectCreateProjectIntegration(t *testing.T) {
 	if got := connect.CodeOf(err); got != connect.CodeInvalidArgument {
 		t.Fatalf("missing source code = %v, want InvalidArgument; err=%v", got, err)
 	}
+}
+
+type createProjectAuthorStore struct{ loaded chan struct{} }
+
+func (s *createProjectAuthorStore) LoadInputs(context.Context, uuid.UUID) (workflows.AuthorInputs, error) {
+	s.loaded <- struct{}{}
+	return workflows.AuthorInputs{}, nil
+}
+
+func (*createProjectAuthorStore) SaveVersion(context.Context, workflows.SaveVersion) (uuid.UUID, uuid.UUID, error) {
+	return uuid.Nil, uuid.Nil, nil
+}
+
+func (*createProjectAuthorStore) SetProjectError(context.Context, uuid.UUID, string) error {
+	return nil
+}
+
+type emptyAnalysisStore struct{ checked chan struct{} }
+
+func (*emptyAnalysisStore) ProjectSources(context.Context, uuid.UUID) ([]analysis.SourceMeta, error) {
+	return nil, nil
+}
+
+func (*emptyAnalysisStore) Records(context.Context, []uuid.UUID, time.Time, time.Time) (map[uuid.UUID][]analysis.Record, error) {
+	return nil, nil
+}
+
+func (s *emptyAnalysisStore) MaxObservedAt(context.Context, uuid.UUID) (*time.Time, error) {
+	s.checked <- struct{}{}
+	return nil, nil
+}
+
+func TestConnectCreateProjectStartsStatisticalAuthor(t *testing.T) {
+	pool := testdb.Open(t)
+	store := ingest.NewStore(pool)
+	source, err := store.CreateSource(context.Background(), "Source for author", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300))
+	if err != nil {
+		t.Fatal(err)
+	}
+	authorStore := &createProjectAuthorStore{loaded: make(chan struct{}, 1)}
+	analysisStore := &emptyAnalysisStore{checked: make(chan struct{}, 1)}
+	author := &workflows.Author{
+		Store:    authorStore,
+		Analyser: &analysis.Analyser{Store: analysisStore},
+	}
+	httpServer := httptest.NewServer((&Server{Store: store, Author: author}).Routes())
+	t.Cleanup(httpServer.Close)
+	client := connectTestClient(t, httpServer)
+	if _, err := client.CreateProject(context.Background(), &v1.CreateProjectRequest{
+		Name: "Author starts", Goal: "Inspect source", SourceIds: []string{source.ID},
+	}); err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+	select {
+	case <-authorStore.loaded:
+	case <-time.After(time.Second):
+		t.Fatal("project creation did not start statistical workflow authoring")
+	}
+	select {
+	case <-analysisStore.checked:
+	case <-time.After(time.Second):
+		t.Fatal("author did not check for source data")
+	}
+}
+
+type forcedRunAnalyser struct{ called chan struct{} }
+
+func (a *forcedRunAnalyser) Run(_ context.Context, _ uuid.UUID, _ string, dataUpTo time.Time) (contracts.AnalysisResult, error) {
+	a.called <- struct{}{}
+	return contracts.AnalysisResult{DataUpTo: dataUpTo, Funnel: map[string]int{}}, nil
+}
+
+func TestConnectRunWorkflowForcesRerunAtSameWatermark(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := context.Background()
+	var projectID, sourceID, workflowID uuid.UUID
+	if err := pool.QueryRow(ctx, `INSERT INTO projects (name, goal) VALUES ('Force run', 'Recheck this data') RETURNING id`).Scan(&projectID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `INSERT INTO data_sources (name, kind, config) VALUES ('Force source', 'csv', '{}'::jsonb) RETURNING id`).Scan(&sourceID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO project_sources (project_id, data_source_id) VALUES ($1, $2)`, projectID, sourceID); err != nil {
+		t.Fatal(err)
+	}
+	watermark := time.Now().UTC().Truncate(time.Microsecond)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO data_records (data_source_id, external_id, observed_at, payload)
+		VALUES ($1, 'force-row', $2, '{}'::jsonb)`, sourceID, watermark); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO workflows (project_id, kind, version, analysis_script, insight_prompt, rationale)
+		VALUES ($1, 'statistical', 1, 'result = {}', 'Explain', 'Force test') RETURNING id`, projectID).Scan(&workflowID); err != nil {
+		t.Fatal(err)
+	}
+	var oldRunID uuid.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO runs (workflow_id, data_up_to, status, result, started_at, finished_at)
+		VALUES ($1, $2, 'succeeded', '{}'::jsonb, $3, $3) RETURNING id`,
+		workflowID, watermark, watermark).Scan(&oldRunID); err != nil {
+		t.Fatal(err)
+	}
+
+	analyser := &forcedRunAnalyser{called: make(chan struct{}, 1)}
+	runner := &workflows.Runner{
+		Store:    &workflows.PgRunStore{Pool: pool, Sources: &analysis.PgStore{Pool: pool}},
+		Analyser: analyser,
+	}
+	runner.SetServiceContext(context.Background())
+	httpServer := httptest.NewServer((&Server{Store: ingest.NewStore(pool), Runner: runner}).Routes())
+	t.Cleanup(httpServer.Close)
+	client := connectTestClient(t, httpServer)
+	response, err := client.RunWorkflow(ctx, &v1.RunWorkflowRequest{
+		ProjectId: projectID.String(), Kind: v1.WorkflowKind_WORKFLOW_KIND_STATISTICAL,
+	})
+	if err != nil || !response.GetAccepted() {
+		t.Fatalf("RunWorkflow response = %#v, err=%v", response, err)
+	}
+	select {
+	case <-analyser.called:
+	case <-time.After(time.Second):
+		t.Fatal("forced rerun did not execute the analyser")
+	}
+
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		project, err := client.GetProject(ctx, &v1.GetProjectRequest{Id: projectID.String()})
+		if err == nil && project.GetLatestRun().GetStatus() == v1.RunStatus_RUN_STATUS_SUCCEEDED && project.GetLatestRun().GetId() != oldRunID.String() {
+			if !project.GetLatestRun().GetDataUpTo().AsTime().Equal(watermark) {
+				t.Fatalf("rerun watermark = %v, want unchanged %v", project.GetLatestRun().GetDataUpTo().AsTime(), watermark)
+			}
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("forced rerun did not persist a new succeeded run")
 }
