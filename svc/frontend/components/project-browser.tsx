@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { create } from "@bufbuild/protobuf";
 import {
   RunStatus,
+  InsightKind,
   WorkflowKind,
   type GetProjectResponse,
   type Insight,
@@ -15,7 +16,7 @@ import {
   ProjectSummarySchema,
 } from "@/gen/hacktheburgh/v1/service_pb";
 import { getAnduinClient } from "@/lib/anduin-client";
-import { specFromStruct } from "@/lib/chart-spec";
+import { hasMissingChartData, specFromStruct } from "@/lib/chart-spec";
 import NewProjectLauncher from "@/components/new-project-launcher";
 import ConfirmDeleteDialog from "@/components/confirm-delete-dialog";
 
@@ -57,6 +58,7 @@ function workflowKindLabel(kind: WorkflowKind) {
 function InsightCard({ insight }: { insight: Insight }) {
   const [collapsed, setCollapsed] = useState(false);
   const spec = specFromStruct(insight.chartSpec);
+  const hasMissingData = hasMissingChartData(spec);
   const panelId = `insight-chart-${insight.id}`;
 
   return (
@@ -80,6 +82,18 @@ function InsightCard({ insight }: { insight: Insight }) {
       {!collapsed && spec && (
         <div id={panelId}>
           <InsightChart spec={spec} />
+          {insight.kind === InsightKind.ANOMALY && (
+            <div className="insight-chart-legend" aria-label="Chart legend">
+              <span><i className="legend-observed" /> Observed value</span>
+              <span><i className="legend-expected" /> Expected range</span>
+              <span><i className="legend-anomaly" /> Unusual day</span>
+            </div>
+          )}
+          {hasMissingData && (
+            <p className="insight-chart-gap-note">
+              The line bridges missing dates for readability; no values are imputed.
+            </p>
+          )}
         </div>
       )}
     </article>
