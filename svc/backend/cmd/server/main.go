@@ -12,6 +12,7 @@ import (
 
 	"hacktheburgh/backend/internal/analysis"
 	"hacktheburgh/backend/internal/api"
+	"hacktheburgh/backend/internal/charts"
 	"hacktheburgh/backend/internal/config"
 	"hacktheburgh/backend/internal/db"
 	"hacktheburgh/backend/internal/events"
@@ -108,6 +109,7 @@ func main() {
 				Store:         &workflows.PgInsightStore{Pool: pool},
 				Narrator:      &narration.Narrator{LLM: llmClient},
 				MaxNarrations: cfg.MaxNarrations,
+				Chart:         charts.Build,
 			},
 		}
 	}

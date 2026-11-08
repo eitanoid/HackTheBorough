@@ -1,0 +1,98 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "width": "container",
+  "height": 200,
+  "autosize": {
+    "type": "fit",
+    "contains": "padding"
+  },
+  "data": {
+    "values": [
+      {
+        "t": "2026-10-01T00:00:00Z",
+        "v": 4.123456
+      },
+      {
+        "t": "2026-10-02T00:00:00Z",
+        "v": null
+      },
+      {
+        "t": "2026-10-03T00:00:00Z",
+        "v": 5
+      }
+    ]
+  },
+  "layer": [
+    {
+      "mark": {
+        "invalid": "break-paths-filter-domains",
+        "type": "line"
+      },
+      "encoding": {
+        "x": {
+          "axis": {
+            "title": null
+          },
+          "field": "t",
+          "scale": {
+            "nice": false
+          },
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": "Bus trips (trips)"
+          },
+          "field": "v",
+          "scale": {
+            "zero": false
+          },
+          "type": "quantitative"
+        }
+      }
+    },
+    {
+      "mark": {
+        "opacity": 0,
+        "size": 80,
+        "type": "point"
+      },
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "t",
+            "format": "%d %b %Y",
+            "title": "Date",
+            "type": "temporal"
+          },
+          {
+            "field": "v",
+            "format": ".3~g",
+            "title": "Bus trips",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": null
+          },
+          "field": "t",
+          "scale": {
+            "nice": false
+          },
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": "Bus trips (trips)"
+          },
+          "field": "v",
+          "scale": {
+            "zero": false
+          },
+          "type": "quantitative"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{"chart": {"type": "dual_line", "points": [
+  {"t": "2026-10-01T00:00:00Z", "a": 1, "b": 3},
+  {"t": "2026-10-02T00:00:00Z", "a": 2, "b": 2},
+  {"t": "2026-10-03T00:00:00Z", "a": 3, "b": 1}
+]},
+"meta": {"series": [{"id": "rides_north", "label": "Rides"}, {"id": "rides_south", "label": "Rides"}], "lag": 1, "grain": "hour"}}

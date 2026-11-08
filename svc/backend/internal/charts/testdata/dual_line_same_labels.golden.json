@@ -1,0 +1,170 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "width": "container",
+  "height": 200,
+  "autosize": {
+    "type": "fit",
+    "contains": "padding"
+  },
+  "data": {
+    "values": [
+      {
+        "t": "2026-10-01T00:00:00Z",
+        "s": "Rides (rides_north)",
+        "v": 1
+      },
+      {
+        "t": "2026-10-01T00:00:00Z",
+        "s": "Rides (rides_south) (shifted 1 hour)",
+        "v": 3
+      },
+      {
+        "t": "2026-10-02T00:00:00Z",
+        "s": "Rides (rides_north)",
+        "v": 2
+      },
+      {
+        "t": "2026-10-02T00:00:00Z",
+        "s": "Rides (rides_south) (shifted 1 hour)",
+        "v": 2
+      },
+      {
+        "t": "2026-10-03T00:00:00Z",
+        "s": "Rides (rides_north)",
+        "v": 3
+      },
+      {
+        "t": "2026-10-03T00:00:00Z",
+        "s": "Rides (rides_south) (shifted 1 hour)",
+        "v": 1
+      }
+    ]
+  },
+  "transform": [
+    {
+      "groupby": [
+        "s"
+      ],
+      "joinaggregate": [
+        {
+          "as": "mean",
+          "field": "v",
+          "op": "mean"
+        },
+        {
+          "as": "sd",
+          "field": "v",
+          "op": "stdev"
+        }
+      ]
+    },
+    {
+      "as": "z",
+      "calculate": "datum.v == null ? null : (datum.sd \u003e 0 ? (datum.v - datum.mean) / datum.sd : 0)"
+    }
+  ],
+  "layer": [
+    {
+      "mark": {
+        "invalid": "break-paths-filter-domains",
+        "type": "line"
+      },
+      "encoding": {
+        "color": {
+          "field": "s",
+          "legend": {
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rides (rides_north)",
+              "Rides (rides_south) (shifted 1 hour)"
+            ]
+          },
+          "type": "nominal"
+        },
+        "x": {
+          "axis": {
+            "title": null
+          },
+          "field": "t",
+          "scale": {
+            "nice": false
+          },
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": "Standardised value"
+          },
+          "field": "z",
+          "scale": {
+            "zero": false
+          },
+          "type": "quantitative"
+        }
+      }
+    },
+    {
+      "mark": {
+        "opacity": 0,
+        "size": 80,
+        "type": "point"
+      },
+      "encoding": {
+        "color": {
+          "field": "s",
+          "legend": {
+            "title": null
+          },
+          "scale": {
+            "domain": [
+              "Rides (rides_north)",
+              "Rides (rides_south) (shifted 1 hour)"
+            ]
+          },
+          "type": "nominal"
+        },
+        "tooltip": [
+          {
+            "field": "t",
+            "format": "%d %b %H:%M",
+            "title": "Time",
+            "type": "temporal"
+          },
+          {
+            "field": "s",
+            "title": "Series",
+            "type": "nominal"
+          },
+          {
+            "field": "v",
+            "format": ".3~g",
+            "title": "Value",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": null
+          },
+          "field": "t",
+          "scale": {
+            "nice": false
+          },
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": "Standardised value"
+          },
+          "field": "z",
+          "scale": {
+            "zero": false
+          },
+          "type": "quantitative"
+        }
+      }
+    }
+  ]
+}
