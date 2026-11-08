@@ -46,7 +46,7 @@ func TestStoreSetBackfillRows(t *testing.T) {
 	if _, err := store.InsertRecords(ctx, source.ID, recs("a", "b", "c", "d", "e")); err != nil {
 		t.Fatalf("InsertRecords: %v", err)
 	}
-	if err := store.FinishBackfill(ctx, source.ID, *source.BackfillRequestedAt, json.RawMessage(`{"pages":1}`)); err != nil {
+	if err := store.FinishBackfill(ctx, source.ID, *source.BackfillRequestedAt, json.RawMessage(`{"pages":1}`), nil); err != nil {
 		t.Fatalf("FinishBackfill: %v", err)
 	}
 
@@ -96,7 +96,7 @@ func TestStoreDueSourcesIncludesPendingBackfillOnce(t *testing.T) {
 	if err := store.MarkPolled(ctx, source.ID, time.Now().UTC(), nil); err != nil {
 		t.Fatalf("MarkPolled: %v", err)
 	}
-	if err := store.FinishBackfill(ctx, source.ID, *source.BackfillRequestedAt, nil); err != nil {
+	if err := store.FinishBackfill(ctx, source.ID, *source.BackfillRequestedAt, nil, nil); err != nil {
 		t.Fatalf("FinishBackfill: %v", err)
 	}
 	assertDue(t, store, 0)
@@ -145,7 +145,7 @@ func TestStoreFinishBackfillKeepsNewerRequest(t *testing.T) {
 		t.Fatalf("SetBackfillRows: %v", err)
 	}
 	// The poll that served the original request finishes afterwards.
-	if err := store.FinishBackfill(ctx, source.ID, *source.BackfillRequestedAt, json.RawMessage(`{"pages":2}`)); err != nil {
+	if err := store.FinishBackfill(ctx, source.ID, *source.BackfillRequestedAt, json.RawMessage(`{"pages":2}`), nil); err != nil {
 		t.Fatalf("FinishBackfill: %v", err)
 	}
 	got, err := store.Source(ctx, source.ID)
@@ -217,7 +217,7 @@ func TestStoreSetBackfillRowsSameTargetBelowCountReschedules(t *testing.T) {
 	if _, err := store.InsertRecords(ctx, source.ID, recs("a", "b", "c")); err != nil {
 		t.Fatalf("InsertRecords: %v", err)
 	}
-	if err := store.FinishBackfill(ctx, source.ID, *source.BackfillRequestedAt, nil); err != nil {
+	if err := store.FinishBackfill(ctx, source.ID, *source.BackfillRequestedAt, nil, nil); err != nil {
 		t.Fatalf("FinishBackfill: %v", err)
 	}
 	got, scheduled, err := store.SetBackfillRows(ctx, source.ID, 500)
@@ -226,26 +226,29 @@ func TestStoreSetBackfillRowsSameTargetBelowCountReschedules(t *testing.T) {
 	}
 }
 
-func TestStoreKnownExternalIDs(t *testing.T) {
-	store := newTestStore(t)
-	ctx := context.Background()
-	source, err := store.CreateSource(ctx, "Known", "rss", json.RawMessage(`{}`), intPtr(300))
-	if err != nil {
-		t.Fatalf("CreateSource: %v", err)
-	}
-	if _, err := store.InsertRecords(ctx, source.ID, recs("a", "b")); err != nil {
-		t.Fatalf("InsertRecords: %v", err)
-	}
-	known, err := store.KnownExternalIDs(ctx, source.ID, []string{"a", "x", "b"})
-	if err != nil || len(known) != 2 || !known["a"] || !known["b"] {
-		t.Fatalf("known = %v, err = %v", known, err)
-	}
-}
-
 func TestStoreCreateUploadedCSVWithoutTargetKeepsAll(t *testing.T) {
 	store := newTestStore(t)
 	source, err := store.CreateUploadedCSV(context.Background(), "All", "all.csv", recs("a", "b", "c"), 0)
 	if err != nil || source.RecordCount != 3 || source.BackfillRows != 3 {
 		t.Fatalf("count = %d, rows = %d, err = %v", source.RecordCount, source.BackfillRows, err)
+	}
+}
+
+func TestStoreSetBackfillRowsRaiseSchedulesEvenWithManyRows(t *testing.T) {
+	store := newTestStore(t)
+	ctx := context.Background()
+	source, err := store.CreateSourceWithBackfill(ctx, "Grown", "rss", json.RawMessage(`{}`), intPtr(300), 2)
+	if err != nil {
+		t.Fatalf("CreateSource: %v", err)
+	}
+	// Normal polls have added more rows than the new target.
+	if _, err := store.InsertRecords(ctx, source.ID, recs("a", "b", "c", "d", "e")); err != nil {
+		t.Fatalf("InsertRecords: %v", err)
+	}
+	if err := store.FinishBackfill(ctx, source.ID, *source.BackfillRequestedAt, nil, nil); err != nil {
+		t.Fatalf("FinishBackfill: %v", err)
+	}
+	if _, scheduled, err := store.SetBackfillRows(ctx, source.ID, 4); err != nil || !scheduled {
+		t.Fatalf("raising the target must reach older history: scheduled = %v, err = %v", scheduled, err)
 	}
 }

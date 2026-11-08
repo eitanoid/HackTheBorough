@@ -46,6 +46,10 @@ type NextCandidate struct {
 	// Key identifies the probe kind (e.g. "cursor:after"). A probe kind that
 	// fails once is not tried again during the same walk. Defaults to Method.
 	Key string
+	// Fallback marks a last resort (infinite scroll). It does not use the
+	// probe budget, is accepted when it brings any new rows, and a failure is
+	// a rejection rather than a backfill error.
+	Fallback bool
 }
 
 func (c NextCandidate) probeKey() string {
@@ -148,11 +152,13 @@ func CollectPages(ctx context.Context, fetcher PageFetcher, start string, limits
 		candidates := orderCandidates(page.Candidates, preferred)
 		advanced := false
 		probes := 0
+		lastErr := "" // last failure of a declared link on this page
 		for _, candidate := range candidates {
-			if candidate.URL == "" || visited[candidate.URL] || (candidate.Probe && rejected[candidate.probeKey()]) {
+			guessed := candidate.Probe || candidate.Fallback
+			if candidate.URL == "" || visited[candidate.URL] || (guessed && rejected[candidate.probeKey()]) {
 				continue
 			}
-			if candidate.Probe {
+			if candidate.Probe && !candidate.Fallback {
 				if probes >= limits.MaxProbes {
 					continue
 				}
@@ -167,16 +173,16 @@ func CollectPages(ctx context.Context, fetcher PageFetcher, start string, limits
 				if ctx.Err() != nil {
 					return records, finish("cancelled"), ctx.Err()
 				}
-				if candidate.Probe {
+				if guessed {
 					rejected[candidate.probeKey()] = true
 					report.RejectedProbes++
 					continue
 				}
-				report.Rows = len(records)
-				report.Error = err.Error()
-				return records, finish("error: " + err.Error()), nil
+				// A declared link failed; another candidate may still work.
+				lastErr = err.Error()
+				continue
 			}
-			if candidate.Probe && !mostlyUnseen(next.Records, seen) {
+			if candidate.Probe && !candidate.Fallback && !mostlyUnseen(next.Records, seen) {
 				// Sites often ignore unknown parameters and return the same
 				// listing (with a little ranking churn), so a probe must bring
 				// a page that is mostly new to be trusted.
@@ -185,7 +191,7 @@ func CollectPages(ctx context.Context, fetcher PageFetcher, start string, limits
 				continue
 			}
 			if add(next.Records) == 0 {
-				if candidate.Probe {
+				if guessed {
 					rejected[candidate.probeKey()] = true
 					report.RejectedProbes++
 					continue
@@ -202,6 +208,10 @@ func CollectPages(ctx context.Context, fetcher PageFetcher, start string, limits
 		}
 		if !advanced {
 			report.Rows = len(records)
+			if lastErr != "" {
+				report.Error = lastErr
+				return records, finish("error: " + lastErr), nil
+			}
 			return records, finish(StopNoNext), nil
 		}
 	}
@@ -353,12 +363,19 @@ func looksLikeNextLink(link pageLink) bool {
 	}
 	return strings.Contains(aria, "next") || strings.Contains(aria, "older") ||
 		containsToken(class, "next") || strings.Contains(class, "pagination-next") ||
-		strings.Contains(class, "next-page") || strings.Contains(class, "nav-previous")
+		strings.Contains(class, "next-page")
 }
 
-var pageQueryKeys = []string{"page", "p", "paged", "pg", "pagenum", "pageNumber", "page_number"}
-var offsetQueryKeys = []string{"offset", "start", "skip", "from"}
-var pathPagePattern = regexp.MustCompile(`(?i)/(page|p)/(\d+)(/|$)`)
+// Unambiguous page-number and offset parameters, followed as declared links.
+var pageQueryKeys = []string{"page", "paged", "pg", "pagenum", "pageNumber", "page_number"}
+var offsetQueryKeys = []string{"offset", "skip"}
+var pathPagePattern = regexp.MustCompile(`(?i)/page/(\d+)(/|$)`)
+
+// Ambiguous ones (?p= is often a post id, /p/<n> a product, ?start=/?from= a
+// date or id filter) are only tried as probes.
+var ambiguousPageKeys = []string{"p"}
+var ambiguousOffsetKeys = []string{"start", "from"}
+var ambiguousPathPattern = regexp.MustCompile(`(?i)/p/(\d+)(/|$)`)
 
 // pageNumberNext increments a page number already present in the URL
 // (?page=3 → ?page=4, /page/3/ → /page/4/).
@@ -375,13 +392,50 @@ func pageNumberNext(rawURL string) (string, bool) {
 			return u.String(), true
 		}
 	}
-	if match := pathPagePattern.FindStringSubmatchIndex(u.Path); match != nil {
-		n, _ := strconv.Atoi(u.Path[match[4]:match[5]])
-		u.Path = u.Path[:match[4]] + strconv.Itoa(n+1) + u.Path[match[5]:]
-		u.RawPath = ""
-		return u.String(), true
+	if next, ok := incrementPath(u, pathPagePattern); ok {
+		return next, true
 	}
 	return "", false
+}
+
+func incrementPath(u *url.URL, pattern *regexp.Regexp) (string, bool) {
+	match := pattern.FindStringSubmatchIndex(u.Path)
+	if match == nil {
+		return "", false
+	}
+	n, _ := strconv.Atoi(u.Path[match[2]:match[3]])
+	next := *u
+	next.Path = u.Path[:match[2]] + strconv.Itoa(n+1) + u.Path[match[3]:]
+	next.RawPath = ""
+	return next.String(), true
+}
+
+// ambiguousNext guesses next-page URLs from parameters that may or may not
+// be pagination (?p=3, /p/3, ?start=20, ?from=20). They are probes, so they
+// are only kept when they bring mostly new rows.
+func ambiguousNext(rawURL string, pageLen int) []probe {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return nil
+	}
+	var probes []probe
+	query := u.Query()
+	for _, key := range ambiguousPageKeys {
+		if n, err := strconv.Atoi(query.Get(key)); err == nil && n >= 0 {
+			probes = append(probes, probe{Key: "page:" + key, URL: withQuery(u, key, strconv.Itoa(n+1))})
+		}
+	}
+	if next, ok := incrementPath(u, ambiguousPathPattern); ok {
+		probes = append(probes, probe{Key: "page:path-p", URL: next})
+	}
+	if pageLen > 0 {
+		for _, key := range ambiguousOffsetKeys {
+			if n, err := strconv.Atoi(query.Get(key)); err == nil && n >= 0 {
+				probes = append(probes, probe{Key: "offset:" + key, URL: withQuery(u, key, strconv.Itoa(n+pageLen))})
+			}
+		}
+	}
+	return probes
 }
 
 // probe is a guessed next-page URL and the parameter it guesses.
@@ -549,6 +603,14 @@ func (c *candidateList) add(rawURL, method string, isProbe bool) {
 	c.addKeyed(rawURL, method, isProbe, "")
 }
 
+// addFallback adds a last-resort candidate (see NextCandidate.Fallback).
+func (c *candidateList) addFallback(rawURL, method string) {
+	if rawURL == "" {
+		return
+	}
+	*c = append(*c, NextCandidate{URL: rawURL, Method: method, Fallback: true, Key: method})
+}
+
 func (c *candidateList) addKeyed(rawURL, method string, isProbe bool, key string) {
 	if rawURL == "" {
 		return
@@ -570,6 +632,13 @@ func (c *candidateList) urlCandidates(pageURL string, records []RawRecord, first
 	}
 	if next, ok := offsetNext(pageURL, len(records)); ok {
 		c.add(next, MethodOffset, false)
+	}
+	for _, guess := range ambiguousNext(pageURL, len(records)) {
+		method := MethodPageNumber
+		if strings.HasPrefix(guess.Key, "offset:") {
+			method = MethodOffset
+		}
+		c.addKeyed(guess.URL, method, true, guess.Key)
 	}
 	if firstPage {
 		for _, guess := range pageProbes(pageURL, pageKeys...) {

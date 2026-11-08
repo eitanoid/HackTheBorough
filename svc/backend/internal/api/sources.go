@@ -73,12 +73,9 @@ func (s *Server) createSource(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "poll_interval_s must be from 1 to 86400"})
 		return
 	}
+	// Omitted or 0 selects the server default, as on the Connect API.
 	requested := 0
 	if request.BackfillRows != nil {
-		if *request.BackfillRows < 1 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": ingest.ErrInvalidBackfillRows.Error()})
-			return
-		}
 		requested = *request.BackfillRows
 	}
 	backfillRows, err := ingest.ResolveBackfillRows(requested, s.BackfillDefault)
@@ -138,6 +135,13 @@ func (s *Server) pollSource(w http.ResponseWriter, r *http.Request) {
 	// to the ingest loop instead, which runs it in the backfill lane.
 	if s.Store != nil {
 		if source, err := s.Store.Source(r.Context(), id); err == nil && source.BackfillPending {
+			// Already queued or running: re-queuing would replace the request
+			// token and make the running walk's finish a no-op, starting a
+			// duplicate backfill.
+			if s.Ingest.Busy(id) {
+				writeJSON(w, http.StatusAccepted, map[string]any{"inserted": 0, "queued": true, "backfill": true})
+				return
+			}
 			if _, err := s.Store.RequeueBackfill(r.Context(), id); err != nil {
 				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 				return

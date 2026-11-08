@@ -214,7 +214,7 @@ func TestCollectPagesProbes(t *testing.T) {
 				guess("anchor", MethodAnchor, "anchor"),
 				guess("p1?page=2", MethodPageNumber, "page:page"),
 				guess("llmnext:p1", MethodLLM, "llm"),
-				declared("scroll:p1", MethodScroll),
+				{URL: "scroll:p1", Method: MethodScroll, Fallback: true, Key: MethodScroll},
 			}},
 			"anchor":    {Records: recs("a", "b")},
 			"p1?page=2": {Records: recs("a", "b")},
@@ -283,7 +283,6 @@ func TestPageNumberAndOffsetNext(t *testing.T) {
 		"https://e.com/list?page=3":         "https://e.com/list?page=4",
 		"https://e.com/feed?paged=1":        "https://e.com/feed?paged=2",
 		"https://e.com/blog/page/2/":        "https://e.com/blog/page/3/",
-		"https://e.com/news/p/9":            "https://e.com/news/p/10",
 		"https://e.com/list?q=x&pg=5&s=new": "https://e.com/list?pg=6&q=x&s=new",
 	}
 	for in, want := range cases {
@@ -300,6 +299,23 @@ func TestPageNumberAndOffsetNext(t *testing.T) {
 	}
 	if probes := pageProbes("https://e.com/feed", "page", "paged"); len(probes) != 2 || probes[1].URL != "https://e.com/feed?paged=2" {
 		t.Errorf("pageProbes = %+v", probes)
+	}
+	for _, ambiguous := range []string{"https://e.com/?p=1234", "https://shop.e.com/p/98765", "https://e.com/data.csv?from=2020"} {
+		if _, ok := pageNumberNext(ambiguous); ok {
+			t.Errorf("%s must not be a declared page number", ambiguous)
+		}
+		if _, ok := offsetNext(ambiguous, 10); ok {
+			t.Errorf("%s must not be a declared offset", ambiguous)
+		}
+	}
+	guesses := ambiguousNext("https://e.com/news/p/9?p=3&start=20", 10)
+	keys := map[string]string{}
+	for _, guess := range guesses {
+		keys[guess.Key] = guess.URL
+	}
+	if keys["page:p"] != "https://e.com/news/p/9?p=4&start=20" || keys["page:path-p"] != "https://e.com/news/p/10?p=3&start=20" ||
+		keys["offset:start"] != "https://e.com/news/p/9?p=3&start=30" {
+		t.Errorf("ambiguousNext = %+v", guesses)
 	}
 	if probes := pageProbes("https://e.com/feed?page=3", "page"); probes != nil {
 		t.Errorf("pageProbes with an existing page number = %+v", probes)
@@ -387,22 +403,32 @@ func TestRSSFetchRetriesRateLimit(t *testing.T) {
 	}
 }
 
-func TestTrimKnownTail(t *testing.T) {
-	cases := []struct {
-		name  string
-		in    []string
-		known map[string]bool
-		want  []string
-	}{
-		{"nothing stored keeps all", []string{"n1", "n2"}, map[string]bool{}, []string{"n1", "n2"}},
-		{"drops rows below the oldest known", []string{"new", "k1", "left-out", "k2", "older"}, map[string]bool{"k1": true, "k2": true}, []string{"new", "k1", "left-out", "k2"}},
-		{"all known", []string{"k1", "k2"}, map[string]bool{"k1": true, "k2": true}, []string{"k1", "k2"}},
-		{"only new above known", []string{"new", "k1", "old1", "old2"}, map[string]bool{"k1": true}, []string{"new", "k1"}},
+func TestBackfillFloorAndTrim(t *testing.T) {
+	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	timed := func(id string, h int) RawRecord {
+		return RawRecord{ExternalID: id, ObservedAt: base.Add(time.Duration(h) * time.Hour), Payload: map[string]any{}}
 	}
-	for _, tc := range cases {
-		if got := ids(TrimKnownTail(recs(tc.in...), tc.known)); !reflect.DeepEqual(got, tc.want) {
-			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
-		}
+	kept := []RawRecord{timed("c", 3), timed("b", 2)}
+	if floor := BackfillFloor(kept, 2); floor != nil {
+		t.Fatalf("uncapped backfill must not set a floor, got %v", floor)
+	}
+	floor := BackfillFloor(kept, 5)
+	if floor == nil || !floor.Equal(base.Add(2*time.Hour)) {
+		t.Fatalf("floor = %v, want the oldest kept time", floor)
+	}
+	timeless := []RawRecord{{ExternalID: "x", Payload: map[string]any{"_time_estimated": true}}}
+	if BackfillFloor(timeless, 9) != nil {
+		t.Fatal("rows without real timestamps cannot set a floor")
+	}
+	page := []RawRecord{
+		timed("new", 9), timed("c", 3), timed("left-out", 1),
+		{ExternalID: "timeless", ObservedAt: base, Payload: map[string]any{"_time_estimated": true}},
+	}
+	if got := ids(TrimBelowFloor(page, floor)); !reflect.DeepEqual(got, []string{"new", "c", "timeless"}) {
+		t.Fatalf("trimmed = %v", got)
+	}
+	if got := len(TrimBelowFloor(page, nil)); got != 4 {
+		t.Fatalf("no floor must keep everything, got %d", got)
 	}
 }
 
@@ -418,5 +444,56 @@ func TestResolveBackfillRows(t *testing.T) {
 	}
 	if _, err := ResolveBackfillRows(-1, 900); err == nil {
 		t.Error("negative must be rejected")
+	}
+}
+
+func TestCollectPagesDeclaredFailureTriesNextCandidate(t *testing.T) {
+	fetcher := &scriptedPages{
+		pages: map[string]Page{
+			"p1": {Records: recs("a"), Candidates: []NextCandidate{
+				declared("p1?page=2", MethodPageNumber),
+				declared("next", MethodRelNext),
+			}},
+			"next": {Records: recs("b")},
+		},
+		errs: map[string]error{"p1?page=2": errors.New("HTTP 404")},
+	}
+	records, report, err := CollectPages(context.Background(), fetcher, "p1", PagingLimits{Limit: 10})
+	if err != nil || len(records) != 2 || report.Error != "" || report.Methods[MethodRelNext] != 1 {
+		t.Fatalf("records = %v, report = %+v, err = %v", ids(records), report, err)
+	}
+	only := &scriptedPages{
+		pages: map[string]Page{"p1": {Records: recs("a"), Candidates: []NextCandidate{declared("p2", MethodRelNext)}}},
+		errs:  map[string]error{"p2": errors.New("HTTP 500")},
+	}
+	_, report, _ = CollectPages(context.Background(), only, "p1", PagingLimits{Limit: 10})
+	if report.Error != "HTTP 500" {
+		t.Fatalf("when nothing else works the error is reported: %+v", report)
+	}
+}
+
+func TestCollectPagesFailedFallbackIsNotAnError(t *testing.T) {
+	fetcher := &scriptedPages{
+		pages: map[string]Page{"p1": {Records: recs("a"), Candidates: []NextCandidate{
+			{URL: "scroll:p1", Method: MethodScroll, Fallback: true, Key: MethodScroll},
+		}}},
+		errs: map[string]error{"scroll:p1": errors.New("schema validation failed")},
+	}
+	_, report, err := CollectPages(context.Background(), fetcher, "p1", PagingLimits{Limit: 10})
+	if err != nil || report.Error != "" || report.Stopped != StopNoNext || report.RejectedProbes != 1 {
+		t.Fatalf("report = %+v, err = %v", report, err)
+	}
+}
+
+func TestTruncateHTML(t *testing.T) {
+	html := "<p>héllo</p><p>world</p>"
+	if got := truncateHTML(html, 100); got != html {
+		t.Fatalf("short HTML changed: %q", got)
+	}
+	if got := truncateHTML(html, 16); got != "<p>héllo</p><p>" { // é is two bytes
+		t.Fatalf("got %q, want a cut at the end of a tag", got)
+	}
+	if got := truncateHTML("no tags at all", 5); got != "" {
+		t.Fatalf("got %q", got)
 	}
 }

@@ -63,9 +63,14 @@ func TestPollOnceInitialBackfillKeepsNewestN(t *testing.T) {
 		t.Fatalf("LastBackfill = %s, err = %v", got.LastBackfill, err)
 	}
 
-	// The next normal poll is a single page and is not capped.
+	// The next normal poll is a single page and is not capped: four rows
+	// newer than everything stored are all added.
 	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
-		return timedRecords("s", 4), nil
+		fresh := timedRecords("s", 4)
+		for i := range fresh {
+			fresh[i].ObservedAt = fresh[i].ObservedAt.Add(24 * time.Hour)
+		}
+		return fresh, nil
 	}
 	inserted, err = loop.PollOnce(ctx, source.ID)
 	if err != nil || inserted != 4 {
@@ -171,7 +176,7 @@ func TestPollDueBackfillDoesNotBlockNormalPolls(t *testing.T) {
 		t.Fatalf("CreateSource: %v", err)
 	}
 	// Make the second source a plain due poll: backfill done, interval passed.
-	if err := store.FinishBackfill(ctx, normal.ID, *normal.BackfillRequestedAt, nil); err != nil {
+	if err := store.FinishBackfill(ctx, normal.ID, *normal.BackfillRequestedAt, nil, nil); err != nil {
 		t.Fatalf("FinishBackfill: %v", err)
 	}
 	if err := store.MarkPolled(ctx, normal.ID, time.Now().UTC().Add(-time.Hour), nil); err != nil {
@@ -351,4 +356,117 @@ func (l *Loop) isQueued(sourceID string) bool {
 	defer l.mu.Unlock()
 	running, ok := l.inflight[sourceID]
 	return ok && !running
+}
+
+func TestNormalPollKeepsRowsWithoutTimestamps(t *testing.T) {
+	loop, store, adapter := newLoopTest(t)
+	ctx := context.Background()
+	// A ranked listing without timestamps, where new rows appear after old ones.
+	untimed := func(ids ...string) []RawRecord {
+		out := make([]RawRecord, 0, len(ids))
+		for _, id := range ids {
+			out = append(out, RawRecord{ExternalID: id, ObservedAt: time.Now().UTC(), Payload: map[string]any{"_time_estimated": true}})
+		}
+		return out
+	}
+	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
+		return untimed("a", "b"), nil
+	}
+	source, err := store.CreateSourceWithBackfill(ctx, "Ranked", "rss", json.RawMessage(`{}`), intPtr(300), 2)
+	if err != nil {
+		t.Fatalf("CreateSource: %v", err)
+	}
+	if _, err := loop.PollOnce(ctx, source.ID); err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
+		return untimed("a", "b", "c"), nil
+	}
+	if inserted, err := loop.PollOnce(ctx, source.ID); err != nil || inserted != 1 {
+		t.Fatalf("a new row listed after known ones must be kept: inserted = %d, err = %v", inserted, err)
+	}
+}
+
+func TestFailingBackfillGivesUpAfterMaxAttempts(t *testing.T) {
+	loop, store, adapter := newLoopTest(t)
+	ctx := context.Background()
+	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
+		return timedRecords("r", 2), nil
+	}
+	adapter.report = &PagingReport{Pages: 1, Methods: map[string]int{}, Stopped: "error: HTTP 404", Error: "HTTP 404"}
+	source, err := store.CreateSourceWithBackfill(ctx, "Always broken", "rss", json.RawMessage(`{}`), intPtr(300), 100)
+	if err != nil {
+		t.Fatalf("CreateSource: %v", err)
+	}
+	for attempt := 1; attempt <= MaxBackfillAttempts; attempt++ {
+		if _, err := loop.PollOnce(ctx, source.ID); err != nil {
+			t.Fatalf("attempt %d: %v", attempt, err)
+		}
+		got, err := store.Source(ctx, source.ID)
+		if err != nil {
+			t.Fatalf("Source: %v", err)
+		}
+		if wantPending := attempt < MaxBackfillAttempts; got.BackfillPending != wantPending {
+			t.Fatalf("after attempt %d pending = %v, want %v", attempt, got.BackfillPending, wantPending)
+		}
+	}
+	got, err := store.Source(ctx, source.ID)
+	if err != nil || got.LastError == nil || !strings.Contains(*got.LastError, "gave up") {
+		t.Fatalf("LastError = %v, err = %v", got.LastError, err)
+	}
+	// Back to normal polling.
+	if _, err := loop.PollOnce(ctx, source.ID); err != nil {
+		t.Fatalf("normal poll: %v", err)
+	}
+	if opts := adapter.opts(); opts.Backfill {
+		t.Fatalf("opts = %+v, want a normal poll after giving up", opts)
+	}
+}
+
+func TestQueuedPollPicksUpBackfillRequestedWhileWaiting(t *testing.T) {
+	loop, store, adapter := newLoopTest(t) // MaxParallel = 1
+	ctx := context.Background()
+	release := make(chan struct{})
+	var once sync.Once
+	started := make(chan struct{})
+	adapter.fetch = func(_ context.Context, cfg json.RawMessage, _ FetchOptions) ([]RawRecord, error) {
+		if string(cfg) == `{"slow": true}` || string(cfg) == `{"slow":true}` {
+			once.Do(func() { close(started) })
+			<-release
+		}
+		return timedRecords(string(cfg), 1), nil
+	}
+	newNormal := func(name, cfg string) Source {
+		source, err := store.CreateSourceWithBackfill(ctx, name, "rss", json.RawMessage(cfg), intPtr(300), 5)
+		if err != nil {
+			t.Fatalf("CreateSource: %v", err)
+		}
+		if err := store.FinishBackfill(ctx, source.ID, *source.BackfillRequestedAt, nil, nil); err != nil {
+			t.Fatalf("FinishBackfill: %v", err)
+		}
+		return source
+	}
+	slow := newNormal("Slow", `{"slow":true}`)
+	waiting := newNormal("Waiting", `{}`)
+	go func() { _, _ = loop.PollOnce(ctx, slow.ID) }()
+	<-started
+	done := make(chan error, 1)
+	go func() {
+		_, err := loop.PollOnce(ctx, waiting.ID)
+		done <- err
+	}()
+	for !loop.isQueued(waiting.ID) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	// Raise the target while the poll waits for the normal lane.
+	if _, scheduled, err := store.SetBackfillRows(ctx, waiting.ID, 50); err != nil || !scheduled {
+		t.Fatalf("SetBackfillRows: scheduled = %v, err = %v", scheduled, err)
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatalf("queued poll: %v", err)
+	}
+	if opts := adapter.opts(); !opts.Backfill || opts.Limit != 50 {
+		t.Fatalf("opts = %+v, want the backfill requested while waiting", opts)
+	}
 }

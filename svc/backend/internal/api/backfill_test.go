@@ -56,7 +56,7 @@ func TestConnectBackfillRowsIntegration(t *testing.T) {
 		t.Fatalf("Source: %v", err)
 	}
 	report, _ := json.Marshal(ingest.PagingReport{Pages: 4, Methods: map[string]int{"rel-next": 3}, Rows: 2, Stopped: "limit", FinishedAt: time.Now().UTC()})
-	if err := store.FinishBackfill(ctx, id, *source.BackfillRequestedAt, report); err != nil {
+	if err := store.FinishBackfill(ctx, id, *source.BackfillRequestedAt, report, nil); err != nil {
 		t.Fatalf("FinishBackfill: %v", err)
 	}
 
@@ -238,5 +238,49 @@ func TestUploadCSVWithoutBackfillRowsKeepsEveryRow(t *testing.T) {
 	}
 	if uploaded.GetSource().GetRecordCount() != 3 {
 		t.Fatalf("record count = %d, want every row", uploaded.GetSource().GetRecordCount())
+	}
+}
+
+func TestPollSourceDoesNotRequeueBusyBackfill(t *testing.T) {
+	server, store := newIntegrationServer(t)
+	ctx := context.Background()
+	source, err := store.CreateSource(ctx, "Running", "rss", json.RawMessage(`{}`), intPtr(300))
+	if err != nil {
+		t.Fatalf("CreateSource: %v", err)
+	}
+	adapter := &apiFakeAdapter{kind: "rss", block: make(chan struct{}), started: make(chan struct{}), record: ingest.RawRecord{
+		ExternalID: "one", ObservedAt: time.Now().UTC(), Payload: map[string]any{},
+	}}
+	loop := ingest.NewLoop(store, server.Bus, map[string]ingest.SourceAdapter{"rss": adapter}, time.Second, 1)
+	server.Ingest = loop
+	done := make(chan error, 1)
+	go func() { _, err := loop.PollOnce(ctx, source.ID); done <- err }()
+	<-adapter.started
+
+	req := httptest.NewRequest(http.MethodPost, "/api/sources/"+source.ID+"/poll", nil)
+	rec := httptest.NewRecorder()
+	server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	close(adapter.block)
+	if err := <-done; err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	got, err := store.Source(ctx, source.ID)
+	if err != nil || got.BackfillPending {
+		t.Fatalf("the running backfill must finish its own request (no duplicate): pending = %v, err = %v", got.BackfillPending, err)
+	}
+}
+
+func TestRESTZeroBackfillRowsUsesDefault(t *testing.T) {
+	server, _ := newIntegrationServer(t)
+	server.BackfillDefault = 123
+	req := httptest.NewRequest(http.MethodPost, "/api/sources", strings.NewReader(
+		`{"name":"Zero","kind":"rss","config":{"url":"https://example.com/feed.xml"},"backfill_rows":0}`))
+	rec := httptest.NewRecorder()
+	server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated || !strings.Contains(rec.Body.String(), `"backfill_rows":123`) {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 }

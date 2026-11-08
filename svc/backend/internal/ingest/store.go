@@ -29,6 +29,10 @@ type Source struct {
 	BackfillRequestedAt *time.Time      `json:"backfill_requested_at"`
 	BackfillPending     bool            `json:"backfill_pending"`
 	LastBackfill        json.RawMessage `json:"last_backfill"`
+	// BackfillFloor is the oldest timestamp a capped backfill kept; normal
+	// polls skip timestamped rows older than it. Nil when nothing was capped.
+	BackfillFloor    *time.Time `json:"backfill_floor"`
+	BackfillAttempts int        `json:"backfill_attempts"`
 }
 
 type Store struct {
@@ -40,12 +44,13 @@ func NewStore(pool *pgxpool.Pool) *Store {
 }
 
 const sourceColumns = `id::text, name, kind, config, profile, poll_interval_s, last_polled_at, last_error, created_at,
-	backfill_rows, backfill_requested_at, last_backfill`
+	backfill_rows, backfill_requested_at, last_backfill, backfill_floor, backfill_attempts`
 
 // sourceColumnsWithCount selects sourceColumns plus the stored record count.
 // It must be used with a FROM clause that aliases data_sources as s.
 const sourceColumnsWithCount = `s.id::text, s.name, s.kind, s.config, s.profile, s.poll_interval_s, s.last_polled_at,
 	s.last_error, s.created_at, s.backfill_rows, s.backfill_requested_at, s.last_backfill,
+	s.backfill_floor, s.backfill_attempts,
 	(SELECT COUNT(*) FROM data_records r WHERE r.data_source_id = s.id)`
 
 func scanSource(row pgx.Row) (Source, error) {
@@ -61,7 +66,8 @@ func scanSourceInto(row pgx.Row, withCount bool) (Source, error) {
 	var config, profile, lastBackfill []byte
 	dest := []any{&source.ID, &source.Name, &source.Kind, &config, &profile, &source.PollIntervalS,
 		&source.LastPolledAt, &source.LastError, &source.CreatedAt,
-		&source.BackfillRows, &source.BackfillRequestedAt, &lastBackfill}
+		&source.BackfillRows, &source.BackfillRequestedAt, &lastBackfill,
+		&source.BackfillFloor, &source.BackfillAttempts}
 	if withCount {
 		dest = append(dest, &source.RecordCount)
 	}
@@ -177,10 +183,12 @@ func (s *Store) Source(ctx context.Context, id string) (Source, error) {
 	return scanSourceWithCount(row)
 }
 
-// SetBackfillRows changes a source's backfill target. When the new target is
-// above the number of stored rows (and the source is polled), a re-backfill is
-// requested; scheduled reports whether that happened. Lowering the target
-// never deletes rows and never cancels a pending backfill.
+// SetBackfillRows changes a source's backfill target. Raising the target, or
+// keeping it while fewer rows are stored, requests a re-backfill (for polled
+// sources); scheduled reports whether that happened. The stored count alone is
+// not used for raises because it includes rows added by normal polls, which
+// are not older history. Lowering the target never deletes rows and never
+// cancels a pending backfill.
 func (s *Store) SetBackfillRows(ctx context.Context, id string, rows int) (Source, bool, error) {
 	if rows < 1 {
 		return Source{}, false, errors.New("backfill rows must be at least 1")
@@ -190,12 +198,14 @@ func (s *Store) SetBackfillRows(ctx context.Context, id string, rows int) (Sourc
 		WITH cur AS (
 			SELECT s.id,
 			       (s.poll_interval_s IS NOT NULL
-			        AND $2 > (SELECT COUNT(*) FROM data_records r WHERE r.data_source_id = s.id)) AS schedule
+			        AND ($2 > s.backfill_rows
+			             OR $2 > (SELECT COUNT(*) FROM data_records r WHERE r.data_source_id = s.id))) AS schedule
 			FROM data_sources s WHERE s.id = $1::uuid
 		)
 		UPDATE data_sources d SET
 			backfill_rows = $2,
-			backfill_requested_at = CASE WHEN cur.schedule THEN $3::timestamptz ELSE d.backfill_requested_at END
+			backfill_requested_at = CASE WHEN cur.schedule THEN $3::timestamptz ELSE d.backfill_requested_at END,
+			backfill_attempts = CASE WHEN cur.schedule THEN 0 ELSE d.backfill_attempts END
 		FROM cur WHERE d.id = cur.id
 		RETURNING cur.schedule`, id, rows, time.Now().UTC()).Scan(&scheduled)
 	if err != nil {
@@ -207,17 +217,45 @@ func (s *Store) SetBackfillRows(ctx context.Context, id string, rows int) (Sourc
 
 // FinishBackfill clears a pending backfill request, but only if it is still
 // the request the finished poll served (a newer request stays pending). The
-// paging report is stored either way.
-func (s *Store) FinishBackfill(ctx context.Context, id string, requestedAt time.Time, report json.RawMessage) error {
+// paging report and the floor (see Source.BackfillFloor) are stored either
+// way.
+func (s *Store) FinishBackfill(ctx context.Context, id string, requestedAt time.Time, report json.RawMessage, floor *time.Time) error {
 	if len(report) == 0 {
 		report = nil
 	}
 	_, err := s.Pool.Exec(ctx, `
 		UPDATE data_sources SET
 			last_backfill = COALESCE($3::jsonb, last_backfill),
+			backfill_floor = $4,
+			backfill_attempts = 0,
 			backfill_requested_at = CASE WHEN backfill_requested_at = $2 THEN NULL ELSE backfill_requested_at END
-		WHERE id = $1::uuid`, id, requestedAt, report)
+		WHERE id = $1::uuid`, id, requestedAt, report, floor)
 	return err
+}
+
+// MaxBackfillAttempts is how many failed or incomplete tries a backfill gets
+// before it is given up (the error stays visible on the source).
+const MaxBackfillAttempts = 3
+
+// FailBackfill records a failed or incomplete try of the pending backfill
+// (with its report and floor, when there is one). After MaxBackfillAttempts
+// tries of the same request it is given up and cleared; gaveUp reports that.
+func (s *Store) FailBackfill(ctx context.Context, id string, requestedAt time.Time, report json.RawMessage, floor *time.Time) (bool, error) {
+	if len(report) == 0 {
+		report = nil
+	}
+	var gaveUp bool
+	err := s.Pool.QueryRow(ctx, `
+		UPDATE data_sources SET
+			backfill_attempts = backfill_attempts + 1,
+			last_backfill = COALESCE($3::jsonb, last_backfill),
+			backfill_floor = COALESCE($4, backfill_floor),
+			backfill_requested_at = CASE
+				WHEN backfill_requested_at = $2 AND backfill_attempts + 1 >= $5 THEN NULL
+				ELSE backfill_requested_at END
+		WHERE id = $1::uuid
+		RETURNING backfill_requested_at IS NULL`, id, requestedAt, report, floor, MaxBackfillAttempts).Scan(&gaveUp)
+	return gaveUp, err
 }
 
 // RequeueBackfill makes a pending backfill due on the next ingest tick (for
@@ -225,7 +263,7 @@ func (s *Store) FinishBackfill(ctx context.Context, id string, requestedAt time.
 // when the source has no pending backfill or is never polled.
 func (s *Store) RequeueBackfill(ctx context.Context, id string) (bool, error) {
 	tag, err := s.Pool.Exec(ctx, `
-		UPDATE data_sources SET backfill_requested_at = $2
+		UPDATE data_sources SET backfill_requested_at = $2, backfill_attempts = 0
 		WHERE id = $1::uuid AND backfill_requested_at IS NOT NULL AND poll_interval_s IS NOT NULL`,
 		id, time.Now().UTC())
 	if err != nil {
@@ -239,36 +277,6 @@ func (s *Store) RequeueBackfill(ctx context.Context, id string) (bool, error) {
 func (s *Store) MarkError(ctx context.Context, id string, pollErr error) error {
 	_, err := s.Pool.Exec(ctx, `UPDATE data_sources SET last_error = $2 WHERE id = $1::uuid`, id, pollErr.Error())
 	return err
-}
-
-// RecordBackfillReport stores the report of a backfill that stopped early on
-// an error. The request stays pending so the next scheduled poll retries it.
-func (s *Store) RecordBackfillReport(ctx context.Context, id string, report json.RawMessage) error {
-	_, err := s.Pool.Exec(ctx, `UPDATE data_sources SET last_backfill = $2::jsonb WHERE id = $1::uuid`, id, report)
-	return err
-}
-
-// KnownExternalIDs returns which of ids are already stored for the source.
-func (s *Store) KnownExternalIDs(ctx context.Context, sourceID string, ids []string) (map[string]bool, error) {
-	known := map[string]bool{}
-	if len(ids) == 0 {
-		return known, nil
-	}
-	rows, err := s.Pool.Query(ctx, `
-		SELECT external_id FROM data_records
-		WHERE data_source_id = $1::uuid AND external_id = ANY($2)`, sourceID, ids)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		known[id] = true
-	}
-	return known, rows.Err()
 }
 
 type DataRecord struct {

@@ -170,7 +170,7 @@ func (p *webPager) candidates(pageURL string, links []pageLink, records []RawRec
 		// Last resorts: ask the LLM where the next page is, then scroll.
 		c.addKeyed(llmNextPrefix+pageURL, MethodLLM, true, "llm")
 		if firstPage {
-			c.add(scrollPrefix+pageURL, MethodScroll, false)
+			c.addFallback(scrollPrefix+pageURL, MethodScroll)
 		}
 	}
 	return c
@@ -300,7 +300,7 @@ func linkPageNumber(rawURL string) int {
 		}
 	}
 	if match := pathPagePattern.FindStringSubmatch(u.Path); match != nil {
-		n, _ := strconv.Atoi(match[2])
+		n, _ := strconv.Atoi(match[1])
 		return n
 	}
 	if match := trailingNumber.FindStringSubmatch(u.Path); match != nil && pagePattern.MatchString(rawURL) {

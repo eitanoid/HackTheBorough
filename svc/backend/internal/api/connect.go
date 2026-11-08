@@ -108,7 +108,7 @@ func (s *ConnectService) UploadCSVSource(ctx context.Context, req *v1.UploadCSVS
 	// Uploads are only capped when the caller asks: the file is not kept, so
 	// dropped rows could never be recovered.
 	if req.GetBackfillRows() < 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, ingest.ErrInvalidBackfillRows.Error())
+		return nil, connect.NewError(connect.CodeInvalidArgument, "backfill_rows must not be negative (0 keeps every row)")
 	}
 	backfillRows := int(req.GetBackfillRows())
 	records, err := ingest.ParseCSV(data, "", time.Now().UTC())

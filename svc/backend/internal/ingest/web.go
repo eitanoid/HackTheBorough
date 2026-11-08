@@ -237,7 +237,7 @@ func (a *WebAdapter) fetchScrolledWith(ctx context.Context, cfg WebConfig, p Pag
 		if !truncate {
 			return nil, fmt.Errorf("scrolled HTML exceeds %d bytes", maxCrawlHTMLBytes)
 		}
-		pageHTML = pageHTML[:maxCrawlHTMLBytes]
+		pageHTML = truncateHTML(pageHTML, maxCrawlHTMLBytes)
 	}
 	extracted, err := a.llmJob(ctx, "raw:"+pageHTML, cfg, maxRecords)
 	if err != nil {
@@ -721,24 +721,10 @@ func resolvePageURL(pageURL, href string, root *url.URL) (string, error) {
 	return target.String(), nil
 }
 
+// findNextPage is the "next" pagination strategy's link finder. It shares
+// anchorNext's heuristic with backfills so both follow the same link.
 func findNextPage(links []pageLink, selector string) string {
-	for _, link := range links {
-		if selector != "" {
-			if matchesPageSelector(link, selector) {
-				return link.Href
-			}
-			continue
-		}
-		rel := strings.ToLower(link.Rel)
-		text := strings.ToLower(link.Text)
-		aria := strings.ToLower(link.Aria)
-		class := strings.ToLower(link.Class)
-		if strings.Contains(rel, "next") || text == "next" || strings.Contains(text, "next") ||
-			strings.Contains(aria, "next") || strings.Contains(class, "next") {
-			return link.Href
-		}
-	}
-	return ""
+	return anchorNext(links, selector)
 }
 
 func findPageLinks(links []pageLink, selector string) []string {
@@ -833,4 +819,17 @@ func containsToken(value, token string) bool {
 		}
 	}
 	return false
+}
+
+// truncateHTML cuts html to at most limit bytes at the end of a tag, so the
+// extractor never sees a half tag or a split UTF-8 sequence.
+func truncateHTML(html string, limit int) string {
+	if len(html) <= limit {
+		return html
+	}
+	cut := strings.LastIndexByte(html[:limit], '>')
+	if cut < 0 {
+		return ""
+	}
+	return html[:cut+1]
 }

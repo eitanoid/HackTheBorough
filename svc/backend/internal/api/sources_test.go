@@ -36,7 +36,6 @@ func TestCreateSourceValidation(t *testing.T) {
 		{name: "bad web config", body: `{"name":"X","kind":"web","config":{"url":"https://example.com"}}`, wantStatus: http.StatusBadRequest, wantError: "schema is required"},
 		{name: "interval zero", body: `{"name":"X","kind":"rss","config":{"url":"https://example.com/feed"},"poll_interval_s":0}`, wantStatus: http.StatusBadRequest, wantError: "poll_interval_s"},
 		{name: "interval too high", body: `{"name":"X","kind":"rss","config":{"url":"https://example.com/feed"},"poll_interval_s":86401}`, wantStatus: http.StatusBadRequest, wantError: "poll_interval_s"},
-		{name: "backfill zero", body: `{"name":"X","kind":"rss","config":{"url":"https://example.com/feed"},"backfill_rows":0}`, wantStatus: http.StatusBadRequest, wantError: "backfill_rows"},
 		{name: "backfill negative", body: `{"name":"X","kind":"rss","config":{"url":"https://example.com/feed"},"backfill_rows":-5}`, wantStatus: http.StatusBadRequest, wantError: "backfill_rows"},
 	}
 
@@ -229,7 +228,7 @@ func finishBackfill(t *testing.T, store *ingest.Store, source ingest.Source) {
 	if source.BackfillRequestedAt == nil {
 		return
 	}
-	if err := store.FinishBackfill(context.Background(), source.ID, *source.BackfillRequestedAt, nil); err != nil {
+	if err := store.FinishBackfill(context.Background(), source.ID, *source.BackfillRequestedAt, nil, nil); err != nil {
 		t.Fatalf("FinishBackfill: %v", err)
 	}
 }

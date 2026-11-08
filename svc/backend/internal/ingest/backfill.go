@@ -3,10 +3,11 @@ package ingest
 import (
 	"errors"
 	"sort"
+	"time"
 )
 
 // ErrInvalidBackfillRows is returned for a negative backfill target.
-var ErrInvalidBackfillRows = errors.New("backfill_rows must be at least 1")
+var ErrInvalidBackfillRows = errors.New("backfill_rows must not be negative (0 selects the default)")
 
 // ResolveBackfillRows turns a requested backfill target into the one to
 // store: 0 selects serverDefault (DefaultBackfillRows when that is unset),
@@ -68,21 +69,43 @@ func reverseRecords(records []RawRecord) {
 	}
 }
 
-// TrimKnownTail keeps only the records above the last one already stored.
-// records must be ordered newest first. Sources re-serve rows a backfill
-// deliberately left out (an RSS page longer than the target, a whole CSV
-// file); everything at or below the oldest already-stored row is such an old
-// row, while rows above it are genuinely new. With nothing stored yet, all
-// records are kept.
-func TrimKnownTail(records []RawRecord, known map[string]bool) []RawRecord {
-	last := -1
-	for i, record := range records {
-		if known[record.ExternalID] {
-			last = i
-		}
+// hasRealTime reports whether a record's timestamp came from the source
+// rather than being estimated at ingest time.
+func hasRealTime(record RawRecord) bool {
+	estimated, _ := record.Payload["_time_estimated"].(bool)
+	return !estimated
+}
+
+// BackfillFloor returns the timestamp below which a capped backfill dropped
+// rows: the oldest kept row's time, when the cap actually dropped something
+// and that row has a real timestamp. kept must be newest first. Otherwise nil.
+func BackfillFloor(kept []RawRecord, available int) *time.Time {
+	if len(kept) == 0 || available <= len(kept) {
+		return nil
 	}
-	if last < 0 {
+	oldest := kept[len(kept)-1]
+	if !hasRealTime(oldest) {
+		return nil
+	}
+	floor := oldest.ObservedAt
+	return &floor
+}
+
+// TrimBelowFloor drops timestamped records older than the backfill floor:
+// sources keep re-serving rows a capped backfill deliberately left out (a long
+// RSS page, a whole CSV file), and those must not leak back in. Records
+// without a real timestamp, and everything when there is no floor, are kept;
+// the database deduplicates them.
+func TrimBelowFloor(records []RawRecord, floor *time.Time) []RawRecord {
+	if floor == nil {
 		return records
 	}
-	return records[:last+1]
+	kept := records[:0:0]
+	for _, record := range records {
+		if hasRealTime(record) && record.ObservedAt.Before(*floor) {
+			continue
+		}
+		kept = append(kept, record)
+	}
+	return kept
 }

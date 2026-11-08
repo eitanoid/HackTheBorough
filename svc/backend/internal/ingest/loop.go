@@ -148,21 +148,64 @@ func (l *Loop) PollOnce(ctx context.Context, sourceID string) (int, error) {
 	return l.poll(ctx, sourceID)
 }
 
+// Busy reports whether a poll for the source is queued or running.
+func (l *Loop) Busy(sourceID string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	_, busy := l.inflight[sourceID]
+	return busy
+}
+
+// acquireLane waits for a slot in the lane the source needs and returns the
+// source as read after getting it, so the backfill state, target and token are
+// current when the fetch starts (they can change while a poll waits). If the
+// state changed while waiting, the slot is swapped for the right lane.
+func (l *Loop) acquireLane(ctx context.Context, sourceID string) (Source, func(), error) {
+	normalLane, backfillLane := l.lanes()
+	source, err := l.Store.Source(ctx, sourceID)
+	if err != nil {
+		return Source{}, nil, err
+	}
+	for attempt := 0; ; attempt++ {
+		backfill := source.BackfillRequestedAt != nil
+		lane := normalLane
+		if backfill {
+			lane = backfillLane
+		}
+		select {
+		case lane <- struct{}{}:
+		case <-ctx.Done():
+			return Source{}, nil, ctx.Err()
+		}
+		release := func() { <-lane }
+		fresh, err := l.Store.Source(ctx, sourceID)
+		if err != nil {
+			release()
+			return Source{}, nil, err
+		}
+		if (fresh.BackfillRequestedAt != nil) == backfill || attempt >= 2 {
+			return fresh, release, nil
+		}
+		release()
+		source = fresh
+	}
+}
+
 // poll does the work of one poll; the caller must hold the source's claim.
 //
-// The lane is chosen from the freshly read source, so a backfill requested
-// after the source was listed as due still runs in the backfill lane.
-//
 // Backfills page through the source until BackfillRows records are found and
-// keep the newest BackfillRows of them. Normal polls fetch a single page and
-// only add rows newer than what is stored: sources keep re-serving rows a
-// backfill left out (a long RSS page, a whole CSV file), and those must not
-// leak back in.
+// keep the newest BackfillRows of them. A failed or incomplete backfill stays
+// pending and is retried on later scheduled polls, up to MaxBackfillAttempts.
+// Normal polls fetch a single page; timestamped rows older than the backfill
+// floor are skipped (they are the rows a capped backfill left out).
 func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
-	source, err := l.Store.Source(ctx, sourceID)
+	source, release, err := l.acquireLane(ctx, sourceID)
 	if err != nil {
 		return 0, err
 	}
+	defer release()
+	l.markRunning(source.ID)
+
 	markCtx := context.WithoutCancel(ctx)
 	adapter, ok := l.Adapters[source.Kind]
 	if !ok {
@@ -171,20 +214,6 @@ func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
 		return 0, err
 	}
 	backfill := source.BackfillRequestedAt != nil
-
-	normalLane, backfillLane := l.lanes()
-	lane := normalLane
-	if backfill {
-		lane = backfillLane
-	}
-	select {
-	case lane <- struct{}{}:
-	case <-ctx.Done():
-		return 0, ctx.Err()
-	}
-	defer func() { <-lane }()
-	l.markRunning(source.ID)
-
 	opts := FetchOptions{Since: source.LastPolledAt}
 	if backfill {
 		opts.Backfill = true
@@ -195,31 +224,26 @@ func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
 	if fetchErr != nil {
 		if backfill && ctx.Err() != nil {
 			// Cancelled (shutdown or timeout): record the error but do not
-			// count it as a poll, so the backfill stays due on the next tick.
+			// count it as a poll or an attempt, so the backfill stays due.
 			_ = l.Store.MarkError(markCtx, source.ID, fetchErr)
 			return 0, fetchErr
 		}
-		// A failed backfill stays pending and is retried on the next
-		// scheduled poll.
 		_ = l.Store.MarkPolled(markCtx, source.ID, polledAt, fetchErr)
+		if backfill {
+			l.failBackfill(markCtx, source, nil, nil, fetchErr)
+		}
 		return 0, fetchErr
 	}
 	records := result.Records
 	SortNewestFirst(records)
 	fetched := len(records)
+	var floor *time.Time
 	if backfill {
+		available := len(CapRecords(records, 0))
 		records = CapRecords(records, opts.Limit)
-	} else if len(records) > 0 {
-		ids := make([]string, len(records))
-		for i, record := range records {
-			ids[i] = record.ExternalID
-		}
-		known, err := l.Store.KnownExternalIDs(ctx, source.ID, ids)
-		if err != nil {
-			_ = l.Store.MarkPolled(markCtx, source.ID, polledAt, err)
-			return 0, err
-		}
-		records = TrimKnownTail(records, known)
+		floor = BackfillFloor(records, available)
+	} else {
+		records = TrimBelowFloor(records, source.BackfillFloor)
 	}
 	inserted, insertErr := l.Store.InsertRecords(ctx, source.ID, records)
 	if insertErr != nil {
@@ -227,8 +251,6 @@ func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
 		return 0, insertErr
 	}
 
-	// A backfill that stopped on a failing page keeps its rows but stays
-	// pending (and shows the error) so the next scheduled poll retries it.
 	var partialErr error
 	if backfill && result.Report != nil && result.Report.Error != "" {
 		partialErr = fmt.Errorf("backfill stopped early: %s", result.Report.Error)
@@ -243,13 +265,10 @@ func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
 		}
 		report.Rows = len(records)
 		encoded, _ := json.Marshal(report)
-		var err error
 		if partialErr != nil {
-			err = l.Store.RecordBackfillReport(markCtx, source.ID, encoded)
-		} else {
-			err = l.Store.FinishBackfill(markCtx, source.ID, *source.BackfillRequestedAt, encoded)
-		}
-		if err != nil {
+			// Keep the rows, but retry the rest of the walk later.
+			l.failBackfill(markCtx, source, encoded, floor, partialErr)
+		} else if err := l.Store.FinishBackfill(markCtx, source.ID, *source.BackfillRequestedAt, encoded, floor); err != nil {
 			return inserted, err
 		}
 	}
@@ -269,4 +288,19 @@ func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
 	// A partial backfill is not a failed poll: its rows are stored and the
 	// error is recorded on the source for the UI.
 	return inserted, nil
+}
+
+// failBackfill counts a failed or incomplete backfill try. After
+// MaxBackfillAttempts it gives up so the source returns to normal polling;
+// the error stays on the source so the user can see why.
+func (l *Loop) failBackfill(ctx context.Context, source Source, report json.RawMessage, floor *time.Time, cause error) {
+	gaveUp, err := l.Store.FailBackfill(ctx, source.ID, *source.BackfillRequestedAt, report, floor)
+	if err != nil {
+		slog.Warn("record backfill failure", "source_id", source.ID, "err", err)
+		return
+	}
+	if gaveUp {
+		_ = l.Store.MarkError(ctx, source.ID, fmt.Errorf("backfill gave up after %d attempts: %v", MaxBackfillAttempts, cause))
+		slog.Warn("backfill given up", "source_id", source.ID, "attempts", MaxBackfillAttempts, "err", cause)
+	}
 }
