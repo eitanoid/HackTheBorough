@@ -58,7 +58,7 @@ result = {
 - `p`: the p-value, a number in [0, 1].
 - `effect`: the effect size (for a correlation, the coefficient). Its sign is shown to users.
 - `n`: the number of observations the test used.
-- `stats`: a flat dict of extra numbers, bools or short strings (at most 200 characters). A correlation should include `rho` and `lag`. Never put `p`, `q`, `n` or `effect` here; the system sets them.
+- `stats`: a flat dict of extra numbers, bools or short strings (at most 200 characters). A correlation should include `rho` and `lag`. A `lag` k > 0 means `series[0]` at period t is compared with `series[1]` at period t+k, so `series[0]` moves first. Never put `p`, `q`, `n` or `effect` here; the system sets them.
 - `chart`: an optional chart for this test, or `null`.
 
 **anomalies** — at most 50.

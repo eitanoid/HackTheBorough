@@ -497,6 +497,57 @@ func (NarratedBy) EnumDescriptor() ([]byte, []int) {
 	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{8}
 }
 
+// The narrator's verdict on a statistical finding. UNSPECIFIED covers template
+// text and investigation cards. A doubtful card is shown with a badge.
+type Plausibility int32
+
+const (
+	Plausibility_PLAUSIBILITY_UNSPECIFIED Plausibility = 0
+	Plausibility_PLAUSIBILITY_PLAUSIBLE   Plausibility = 1
+	Plausibility_PLAUSIBILITY_DOUBTFUL    Plausibility = 2
+)
+
+// Enum value maps for Plausibility.
+var (
+	Plausibility_name = map[int32]string{
+		0: "PLAUSIBILITY_UNSPECIFIED",
+		1: "PLAUSIBILITY_PLAUSIBLE",
+		2: "PLAUSIBILITY_DOUBTFUL",
+	}
+	Plausibility_value = map[string]int32{
+		"PLAUSIBILITY_UNSPECIFIED": 0,
+		"PLAUSIBILITY_PLAUSIBLE":   1,
+		"PLAUSIBILITY_DOUBTFUL":    2,
+	}
+)
+
+func (x Plausibility) Enum() *Plausibility {
+	p := new(Plausibility)
+	*p = x
+	return p
+}
+
+func (x Plausibility) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Plausibility) Descriptor() protoreflect.EnumDescriptor {
+	return file_hacktheburgh_v1_service_proto_enumTypes[9].Descriptor()
+}
+
+func (Plausibility) Type() protoreflect.EnumType {
+	return &file_hacktheburgh_v1_service_proto_enumTypes[9]
+}
+
+func (x Plausibility) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Plausibility.Descriptor instead.
+func (Plausibility) EnumDescriptor() ([]byte, []int) {
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{9}
+}
+
 type SourceConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// URL is used by RSS and web sources.
@@ -1838,6 +1889,7 @@ type Insight struct {
 	ChartSpec     *structpb.Struct       `protobuf:"bytes,12,opt,name=chart_spec,json=chartSpec,proto3" json:"chart_spec,omitempty"`
 	NarratedBy    NarratedBy             `protobuf:"varint,13,opt,name=narrated_by,json=narratedBy,proto3,enum=hacktheburgh.v1.NarratedBy" json:"narrated_by,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Plausibility  Plausibility           `protobuf:"varint,15,opt,name=plausibility,proto3,enum=hacktheburgh.v1.Plausibility" json:"plausibility,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1968,6 +2020,13 @@ func (x *Insight) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
+}
+
+func (x *Insight) GetPlausibility() Plausibility {
+	if x != nil {
+		return x.Plausibility
+	}
+	return Plausibility_PLAUSIBILITY_UNSPECIFIED
 }
 
 type WorkflowStep struct {
@@ -2958,7 +3017,7 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12'\n" +
 	"\x0fanalysis_script\x18\t \x01(\tR\x0eanalysisScript\x12/\n" +
 	"\x06report\x18\n" +
-	" \x01(\v2\x17.google.protobuf.StructR\x06report\"\xc6\x04\n" +
+	" \x01(\v2\x17.google.protobuf.StructR\x06report\"\x89\x05\n" +
 	"\aInsight\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06run_id\x18\x02 \x01(\tR\x05runId\x12\x1d\n" +
@@ -2979,7 +3038,8 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"\vnarrated_by\x18\r \x01(\x0e2\x1b.hacktheburgh.v1.NarratedByR\n" +
 	"narratedBy\x129\n" +
 	"\n" +
-	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xb5\x01\n" +
+	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12A\n" +
+	"\fplausibility\x18\x0f \x01(\x0e2\x1d.hacktheburgh.v1.PlausibilityR\fplausibility\"\xb5\x01\n" +
 	"\fWorkflowStep\x12\x1f\n" +
 	"\vworkflow_id\x18\x01 \x01(\tR\n" +
 	"workflowId\x12\x10\n" +
@@ -3085,7 +3145,11 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"NarratedBy\x12\x1b\n" +
 	"\x17NARRATED_BY_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fNARRATED_BY_LLM\x10\x01\x12\x18\n" +
-	"\x14NARRATED_BY_TEMPLATE\x10\x022\xf7\b\n" +
+	"\x14NARRATED_BY_TEMPLATE\x10\x02*c\n" +
+	"\fPlausibility\x12\x1c\n" +
+	"\x18PLAUSIBILITY_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16PLAUSIBILITY_PLAUSIBLE\x10\x01\x12\x19\n" +
+	"\x15PLAUSIBILITY_DOUBTFUL\x10\x022\xf7\b\n" +
 	"\rAnduinService\x12[\n" +
 	"\fCreateSource\x12$.hacktheburgh.v1.CreateSourceRequest\x1a%.hacktheburgh.v1.CreateSourceResponse\x12d\n" +
 	"\x0fUploadCSVSource\x12'.hacktheburgh.v1.UploadCSVSourceRequest\x1a(.hacktheburgh.v1.UploadCSVSourceResponse\x12X\n" +
@@ -3114,7 +3178,7 @@ func file_hacktheburgh_v1_service_proto_rawDescGZIP() []byte {
 	return file_hacktheburgh_v1_service_proto_rawDescData
 }
 
-var file_hacktheburgh_v1_service_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
+var file_hacktheburgh_v1_service_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
 var file_hacktheburgh_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_hacktheburgh_v1_service_proto_goTypes = []any{
 	(SourceKind)(0),                    // 0: hacktheburgh.v1.SourceKind
@@ -3126,129 +3190,131 @@ var file_hacktheburgh_v1_service_proto_goTypes = []any{
 	(InsightKind)(0),                   // 6: hacktheburgh.v1.InsightKind
 	(InsightOrigin)(0),                 // 7: hacktheburgh.v1.InsightOrigin
 	(NarratedBy)(0),                    // 8: hacktheburgh.v1.NarratedBy
-	(*SourceConfig)(nil),               // 9: hacktheburgh.v1.SourceConfig
-	(*WebPagination)(nil),              // 10: hacktheburgh.v1.WebPagination
-	(*FieldProfile)(nil),               // 11: hacktheburgh.v1.FieldProfile
-	(*SourceProfile)(nil),              // 12: hacktheburgh.v1.SourceProfile
-	(*Source)(nil),                     // 13: hacktheburgh.v1.Source
-	(*DataRecord)(nil),                 // 14: hacktheburgh.v1.DataRecord
-	(*CreateSourceRequest)(nil),        // 15: hacktheburgh.v1.CreateSourceRequest
-	(*CreateSourceResponse)(nil),       // 16: hacktheburgh.v1.CreateSourceResponse
-	(*UploadCSVSourceRequest)(nil),     // 17: hacktheburgh.v1.UploadCSVSourceRequest
-	(*UploadCSVSourceResponse)(nil),    // 18: hacktheburgh.v1.UploadCSVSourceResponse
-	(*ListSourcesRequest)(nil),         // 19: hacktheburgh.v1.ListSourcesRequest
-	(*ListSourcesResponse)(nil),        // 20: hacktheburgh.v1.ListSourcesResponse
-	(*GetSourceRequest)(nil),           // 21: hacktheburgh.v1.GetSourceRequest
-	(*GetSourceResponse)(nil),          // 22: hacktheburgh.v1.GetSourceResponse
-	(*Project)(nil),                    // 23: hacktheburgh.v1.Project
-	(*Run)(nil),                        // 24: hacktheburgh.v1.Run
-	(*AnalysisFunnel)(nil),             // 25: hacktheburgh.v1.AnalysisFunnel
-	(*ProjectSummary)(nil),             // 26: hacktheburgh.v1.ProjectSummary
-	(*Workflow)(nil),                   // 27: hacktheburgh.v1.Workflow
-	(*Insight)(nil),                    // 28: hacktheburgh.v1.Insight
-	(*WorkflowStep)(nil),               // 29: hacktheburgh.v1.WorkflowStep
-	(*CreateProjectRequest)(nil),       // 30: hacktheburgh.v1.CreateProjectRequest
-	(*CreateProjectResponse)(nil),      // 31: hacktheburgh.v1.CreateProjectResponse
-	(*ListProjectsRequest)(nil),        // 32: hacktheburgh.v1.ListProjectsRequest
-	(*ListProjectsResponse)(nil),       // 33: hacktheburgh.v1.ListProjectsResponse
-	(*GetProjectRequest)(nil),          // 34: hacktheburgh.v1.GetProjectRequest
-	(*GetProjectResponse)(nil),         // 35: hacktheburgh.v1.GetProjectResponse
-	(*ListInsightsRequest)(nil),        // 36: hacktheburgh.v1.ListInsightsRequest
-	(*ListInsightsResponse)(nil),       // 37: hacktheburgh.v1.ListInsightsResponse
-	(*ListWorkflowsRequest)(nil),       // 38: hacktheburgh.v1.ListWorkflowsRequest
-	(*ListWorkflowsResponse)(nil),      // 39: hacktheburgh.v1.ListWorkflowsResponse
-	(*ListWorkflowStepsRequest)(nil),   // 40: hacktheburgh.v1.ListWorkflowStepsRequest
-	(*ListWorkflowStepsResponse)(nil),  // 41: hacktheburgh.v1.ListWorkflowStepsResponse
-	(*RegenerateWorkflowRequest)(nil),  // 42: hacktheburgh.v1.RegenerateWorkflowRequest
-	(*RegenerateWorkflowResponse)(nil), // 43: hacktheburgh.v1.RegenerateWorkflowResponse
-	(*ReplayRequest)(nil),              // 44: hacktheburgh.v1.ReplayRequest
-	(*ReplayResponse)(nil),             // 45: hacktheburgh.v1.ReplayResponse
-	(*structpb.Struct)(nil),            // 46: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),      // 47: google.protobuf.Timestamp
-	(*structpb.Value)(nil),             // 48: google.protobuf.Value
+	(Plausibility)(0),                  // 9: hacktheburgh.v1.Plausibility
+	(*SourceConfig)(nil),               // 10: hacktheburgh.v1.SourceConfig
+	(*WebPagination)(nil),              // 11: hacktheburgh.v1.WebPagination
+	(*FieldProfile)(nil),               // 12: hacktheburgh.v1.FieldProfile
+	(*SourceProfile)(nil),              // 13: hacktheburgh.v1.SourceProfile
+	(*Source)(nil),                     // 14: hacktheburgh.v1.Source
+	(*DataRecord)(nil),                 // 15: hacktheburgh.v1.DataRecord
+	(*CreateSourceRequest)(nil),        // 16: hacktheburgh.v1.CreateSourceRequest
+	(*CreateSourceResponse)(nil),       // 17: hacktheburgh.v1.CreateSourceResponse
+	(*UploadCSVSourceRequest)(nil),     // 18: hacktheburgh.v1.UploadCSVSourceRequest
+	(*UploadCSVSourceResponse)(nil),    // 19: hacktheburgh.v1.UploadCSVSourceResponse
+	(*ListSourcesRequest)(nil),         // 20: hacktheburgh.v1.ListSourcesRequest
+	(*ListSourcesResponse)(nil),        // 21: hacktheburgh.v1.ListSourcesResponse
+	(*GetSourceRequest)(nil),           // 22: hacktheburgh.v1.GetSourceRequest
+	(*GetSourceResponse)(nil),          // 23: hacktheburgh.v1.GetSourceResponse
+	(*Project)(nil),                    // 24: hacktheburgh.v1.Project
+	(*Run)(nil),                        // 25: hacktheburgh.v1.Run
+	(*AnalysisFunnel)(nil),             // 26: hacktheburgh.v1.AnalysisFunnel
+	(*ProjectSummary)(nil),             // 27: hacktheburgh.v1.ProjectSummary
+	(*Workflow)(nil),                   // 28: hacktheburgh.v1.Workflow
+	(*Insight)(nil),                    // 29: hacktheburgh.v1.Insight
+	(*WorkflowStep)(nil),               // 30: hacktheburgh.v1.WorkflowStep
+	(*CreateProjectRequest)(nil),       // 31: hacktheburgh.v1.CreateProjectRequest
+	(*CreateProjectResponse)(nil),      // 32: hacktheburgh.v1.CreateProjectResponse
+	(*ListProjectsRequest)(nil),        // 33: hacktheburgh.v1.ListProjectsRequest
+	(*ListProjectsResponse)(nil),       // 34: hacktheburgh.v1.ListProjectsResponse
+	(*GetProjectRequest)(nil),          // 35: hacktheburgh.v1.GetProjectRequest
+	(*GetProjectResponse)(nil),         // 36: hacktheburgh.v1.GetProjectResponse
+	(*ListInsightsRequest)(nil),        // 37: hacktheburgh.v1.ListInsightsRequest
+	(*ListInsightsResponse)(nil),       // 38: hacktheburgh.v1.ListInsightsResponse
+	(*ListWorkflowsRequest)(nil),       // 39: hacktheburgh.v1.ListWorkflowsRequest
+	(*ListWorkflowsResponse)(nil),      // 40: hacktheburgh.v1.ListWorkflowsResponse
+	(*ListWorkflowStepsRequest)(nil),   // 41: hacktheburgh.v1.ListWorkflowStepsRequest
+	(*ListWorkflowStepsResponse)(nil),  // 42: hacktheburgh.v1.ListWorkflowStepsResponse
+	(*RegenerateWorkflowRequest)(nil),  // 43: hacktheburgh.v1.RegenerateWorkflowRequest
+	(*RegenerateWorkflowResponse)(nil), // 44: hacktheburgh.v1.RegenerateWorkflowResponse
+	(*ReplayRequest)(nil),              // 45: hacktheburgh.v1.ReplayRequest
+	(*ReplayResponse)(nil),             // 46: hacktheburgh.v1.ReplayResponse
+	(*structpb.Struct)(nil),            // 47: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),      // 48: google.protobuf.Timestamp
+	(*structpb.Value)(nil),             // 49: google.protobuf.Value
 }
 var file_hacktheburgh_v1_service_proto_depIdxs = []int32{
-	46, // 0: hacktheburgh.v1.SourceConfig.schema:type_name -> google.protobuf.Struct
-	10, // 1: hacktheburgh.v1.SourceConfig.pagination:type_name -> hacktheburgh.v1.WebPagination
+	47, // 0: hacktheburgh.v1.SourceConfig.schema:type_name -> google.protobuf.Struct
+	11, // 1: hacktheburgh.v1.SourceConfig.pagination:type_name -> hacktheburgh.v1.WebPagination
 	1,  // 2: hacktheburgh.v1.WebPagination.strategy:type_name -> hacktheburgh.v1.PaginationStrategy
 	2,  // 3: hacktheburgh.v1.FieldProfile.role:type_name -> hacktheburgh.v1.FieldRole
 	3,  // 4: hacktheburgh.v1.FieldProfile.aggregation:type_name -> hacktheburgh.v1.Aggregation
-	11, // 5: hacktheburgh.v1.SourceProfile.fields:type_name -> hacktheburgh.v1.FieldProfile
+	12, // 5: hacktheburgh.v1.SourceProfile.fields:type_name -> hacktheburgh.v1.FieldProfile
 	0,  // 6: hacktheburgh.v1.Source.kind:type_name -> hacktheburgh.v1.SourceKind
-	47, // 7: hacktheburgh.v1.Source.last_polled_at:type_name -> google.protobuf.Timestamp
-	12, // 8: hacktheburgh.v1.Source.profile:type_name -> hacktheburgh.v1.SourceProfile
-	47, // 9: hacktheburgh.v1.Source.created_at:type_name -> google.protobuf.Timestamp
-	47, // 10: hacktheburgh.v1.DataRecord.observed_at:type_name -> google.protobuf.Timestamp
-	46, // 11: hacktheburgh.v1.DataRecord.payload:type_name -> google.protobuf.Struct
+	48, // 7: hacktheburgh.v1.Source.last_polled_at:type_name -> google.protobuf.Timestamp
+	13, // 8: hacktheburgh.v1.Source.profile:type_name -> hacktheburgh.v1.SourceProfile
+	48, // 9: hacktheburgh.v1.Source.created_at:type_name -> google.protobuf.Timestamp
+	48, // 10: hacktheburgh.v1.DataRecord.observed_at:type_name -> google.protobuf.Timestamp
+	47, // 11: hacktheburgh.v1.DataRecord.payload:type_name -> google.protobuf.Struct
 	0,  // 12: hacktheburgh.v1.CreateSourceRequest.kind:type_name -> hacktheburgh.v1.SourceKind
-	9,  // 13: hacktheburgh.v1.CreateSourceRequest.config:type_name -> hacktheburgh.v1.SourceConfig
-	13, // 14: hacktheburgh.v1.CreateSourceResponse.source:type_name -> hacktheburgh.v1.Source
-	13, // 15: hacktheburgh.v1.UploadCSVSourceResponse.source:type_name -> hacktheburgh.v1.Source
-	13, // 16: hacktheburgh.v1.ListSourcesResponse.sources:type_name -> hacktheburgh.v1.Source
-	13, // 17: hacktheburgh.v1.GetSourceResponse.source:type_name -> hacktheburgh.v1.Source
-	14, // 18: hacktheburgh.v1.GetSourceResponse.recent_records:type_name -> hacktheburgh.v1.DataRecord
-	47, // 19: hacktheburgh.v1.Project.created_at:type_name -> google.protobuf.Timestamp
-	47, // 20: hacktheburgh.v1.Run.data_up_to:type_name -> google.protobuf.Timestamp
+	10, // 13: hacktheburgh.v1.CreateSourceRequest.config:type_name -> hacktheburgh.v1.SourceConfig
+	14, // 14: hacktheburgh.v1.CreateSourceResponse.source:type_name -> hacktheburgh.v1.Source
+	14, // 15: hacktheburgh.v1.UploadCSVSourceResponse.source:type_name -> hacktheburgh.v1.Source
+	14, // 16: hacktheburgh.v1.ListSourcesResponse.sources:type_name -> hacktheburgh.v1.Source
+	14, // 17: hacktheburgh.v1.GetSourceResponse.source:type_name -> hacktheburgh.v1.Source
+	15, // 18: hacktheburgh.v1.GetSourceResponse.recent_records:type_name -> hacktheburgh.v1.DataRecord
+	48, // 19: hacktheburgh.v1.Project.created_at:type_name -> google.protobuf.Timestamp
+	48, // 20: hacktheburgh.v1.Run.data_up_to:type_name -> google.protobuf.Timestamp
 	5,  // 21: hacktheburgh.v1.Run.status:type_name -> hacktheburgh.v1.RunStatus
-	46, // 22: hacktheburgh.v1.Run.result:type_name -> google.protobuf.Struct
-	47, // 23: hacktheburgh.v1.Run.started_at:type_name -> google.protobuf.Timestamp
-	47, // 24: hacktheburgh.v1.Run.finished_at:type_name -> google.protobuf.Timestamp
-	23, // 25: hacktheburgh.v1.ProjectSummary.project:type_name -> hacktheburgh.v1.Project
+	47, // 22: hacktheburgh.v1.Run.result:type_name -> google.protobuf.Struct
+	48, // 23: hacktheburgh.v1.Run.started_at:type_name -> google.protobuf.Timestamp
+	48, // 24: hacktheburgh.v1.Run.finished_at:type_name -> google.protobuf.Timestamp
+	24, // 25: hacktheburgh.v1.ProjectSummary.project:type_name -> hacktheburgh.v1.Project
 	5,  // 26: hacktheburgh.v1.ProjectSummary.latest_run_status:type_name -> hacktheburgh.v1.RunStatus
 	4,  // 27: hacktheburgh.v1.Workflow.kind:type_name -> hacktheburgh.v1.WorkflowKind
-	47, // 28: hacktheburgh.v1.Workflow.created_at:type_name -> google.protobuf.Timestamp
-	46, // 29: hacktheburgh.v1.Workflow.report:type_name -> google.protobuf.Struct
+	48, // 28: hacktheburgh.v1.Workflow.created_at:type_name -> google.protobuf.Timestamp
+	47, // 29: hacktheburgh.v1.Workflow.report:type_name -> google.protobuf.Struct
 	7,  // 30: hacktheburgh.v1.Insight.origin:type_name -> hacktheburgh.v1.InsightOrigin
 	6,  // 31: hacktheburgh.v1.Insight.kind:type_name -> hacktheburgh.v1.InsightKind
-	46, // 32: hacktheburgh.v1.Insight.stats:type_name -> google.protobuf.Struct
-	48, // 33: hacktheburgh.v1.Insight.evidence:type_name -> google.protobuf.Value
-	46, // 34: hacktheburgh.v1.Insight.chart_spec:type_name -> google.protobuf.Struct
+	47, // 32: hacktheburgh.v1.Insight.stats:type_name -> google.protobuf.Struct
+	49, // 33: hacktheburgh.v1.Insight.evidence:type_name -> google.protobuf.Value
+	47, // 34: hacktheburgh.v1.Insight.chart_spec:type_name -> google.protobuf.Struct
 	8,  // 35: hacktheburgh.v1.Insight.narrated_by:type_name -> hacktheburgh.v1.NarratedBy
-	47, // 36: hacktheburgh.v1.Insight.created_at:type_name -> google.protobuf.Timestamp
-	46, // 37: hacktheburgh.v1.WorkflowStep.input:type_name -> google.protobuf.Struct
-	46, // 38: hacktheburgh.v1.WorkflowStep.output:type_name -> google.protobuf.Struct
-	23, // 39: hacktheburgh.v1.CreateProjectResponse.project:type_name -> hacktheburgh.v1.Project
-	27, // 40: hacktheburgh.v1.CreateProjectResponse.active_workflow:type_name -> hacktheburgh.v1.Workflow
-	24, // 41: hacktheburgh.v1.CreateProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
-	26, // 42: hacktheburgh.v1.ListProjectsResponse.projects:type_name -> hacktheburgh.v1.ProjectSummary
-	23, // 43: hacktheburgh.v1.GetProjectResponse.project:type_name -> hacktheburgh.v1.Project
-	27, // 44: hacktheburgh.v1.GetProjectResponse.active_workflows:type_name -> hacktheburgh.v1.Workflow
-	24, // 45: hacktheburgh.v1.GetProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
-	25, // 46: hacktheburgh.v1.GetProjectResponse.funnel:type_name -> hacktheburgh.v1.AnalysisFunnel
-	28, // 47: hacktheburgh.v1.ListInsightsResponse.insights:type_name -> hacktheburgh.v1.Insight
-	27, // 48: hacktheburgh.v1.ListWorkflowsResponse.workflows:type_name -> hacktheburgh.v1.Workflow
-	29, // 49: hacktheburgh.v1.ListWorkflowStepsResponse.steps:type_name -> hacktheburgh.v1.WorkflowStep
-	4,  // 50: hacktheburgh.v1.RegenerateWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
-	27, // 51: hacktheburgh.v1.RegenerateWorkflowResponse.workflow:type_name -> hacktheburgh.v1.Workflow
-	15, // 52: hacktheburgh.v1.AnduinService.CreateSource:input_type -> hacktheburgh.v1.CreateSourceRequest
-	17, // 53: hacktheburgh.v1.AnduinService.UploadCSVSource:input_type -> hacktheburgh.v1.UploadCSVSourceRequest
-	19, // 54: hacktheburgh.v1.AnduinService.ListSources:input_type -> hacktheburgh.v1.ListSourcesRequest
-	21, // 55: hacktheburgh.v1.AnduinService.GetSource:input_type -> hacktheburgh.v1.GetSourceRequest
-	30, // 56: hacktheburgh.v1.AnduinService.CreateProject:input_type -> hacktheburgh.v1.CreateProjectRequest
-	32, // 57: hacktheburgh.v1.AnduinService.ListProjects:input_type -> hacktheburgh.v1.ListProjectsRequest
-	34, // 58: hacktheburgh.v1.AnduinService.GetProject:input_type -> hacktheburgh.v1.GetProjectRequest
-	36, // 59: hacktheburgh.v1.AnduinService.ListInsights:input_type -> hacktheburgh.v1.ListInsightsRequest
-	38, // 60: hacktheburgh.v1.AnduinService.ListWorkflows:input_type -> hacktheburgh.v1.ListWorkflowsRequest
-	40, // 61: hacktheburgh.v1.AnduinService.ListWorkflowSteps:input_type -> hacktheburgh.v1.ListWorkflowStepsRequest
-	42, // 62: hacktheburgh.v1.AnduinService.RegenerateWorkflow:input_type -> hacktheburgh.v1.RegenerateWorkflowRequest
-	44, // 63: hacktheburgh.v1.AnduinService.Replay:input_type -> hacktheburgh.v1.ReplayRequest
-	16, // 64: hacktheburgh.v1.AnduinService.CreateSource:output_type -> hacktheburgh.v1.CreateSourceResponse
-	18, // 65: hacktheburgh.v1.AnduinService.UploadCSVSource:output_type -> hacktheburgh.v1.UploadCSVSourceResponse
-	20, // 66: hacktheburgh.v1.AnduinService.ListSources:output_type -> hacktheburgh.v1.ListSourcesResponse
-	22, // 67: hacktheburgh.v1.AnduinService.GetSource:output_type -> hacktheburgh.v1.GetSourceResponse
-	31, // 68: hacktheburgh.v1.AnduinService.CreateProject:output_type -> hacktheburgh.v1.CreateProjectResponse
-	33, // 69: hacktheburgh.v1.AnduinService.ListProjects:output_type -> hacktheburgh.v1.ListProjectsResponse
-	35, // 70: hacktheburgh.v1.AnduinService.GetProject:output_type -> hacktheburgh.v1.GetProjectResponse
-	37, // 71: hacktheburgh.v1.AnduinService.ListInsights:output_type -> hacktheburgh.v1.ListInsightsResponse
-	39, // 72: hacktheburgh.v1.AnduinService.ListWorkflows:output_type -> hacktheburgh.v1.ListWorkflowsResponse
-	41, // 73: hacktheburgh.v1.AnduinService.ListWorkflowSteps:output_type -> hacktheburgh.v1.ListWorkflowStepsResponse
-	43, // 74: hacktheburgh.v1.AnduinService.RegenerateWorkflow:output_type -> hacktheburgh.v1.RegenerateWorkflowResponse
-	45, // 75: hacktheburgh.v1.AnduinService.Replay:output_type -> hacktheburgh.v1.ReplayResponse
-	64, // [64:76] is the sub-list for method output_type
-	52, // [52:64] is the sub-list for method input_type
-	52, // [52:52] is the sub-list for extension type_name
-	52, // [52:52] is the sub-list for extension extendee
-	0,  // [0:52] is the sub-list for field type_name
+	48, // 36: hacktheburgh.v1.Insight.created_at:type_name -> google.protobuf.Timestamp
+	9,  // 37: hacktheburgh.v1.Insight.plausibility:type_name -> hacktheburgh.v1.Plausibility
+	47, // 38: hacktheburgh.v1.WorkflowStep.input:type_name -> google.protobuf.Struct
+	47, // 39: hacktheburgh.v1.WorkflowStep.output:type_name -> google.protobuf.Struct
+	24, // 40: hacktheburgh.v1.CreateProjectResponse.project:type_name -> hacktheburgh.v1.Project
+	28, // 41: hacktheburgh.v1.CreateProjectResponse.active_workflow:type_name -> hacktheburgh.v1.Workflow
+	25, // 42: hacktheburgh.v1.CreateProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
+	27, // 43: hacktheburgh.v1.ListProjectsResponse.projects:type_name -> hacktheburgh.v1.ProjectSummary
+	24, // 44: hacktheburgh.v1.GetProjectResponse.project:type_name -> hacktheburgh.v1.Project
+	28, // 45: hacktheburgh.v1.GetProjectResponse.active_workflows:type_name -> hacktheburgh.v1.Workflow
+	25, // 46: hacktheburgh.v1.GetProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
+	26, // 47: hacktheburgh.v1.GetProjectResponse.funnel:type_name -> hacktheburgh.v1.AnalysisFunnel
+	29, // 48: hacktheburgh.v1.ListInsightsResponse.insights:type_name -> hacktheburgh.v1.Insight
+	28, // 49: hacktheburgh.v1.ListWorkflowsResponse.workflows:type_name -> hacktheburgh.v1.Workflow
+	30, // 50: hacktheburgh.v1.ListWorkflowStepsResponse.steps:type_name -> hacktheburgh.v1.WorkflowStep
+	4,  // 51: hacktheburgh.v1.RegenerateWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
+	28, // 52: hacktheburgh.v1.RegenerateWorkflowResponse.workflow:type_name -> hacktheburgh.v1.Workflow
+	16, // 53: hacktheburgh.v1.AnduinService.CreateSource:input_type -> hacktheburgh.v1.CreateSourceRequest
+	18, // 54: hacktheburgh.v1.AnduinService.UploadCSVSource:input_type -> hacktheburgh.v1.UploadCSVSourceRequest
+	20, // 55: hacktheburgh.v1.AnduinService.ListSources:input_type -> hacktheburgh.v1.ListSourcesRequest
+	22, // 56: hacktheburgh.v1.AnduinService.GetSource:input_type -> hacktheburgh.v1.GetSourceRequest
+	31, // 57: hacktheburgh.v1.AnduinService.CreateProject:input_type -> hacktheburgh.v1.CreateProjectRequest
+	33, // 58: hacktheburgh.v1.AnduinService.ListProjects:input_type -> hacktheburgh.v1.ListProjectsRequest
+	35, // 59: hacktheburgh.v1.AnduinService.GetProject:input_type -> hacktheburgh.v1.GetProjectRequest
+	37, // 60: hacktheburgh.v1.AnduinService.ListInsights:input_type -> hacktheburgh.v1.ListInsightsRequest
+	39, // 61: hacktheburgh.v1.AnduinService.ListWorkflows:input_type -> hacktheburgh.v1.ListWorkflowsRequest
+	41, // 62: hacktheburgh.v1.AnduinService.ListWorkflowSteps:input_type -> hacktheburgh.v1.ListWorkflowStepsRequest
+	43, // 63: hacktheburgh.v1.AnduinService.RegenerateWorkflow:input_type -> hacktheburgh.v1.RegenerateWorkflowRequest
+	45, // 64: hacktheburgh.v1.AnduinService.Replay:input_type -> hacktheburgh.v1.ReplayRequest
+	17, // 65: hacktheburgh.v1.AnduinService.CreateSource:output_type -> hacktheburgh.v1.CreateSourceResponse
+	19, // 66: hacktheburgh.v1.AnduinService.UploadCSVSource:output_type -> hacktheburgh.v1.UploadCSVSourceResponse
+	21, // 67: hacktheburgh.v1.AnduinService.ListSources:output_type -> hacktheburgh.v1.ListSourcesResponse
+	23, // 68: hacktheburgh.v1.AnduinService.GetSource:output_type -> hacktheburgh.v1.GetSourceResponse
+	32, // 69: hacktheburgh.v1.AnduinService.CreateProject:output_type -> hacktheburgh.v1.CreateProjectResponse
+	34, // 70: hacktheburgh.v1.AnduinService.ListProjects:output_type -> hacktheburgh.v1.ListProjectsResponse
+	36, // 71: hacktheburgh.v1.AnduinService.GetProject:output_type -> hacktheburgh.v1.GetProjectResponse
+	38, // 72: hacktheburgh.v1.AnduinService.ListInsights:output_type -> hacktheburgh.v1.ListInsightsResponse
+	40, // 73: hacktheburgh.v1.AnduinService.ListWorkflows:output_type -> hacktheburgh.v1.ListWorkflowsResponse
+	42, // 74: hacktheburgh.v1.AnduinService.ListWorkflowSteps:output_type -> hacktheburgh.v1.ListWorkflowStepsResponse
+	44, // 75: hacktheburgh.v1.AnduinService.RegenerateWorkflow:output_type -> hacktheburgh.v1.RegenerateWorkflowResponse
+	46, // 76: hacktheburgh.v1.AnduinService.Replay:output_type -> hacktheburgh.v1.ReplayResponse
+	65, // [65:77] is the sub-list for method output_type
+	53, // [53:65] is the sub-list for method input_type
+	53, // [53:53] is the sub-list for extension type_name
+	53, // [53:53] is the sub-list for extension extendee
+	0,  // [0:53] is the sub-list for field type_name
 }
 
 func init() { file_hacktheburgh_v1_service_proto_init() }
@@ -3265,7 +3331,7 @@ func file_hacktheburgh_v1_service_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hacktheburgh_v1_service_proto_rawDesc), len(file_hacktheburgh_v1_service_proto_rawDesc)),
-			NumEnums:      9,
+			NumEnums:      10,
 			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,

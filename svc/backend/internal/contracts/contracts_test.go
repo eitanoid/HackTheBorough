@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"hacktheburgh/backend/internal/llm"
 	"os"
 	"path/filepath"
 	"testing"
@@ -114,5 +115,23 @@ func TestGoldenScriptResultValidates(t *testing.T) {
 	}
 	if err := r.Validate(map[string]bool{"news": true, "trips": true}, 2000); err != nil {
 		t.Errorf("golden script result should validate: %v", err)
+	}
+}
+
+func TestNarrationSchemaRequiresPlausibility(t *testing.T) {
+	_, schema := llm.SchemaFor[Narration]()
+	items := schema["properties"].(map[string]any)["insights"].(map[string]any)["items"].(map[string]any)
+	required, _ := items["required"].([]string)
+	found := false
+	for _, r := range required {
+		found = found || r == "plausibility"
+	}
+	if !found {
+		t.Fatalf("plausibility is not required: %v", required)
+	}
+	p := items["properties"].(map[string]any)["plausibility"].(map[string]any)
+	enum, _ := p["enum"].([]any)
+	if len(enum) != 2 || enum[0] != "plausible" || enum[1] != "doubtful" {
+		t.Fatalf("plausibility enum = %v", enum)
 	}
 }

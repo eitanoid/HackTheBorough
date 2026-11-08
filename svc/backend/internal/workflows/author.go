@@ -40,7 +40,11 @@ type Author struct {
 	Store    AuthorStore
 	Bus      *events.Bus
 	Budget   time.Duration
-	// OnFirstRun hands the dry run to the insight steps; may be nil.
+	// Insights narrates the dry run's findings so that the cards are stored
+	// with the run. Nil: no insight rows are written.
+	Insights *InsightBuilder
+	// OnFirstRun fires once the run and its cards are stored (the reviewer
+	// hooks in here); may be nil.
 	OnFirstRun func(ctx context.Context, workflowID, runID uuid.UUID, res contracts.AnalysisResult)
 
 	mu       sync.Mutex
@@ -90,7 +94,7 @@ func (a *Author) WithModel(model string) *Author {
 		c.Models[p] = m
 	}
 	c.Models[llm.Author] = model
-	return &Author{LLM: &c, Analyser: a.Analyser, Store: a.Store, Bus: a.Bus, Budget: a.Budget, OnFirstRun: a.OnFirstRun}
+	return &Author{LLM: &c, Analyser: a.Analyser, Store: a.Store, Bus: a.Bus, Budget: a.Budget, Insights: a.Insights, OnFirstRun: a.OnFirstRun}
 }
 
 func (a *Author) acquire(projectID uuid.UUID) error {
@@ -160,14 +164,23 @@ func (a *Author) Generate(ctx context.Context, projectID uuid.UUID, t *Trigger) 
 		return a.fail(ctx, projectID, "analysis unavailable: "+err.Error())
 	}
 
+	// Narrate before saving: the run and its cards are written in one
+	// transaction, so the dashboard never shows a succeeded run with no cards.
+	var rows []InsightRow
+	if a.Insights != nil {
+		rows = a.Insights.Build(ctx, projectID, narrationContext(in.Goal, draft.InsightPrompt, in.Sources, res), res)
+	}
 	wf, run, err := a.Store.SaveVersion(ctx, SaveVersion{
 		ProjectID: projectID, Draft: draft, SourceIDs: in.SourceIDs, DataUpTo: watermark,
-		Result: res, StartedAt: started, ReviewID: reviewID(t),
+		Result: res, StartedAt: started, ReviewID: reviewID(t), Insights: rows,
 	})
 	if err != nil {
 		return a.fail(ctx, projectID, "could not save the workflow: "+err.Error())
 	}
 	a.publish(events.WorkflowRegenerated, wf)
+	if a.Insights != nil {
+		a.publish(events.ProjectUpdated, projectID) // the dashboard refetches its cards
+	}
 	if a.OnFirstRun != nil {
 		a.OnFirstRun(ctx, wf, run, res)
 	}

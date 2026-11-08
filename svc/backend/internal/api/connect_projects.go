@@ -119,7 +119,7 @@ func (s *ConnectService) ListInsights(ctx context.Context, req *v1.ListInsightsR
 	}
 	rows, err := s.Store.Pool.Query(ctx, `
 		SELECT id::text, run_id::text, project_id::text, origin, finding_key, kind,
-		       headline, explanation, caveats, stats, evidence, chart_spec, narrated_by, created_at
+		       headline, explanation, caveats, stats, evidence, chart_spec, narrated_by, created_at, plausibility
 		FROM latest_insights WHERE project_id = $1::uuid ORDER BY created_at DESC`, projectID)
 	if err != nil {
 		return nil, lookupError(err, "project")
@@ -130,8 +130,9 @@ func (s *ConnectService) ListInsights(ctx context.Context, req *v1.ListInsightsR
 		var id, runID, storedProjectID, origin, findingKey, kind, headline, explanation, narratedBy string
 		var caveatsRaw, statsRaw, evidenceRaw, chartRaw []byte
 		var createdAt time.Time
+		var plausibility *string
 		if err := rows.Scan(&id, &runID, &storedProjectID, &origin, &findingKey, &kind,
-			&headline, &explanation, &caveatsRaw, &statsRaw, &evidenceRaw, &chartRaw, &narratedBy, &createdAt); err != nil {
+			&headline, &explanation, &caveatsRaw, &statsRaw, &evidenceRaw, &chartRaw, &narratedBy, &createdAt, &plausibility); err != nil {
 			return nil, internalError(err)
 		}
 		var caveats []string
@@ -163,6 +164,7 @@ func (s *ConnectService) ListInsights(ctx context.Context, req *v1.ListInsightsR
 			Headline: headline, Explanation: explanation, Caveats: caveats,
 			Stats: stats, Evidence: evidence, ChartSpec: chart,
 			NarratedBy: narratedByValue(narratedBy), CreatedAt: timestamppb.New(createdAt),
+			Plausibility: plausibilityValue(plausibility),
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -459,6 +461,20 @@ func narratedByValue(value string) v1.NarratedBy {
 		return v1.NarratedBy_NARRATED_BY_TEMPLATE
 	default:
 		return v1.NarratedBy_NARRATED_BY_UNSPECIFIED
+	}
+}
+
+func plausibilityValue(value *string) v1.Plausibility {
+	if value == nil {
+		return v1.Plausibility_PLAUSIBILITY_UNSPECIFIED
+	}
+	switch *value {
+	case "plausible":
+		return v1.Plausibility_PLAUSIBILITY_PLAUSIBLE
+	case "doubtful":
+		return v1.Plausibility_PLAUSIBILITY_DOUBTFUL
+	default:
+		return v1.Plausibility_PLAUSIBILITY_UNSPECIFIED
 	}
 }
 

@@ -117,12 +117,13 @@ type AnalysisResult struct {
 // ---- Narration (statistical findings) ----
 
 type InsightDraft struct {
-	FindingKey  string   `json:"finding_key"`
-	Headline    string   `json:"headline"`
-	Explanation string   `json:"explanation"`
-	Direction   string   `json:"direction" jsonschema:"enum=positive,enum=negative,enum=up,enum=down"`
-	Leader      *string  `json:"leader"`
-	Caveats     []string `json:"caveats"`
+	FindingKey   string   `json:"finding_key"`
+	Headline     string   `json:"headline"`
+	Explanation  string   `json:"explanation"`
+	Direction    string   `json:"direction" jsonschema:"enum=positive,enum=negative,enum=up,enum=down"`
+	Plausibility string   `json:"plausibility" jsonschema:"enum=plausible,enum=doubtful"`
+	Leader       *string  `json:"leader"`
+	Caveats      []string `json:"caveats"` // when doubtful, the first caveat is the reason
 }
 
 type Narration struct {
