@@ -5,6 +5,7 @@ import {
   createSource,
   getSource,
   listSources,
+  pollSource,
   type Source,
   type SourceKind,
 } from "@/lib/source-api";
@@ -100,6 +101,9 @@ export default function SourceManager() {
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
+  const [polling, setPolling] = useState(false);
+  const [pollNotice, setPollNotice] = useState("");
+  const [pollError, setPollError] = useState("");
 
   async function refreshSources(signal?: AbortSignal) {
     setLoadError("");
@@ -186,13 +190,43 @@ export default function SourceManager() {
     setSelectedSource(created);
     setDetailLoading(true);
     setDetailError("");
+    setPollNotice("");
+    setPollError("");
     setSelectedId(created.id);
+  }
+
+  async function pollSelected() {
+    if (!selectedId || polling) return;
+    setPolling(true);
+    setPollNotice("");
+    setPollError("");
+    try {
+      const { inserted } = await pollSource(selectedId);
+      setPollNotice(
+        inserted === 0
+          ? "Poll finished. No new records."
+          : `Poll finished. ${inserted} new ${inserted === 1 ? "record" : "records"} stored.`,
+      );
+      try {
+        const [rows, fresh] = await Promise.all([listSources(), getSource(selectedId)]);
+        setSources(rows);
+        setSelectedSource(fresh);
+      } catch {
+        // The poll succeeded; refreshing the cached view is best-effort.
+      }
+    } catch (error) {
+      setPollError(error instanceof Error ? error.message : "Could not poll this source.");
+    } finally {
+      setPolling(false);
+    }
   }
 
   function openSource(source: Source) {
     setSelectedSource(source);
     setDetailLoading(true);
     setDetailError("");
+    setPollNotice("");
+    setPollError("");
     setSelectedId(source.id);
   }
 
@@ -293,9 +327,15 @@ export default function SourceManager() {
           source={selectedSource}
           loading={detailLoading}
           error={detailError}
+          polling={polling}
+          pollNotice={pollNotice}
+          pollError={pollError}
+          onPoll={() => void pollSelected()}
           onClose={() => {
             setSelectedId("");
             setSelectedSource(null);
+            setPollNotice("");
+            setPollError("");
           }}
         />
       )}
@@ -433,17 +473,25 @@ function SourceDetailDialog({
   source,
   loading,
   error,
+  polling,
+  pollNotice,
+  pollError,
+  onPoll,
   onClose,
 }: {
   source: Source | null;
   loading: boolean;
   error: string;
+  polling: boolean;
+  pollNotice: string;
+  pollError: string;
+  onPoll: () => void;
   onClose: () => void;
 }) {
   const failed = source ? Boolean(lastError(source)) : false;
   return (
     <div className="source-dialog-backdrop" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
+      if (event.target === event.currentTarget && !polling) onClose();
     }}>
       <section className="source-dialog source-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="source-detail-heading">
         <div className="source-dialog-heading">
@@ -452,7 +500,7 @@ function SourceDetailDialog({
             <h2 id="source-detail-heading">{source?.name ?? "Loading source"}</h2>
             <p>Connection status and ingestion details.</p>
           </div>
-          <button type="button" className="source-dialog-close" onClick={onClose} aria-label="Close dialog">×</button>
+          <button type="button" className="source-dialog-close" onClick={onClose} aria-label="Close dialog" disabled={polling}>×</button>
         </div>
 
         {loading && !source ? (
@@ -489,8 +537,14 @@ function SourceDetailDialog({
           </>
         ) : null}
 
+        {pollError && <p className="source-poll-status source-poll-fail" role="alert">{pollError}</p>}
+        {pollNotice && <p className="source-poll-status source-poll-ok" role="status">{pollNotice}</p>}
+
         <div className="source-dialog-actions">
-          <button type="button" className="button button-outline" onClick={onClose}>Close</button>
+          <button type="button" className="button button-primary" onClick={onPoll} disabled={polling || loading}>
+            {polling ? <><i className="source-spinner" /> Polling…</> : "Poll now"}
+          </button>
+          <button type="button" className="button button-outline" onClick={onClose} disabled={polling}>Close</button>
         </div>
       </section>
     </div>

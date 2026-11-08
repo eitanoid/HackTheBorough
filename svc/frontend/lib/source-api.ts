@@ -62,6 +62,16 @@ export async function getSource(id: string, signal?: AbortSignal): Promise<Sourc
   return parseResponse<Source>(response);
 }
 
+export type PollResult = { inserted: number };
+
+export async function pollSource(id: string): Promise<PollResult> {
+  const response = await fetch(`/api/sources/${encodeURIComponent(id)}/poll`, {
+    method: "POST",
+    cache: "no-store",
+  });
+  return parseResponse<PollResult>(response);
+}
+
 export async function createSource(input: {
   name: string;
   kind: SourceKind;
