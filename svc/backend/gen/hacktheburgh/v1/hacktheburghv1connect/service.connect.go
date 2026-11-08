@@ -33,6 +33,8 @@ const (
 	AnduinServiceListSourcesProcedure = "/hacktheburgh.v1.AnduinService/ListSources"
 	// AnduinServiceGetSourceProcedure is the procedure name of the AnduinService's GetSource RPC.
 	AnduinServiceGetSourceProcedure = "/hacktheburgh.v1.AnduinService/GetSource"
+	// AnduinServiceUpdateSourceProcedure is the procedure name of the AnduinService's UpdateSource RPC.
+	AnduinServiceUpdateSourceProcedure = "/hacktheburgh.v1.AnduinService/UpdateSource"
 	// AnduinServiceDeleteSourceProcedure is the procedure name of the AnduinService's DeleteSource RPC.
 	AnduinServiceDeleteSourceProcedure = "/hacktheburgh.v1.AnduinService/DeleteSource"
 	// AnduinServiceCreateProjectProcedure is the procedure name of the AnduinService's CreateProject
@@ -89,6 +91,13 @@ var (
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_hacktheburgh_v1_service_proto.Services().ByName("AnduinService").Methods().ByName("GetSource"),
 			Procedure:  AnduinServiceGetSourceProcedure,
+		}
+	})
+	anduinServiceUpdateSourceSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_hacktheburgh_v1_service_proto.Services().ByName("AnduinService").Methods().ByName("UpdateSource"),
+			Procedure:  AnduinServiceUpdateSourceProcedure,
 		}
 	})
 	anduinServiceDeleteSourceSpec = sync.OnceValue(func() connect.Spec {
@@ -176,6 +185,7 @@ type AnduinServiceClient interface {
 	UploadCSVSource(context.Context, *v1.UploadCSVSourceRequest) (*v1.UploadCSVSourceResponse, error)
 	ListSources(context.Context, *v1.ListSourcesRequest) (*v1.ListSourcesResponse, error)
 	GetSource(context.Context, *v1.GetSourceRequest) (*v1.GetSourceResponse, error)
+	UpdateSource(context.Context, *v1.UpdateSourceRequest) (*v1.UpdateSourceResponse, error)
 	DeleteSource(context.Context, *v1.DeleteSourceRequest) (*v1.DeleteSourceResponse, error)
 	CreateProject(context.Context, *v1.CreateProjectRequest) (*v1.CreateProjectResponse, error)
 	DeleteProject(context.Context, *v1.DeleteProjectRequest) (*v1.DeleteProjectResponse, error)
@@ -201,6 +211,7 @@ type AnduinServiceHandler interface {
 	UploadCSVSource(context.Context, *v1.UploadCSVSourceRequest) (*v1.UploadCSVSourceResponse, error)
 	ListSources(context.Context, *v1.ListSourcesRequest) (*v1.ListSourcesResponse, error)
 	GetSource(context.Context, *v1.GetSourceRequest) (*v1.GetSourceResponse, error)
+	UpdateSource(context.Context, *v1.UpdateSourceRequest) (*v1.UpdateSourceResponse, error)
 	DeleteSource(context.Context, *v1.DeleteSourceRequest) (*v1.DeleteSourceResponse, error)
 	CreateProject(context.Context, *v1.CreateProjectRequest) (*v1.CreateProjectResponse, error)
 	DeleteProject(context.Context, *v1.DeleteProjectRequest) (*v1.DeleteProjectResponse, error)
@@ -223,6 +234,7 @@ func RegisterAnduinServiceHandler(server *connect.Server, svc AnduinServiceHandl
 		connect.Method{Spec: anduinServiceUploadCSVSourceSpec(), Handler: adapter.uploadCSVSource},
 		connect.Method{Spec: anduinServiceListSourcesSpec(), Handler: adapter.listSources},
 		connect.Method{Spec: anduinServiceGetSourceSpec(), Handler: adapter.getSource},
+		connect.Method{Spec: anduinServiceUpdateSourceSpec(), Handler: adapter.updateSource},
 		connect.Method{Spec: anduinServiceDeleteSourceSpec(), Handler: adapter.deleteSource},
 		connect.Method{Spec: anduinServiceCreateProjectSpec(), Handler: adapter.createProject},
 		connect.Method{Spec: anduinServiceDeleteProjectSpec(), Handler: adapter.deleteProject},
@@ -254,6 +266,10 @@ func (UnimplementedAnduinServiceHandler) ListSources(context.Context, *v1.ListSo
 
 func (UnimplementedAnduinServiceHandler) GetSource(context.Context, *v1.GetSourceRequest) (*v1.GetSourceResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "hacktheburgh.v1.AnduinService.GetSource is not implemented")
+}
+
+func (UnimplementedAnduinServiceHandler) UpdateSource(context.Context, *v1.UpdateSourceRequest) (*v1.UpdateSourceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "hacktheburgh.v1.AnduinService.UpdateSource is not implemented")
 }
 
 func (UnimplementedAnduinServiceHandler) DeleteSource(context.Context, *v1.DeleteSourceRequest) (*v1.DeleteSourceResponse, error) {
@@ -331,6 +347,14 @@ func (c *anduinServiceClient) ListSources(ctx context.Context, req *v1.ListSourc
 func (c *anduinServiceClient) GetSource(ctx context.Context, req *v1.GetSourceRequest) (*v1.GetSourceResponse, error) {
 	var res v1.GetSourceResponse
 	if err := c.client.CallUnary(ctx, anduinServiceGetSourceSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *anduinServiceClient) UpdateSource(ctx context.Context, req *v1.UpdateSourceRequest) (*v1.UpdateSourceResponse, error) {
+	var res v1.UpdateSourceResponse
+	if err := c.client.CallUnary(ctx, anduinServiceUpdateSourceSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -468,6 +492,18 @@ func (h anduinServiceHandler) getSource(ctx context.Context, _ connect.Spec, str
 		return err
 	}
 	res, err := h.svc.GetSource(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h anduinServiceHandler) updateSource(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.UpdateSourceRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.UpdateSource(ctx, &req)
 	if err != nil {
 		return err
 	}

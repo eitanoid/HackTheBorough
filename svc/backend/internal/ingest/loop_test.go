@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -14,15 +15,33 @@ import (
 
 type fakeAdapter struct {
 	kind      string
-	fetch     func(context.Context, json.RawMessage, *time.Time) ([]RawRecord, error)
+	fetch     func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error)
 	active    int32
 	maxActive int32
 	delay     time.Duration
+	report    *PagingReport
+
+	mu       sync.Mutex
+	lastOpts FetchOptions
+}
+
+func (f *fakeAdapter) opts() FetchOptions {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.lastOpts
 }
 
 func (f *fakeAdapter) Kind() string { return f.kind }
 
-func (f *fakeAdapter) Fetch(ctx context.Context, cfg json.RawMessage, since *time.Time) ([]RawRecord, error) {
+func (f *fakeAdapter) Fetch(ctx context.Context, cfg json.RawMessage, opts FetchOptions) (FetchResult, error) {
+	f.mu.Lock()
+	f.lastOpts = opts
+	f.mu.Unlock()
+	records, err := f.records(ctx, cfg, opts)
+	return FetchResult{Records: records, Report: f.report}, err
+}
+
+func (f *fakeAdapter) records(ctx context.Context, cfg json.RawMessage, opts FetchOptions) ([]RawRecord, error) {
 	current := atomic.AddInt32(&f.active, 1)
 	for {
 		max := atomic.LoadInt32(&f.maxActive)
@@ -40,7 +59,7 @@ func (f *fakeAdapter) Fetch(ctx context.Context, cfg json.RawMessage, since *tim
 		}
 	}
 	if f.fetch != nil {
-		return f.fetch(ctx, cfg, since)
+		return f.fetch(ctx, cfg, opts)
 	}
 	return []RawRecord{{
 		ExternalID: "record-1",
@@ -105,7 +124,7 @@ func TestPollOnceFetchError(t *testing.T) {
 	loop, store, adapter := newLoopTest(t)
 	ctx := context.Background()
 
-	adapter.fetch = func(context.Context, json.RawMessage, *time.Time) ([]RawRecord, error) {
+	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
 		return nil, errors.New("fetch boom")
 	}
 	source, err := store.CreateSource(ctx, "Failing", "rss", json.RawMessage(`{}`), intPtr(300))
@@ -157,7 +176,7 @@ func TestPollOnceCanceledContextRecordsError(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	adapter.fetch = func(fetchCtx context.Context, _ json.RawMessage, _ *time.Time) ([]RawRecord, error) {
+	adapter.fetch = func(fetchCtx context.Context, _ json.RawMessage, _ FetchOptions) ([]RawRecord, error) {
 		cancel()
 		return nil, fetchCtx.Err()
 	}
@@ -188,6 +207,7 @@ func TestPollDueMaxParallel(t *testing.T) {
 	}
 
 	loop.pollDue(ctx)
+	loop.waitIdle()
 
 	if got := atomic.LoadInt32(&adapter.maxActive); got > 2 {
 		t.Fatalf("max concurrent fetches = %d, want <= 2", got)

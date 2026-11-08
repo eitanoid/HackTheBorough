@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,6 +36,8 @@ func TestCreateSourceValidation(t *testing.T) {
 		{name: "bad web config", body: `{"name":"X","kind":"web","config":{"url":"https://example.com"}}`, wantStatus: http.StatusBadRequest, wantError: "schema is required"},
 		{name: "interval zero", body: `{"name":"X","kind":"rss","config":{"url":"https://example.com/feed"},"poll_interval_s":0}`, wantStatus: http.StatusBadRequest, wantError: "poll_interval_s"},
 		{name: "interval too high", body: `{"name":"X","kind":"rss","config":{"url":"https://example.com/feed"},"poll_interval_s":86401}`, wantStatus: http.StatusBadRequest, wantError: "poll_interval_s"},
+		{name: "backfill zero", body: `{"name":"X","kind":"rss","config":{"url":"https://example.com/feed"},"backfill_rows":0}`, wantStatus: http.StatusBadRequest, wantError: "backfill_rows"},
+		{name: "backfill negative", body: `{"name":"X","kind":"rss","config":{"url":"https://example.com/feed"},"backfill_rows":-5}`, wantStatus: http.StatusBadRequest, wantError: "backfill_rows"},
 	}
 
 	for _, tt := range tests {
@@ -159,12 +162,26 @@ func TestGetSourceNotFound(t *testing.T) {
 type apiFakeAdapter struct {
 	kind   string
 	record ingest.RawRecord
+	block  chan struct{} // when set, Fetch waits until it is closed
+	// started, when set, is closed once Fetch begins.
+	started chan struct{}
+	once    sync.Once
 }
 
 func (a *apiFakeAdapter) Kind() string { return a.kind }
 
-func (a *apiFakeAdapter) Fetch(context.Context, json.RawMessage, *time.Time) ([]ingest.RawRecord, error) {
-	return []ingest.RawRecord{a.record}, nil
+func (a *apiFakeAdapter) Fetch(ctx context.Context, _ json.RawMessage, _ ingest.FetchOptions) (ingest.FetchResult, error) {
+	if a.started != nil {
+		a.once.Do(func() { close(a.started) })
+	}
+	if a.block != nil {
+		select {
+		case <-a.block:
+		case <-ctx.Done():
+			return ingest.FetchResult{}, ctx.Err()
+		}
+	}
+	return ingest.FetchResult{Records: []ingest.RawRecord{a.record}}, nil
 }
 
 func TestPollSourceIntegration(t *testing.T) {
@@ -175,6 +192,7 @@ func TestPollSourceIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
+	finishBackfill(t, store, source) // a pending backfill is handed to the loop instead
 	adapter := &apiFakeAdapter{
 		kind: "rss",
 		record: ingest.RawRecord{
@@ -203,3 +221,15 @@ func TestPollSourceIntegration(t *testing.T) {
 }
 
 func intPtr(value int) *int { return &value }
+
+// finishBackfill clears a new source's initial backfill so a manual poll runs
+// a normal poll inline.
+func finishBackfill(t *testing.T, store *ingest.Store, source ingest.Source) {
+	t.Helper()
+	if source.BackfillRequestedAt == nil {
+		return
+	}
+	if err := store.FinishBackfill(context.Background(), source.ID, *source.BackfillRequestedAt, nil); err != nil {
+		t.Fatalf("FinishBackfill: %v", err)
+	}
+}

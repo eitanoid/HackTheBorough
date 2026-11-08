@@ -86,6 +86,8 @@ backend:
       value: "openai/gpt-4o-mini"
     - name: INGEST_MAX_PAR
       value: "1"
+    - name: BACKFILL_DEFAULT_ROWS # rows a new source backfills when none is chosen
+      value: "500"
 
 postgres:
   image:

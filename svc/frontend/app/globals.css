@@ -315,6 +315,12 @@ h1, h2, h3, p { margin-top: 0; }
 .source-detail-status strong { color: #3a5b4d; font-size: 10px; font-weight: 650; }
 .source-detail-status small { overflow: hidden; color: #87968f; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .source-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 13px 0; }
+.source-backfill-editor { display: grid; gap: 6px; margin: 0 0 13px; }
+.source-backfill-row { display: flex; gap: 8px; align-items: flex-end; }
+.source-backfill-row .source-field { flex: 1; }
+.source-backfill-row .button { min-height: 38px; white-space: nowrap; }
+.source-backfill-help { color: #8096a1; font-size: 8px; font-weight: 450; line-height: 1.5; }
+.source-backfill-pending { color: #8096a1; }
 .source-detail-grid > div { display: grid; gap: 5px; padding: 11px; border: 1px solid #edf1ee; border-radius: 8px; background: #fff; }
 .source-detail-grid dt { color: #94a199; font-size: 8px; }
 .source-detail-grid dd { margin: 0; color: #3d6250; font-size: 11px; font-weight: 620; }

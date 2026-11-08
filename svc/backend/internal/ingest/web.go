@@ -99,11 +99,25 @@ type WebAdapter struct {
 
 func (a *WebAdapter) Kind() string { return "web" }
 
-func (a *WebAdapter) Fetch(ctx context.Context, raw json.RawMessage, _ *time.Time) ([]RawRecord, error) {
+// Fetch extracts records with Crawl4AI. Normal polls behave as configured
+// (one page unless config.pagination says otherwise). During a backfill the
+// adapter walks pages with the generic paging engine until opts.Limit records
+// are collected.
+func (a *WebAdapter) Fetch(ctx context.Context, raw json.RawMessage, opts FetchOptions) (FetchResult, error) {
 	cfg, err := ParseWebConfig(raw)
 	if err != nil {
-		return nil, err
+		return FetchResult{}, err
 	}
+	if opts.Backfill && opts.Limit > 0 {
+		return a.backfill(ctx, cfg, opts.Limit)
+	}
+	records, err := a.fetchConfigured(ctx, cfg)
+	return FetchResult{Records: records}, err
+}
+
+// fetchConfigured is the normal-poll path: it follows config.pagination
+// exactly as configured.
+func (a *WebAdapter) fetchConfigured(ctx context.Context, cfg WebConfig) ([]RawRecord, error) {
 	if cfg.Pagination != nil && cfg.Pagination.Strategy == "scroll" {
 		return a.fetchScrolled(ctx, cfg)
 	}
@@ -195,10 +209,18 @@ func (a *WebAdapter) pageURLs(ctx context.Context, cfg WebConfig) ([]string, err
 }
 
 func (a *WebAdapter) fetchScrolled(ctx context.Context, cfg WebConfig) ([]RawRecord, error) {
+	return a.fetchScrolledWith(ctx, cfg, *cfg.Pagination, 0, false)
+}
+
+// fetchScrolledWith scrolls the page with the given settings and extracts all
+// records from the resulting HTML. maxRecords > 0 adds a row hint to the LLM
+// question. With truncate, oversized HTML is cut to maxCrawlHTMLBytes instead
+// of failing.
+func (a *WebAdapter) fetchScrolledWith(ctx context.Context, cfg WebConfig, p Pagination, maxRecords int, truncate bool) ([]RawRecord, error) {
 	result, err := a.crawl(ctx, cfg.URL, map[string]any{
 		"scan_full_page":   true,
-		"max_scroll_steps": cfg.Pagination.MaxScrolls,
-		"scroll_delay":     cfg.Pagination.ScrollDelay,
+		"max_scroll_steps": p.MaxScrolls,
+		"scroll_delay":     p.ScrollDelay,
 		"cache_mode":       "bypass",
 	})
 	if err != nil {
@@ -212,12 +234,21 @@ func (a *WebAdapter) fetchScrolled(ctx context.Context, cfg WebConfig) ([]RawRec
 		return nil, errors.New("scroll returned no HTML")
 	}
 	if len(pageHTML) > maxCrawlHTMLBytes {
-		return nil, fmt.Errorf("scrolled HTML exceeds %d bytes", maxCrawlHTMLBytes)
+		if !truncate {
+			return nil, fmt.Errorf("scrolled HTML exceeds %d bytes", maxCrawlHTMLBytes)
+		}
+		pageHTML = pageHTML[:maxCrawlHTMLBytes]
 	}
-	extracted, err := a.llmJob(ctx, "raw:"+pageHTML, cfg)
+	extracted, err := a.llmJob(ctx, "raw:"+pageHTML, cfg, maxRecords)
 	if err != nil {
 		return nil, err
 	}
+	return recordsFromExtraction(extracted, cfg)
+}
+
+// recordsFromExtraction validates an LLM answer against the source schema
+// and converts it to records, dropping duplicates within the answer.
+func recordsFromExtraction(extracted any, cfg WebConfig) ([]RawRecord, error) {
 	if err := validateExtracted(extracted, cfg.Schema); err != nil {
 		return nil, err
 	}
@@ -225,19 +256,24 @@ func (a *WebAdapter) fetchScrolled(ctx context.Context, cfg WebConfig) ([]RawRec
 	if err != nil {
 		return nil, err
 	}
+	seen := map[string]bool{}
 	records := make([]RawRecord, 0, len(items))
 	for _, item := range items {
 		record, err := rawRecordFromMap(item, cfg)
 		if err != nil {
 			return nil, err
 		}
+		if seen[record.ExternalID] {
+			continue
+		}
+		seen[record.ExternalID] = true
 		records = append(records, record)
 	}
 	return records, nil
 }
 
 func (a *WebAdapter) extract(ctx context.Context, pageURL string, cfg WebConfig) (any, error) {
-	return a.llmJob(ctx, pageURL, cfg)
+	return a.llmJob(ctx, pageURL, cfg, 0)
 }
 
 type llmJobRequest struct {
@@ -255,13 +291,22 @@ type llmJobResponse struct {
 	Error  json.RawMessage `json:"error"`
 }
 
-func (a *WebAdapter) llmJob(ctx context.Context, pageURL string, cfg WebConfig) (any, error) {
+// llmJob extracts records from pageURL (or "raw:<html>") with the source's
+// query and schema. maxRecords > 0 asks the model for up to that many rows.
+func (a *WebAdapter) llmJob(ctx context.Context, pageURL string, cfg WebConfig, maxRecords int) (any, error) {
+	schema := strings.TrimSpace(string(cfg.Schema))
+	question := cfg.Query
+	if maxRecords > 0 {
+		question += fmt.Sprintf("\n\nExtract every matching record on this page, up to %d records.", maxRecords)
+	}
+	question += "\n\nReturn only JSON matching this JSON Schema:\n" + schema
+	return a.runLLM(ctx, pageURL, question, schema, cfg.Provider)
+}
+
+func (a *WebAdapter) runLLM(ctx context.Context, pageURL, question, schema, provider string) (any, error) {
 	if strings.TrimSpace(a.Token) == "" {
 		return nil, errors.New("CRAWL4AI_API_TOKEN is not set")
 	}
-	schema := strings.TrimSpace(string(cfg.Schema))
-	question := cfg.Query + "\n\nReturn only JSON matching this JSON Schema:\n" + schema
-	provider := cfg.Provider
 	if provider == "" {
 		provider = a.Provider
 	}

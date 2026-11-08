@@ -301,7 +301,7 @@ func TestRSSAdapterFetch(t *testing.T) {
 
 	adapter := &RSSAdapter{}
 	raw, _ := json.Marshal(map[string]string{"url": server.URL + "/feed.xml"})
-	records, err := adapter.Fetch(context.Background(), raw, nil)
+	records, err := fetchRecords(adapter, context.Background(), raw)
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
 	}
@@ -320,7 +320,7 @@ func TestRSSAdapterHTTPError(t *testing.T) {
 
 	adapter := &RSSAdapter{}
 	raw, _ := json.Marshal(map[string]string{"url": server.URL})
-	if _, err := adapter.Fetch(context.Background(), raw, nil); err == nil {
+	if _, err := adapter.Fetch(context.Background(), raw, FetchOptions{}); err == nil {
 		t.Fatal("expected HTTP error")
 	}
 }

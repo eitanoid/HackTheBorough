@@ -36,50 +36,107 @@ func ParseRSSConfig(raw json.RawMessage) (RSSConfig, error) {
 
 type RSSAdapter struct {
 	Client *http.Client
+	// PageDelay is the pause between pages during a backfill.
+	PageDelay time.Duration
 }
 
 func (a *RSSAdapter) Kind() string { return "rss" }
 
-func (a *RSSAdapter) Fetch(ctx context.Context, raw json.RawMessage, _ *time.Time) ([]RawRecord, error) {
+// Fetch reads one feed page on normal polls. During a backfill it follows
+// next pages (Link header, rel="next", page/offset parameters, cursor probes)
+// until opts.Limit records are collected.
+func (a *RSSAdapter) Fetch(ctx context.Context, raw json.RawMessage, opts FetchOptions) (FetchResult, error) {
 	cfg, err := ParseRSSConfig(raw)
 	if err != nil {
-		return nil, err
+		return FetchResult{}, err
 	}
+	if !opts.Backfill || opts.Limit <= 0 {
+		body, _, err := a.fetchPage(ctx, cfg.URL)
+		if err != nil {
+			return FetchResult{}, err
+		}
+		records, err := ParseFeed(body, time.Now().UTC())
+		return FetchResult{Records: records}, err
+	}
+	pager := &rssPager{adapter: a, first: cfg.URL}
+	records, report, err := CollectPages(ctx, pager, cfg.URL, PagingLimits{
+		Limit:     opts.Limit,
+		MaxPages:  clampInt(ceilDiv(opts.Limit, 10)+2, 1, 100),
+		MaxProbes: 4,
+		Delay:     a.PageDelay,
+	})
+	if err != nil {
+		return FetchResult{}, err
+	}
+	return FetchResult{Records: records, Report: &report}, nil
+}
+
+func (a *RSSAdapter) fetchPage(ctx context.Context, pageURL string) ([]byte, http.Header, error) {
 	client := a.Client
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.URL, nil)
+	resp, err := doWithRateLimitRetry(ctx, client, func() (*http.Request, error) {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Accept", "application/atom+xml, application/rss+xml, application/xml, text/xml")
+		req.Header.Set("User-Agent", "AnduinDataPipeline/1.0")
+		return req, nil
+	})
 	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/atom+xml, application/rss+xml, application/xml, text/xml")
-	req.Header.Set("User-Agent", "AnduinDataPipeline/1.0")
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fetch rss: %w", err)
+		return nil, nil, fmt.Errorf("fetch rss: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return nil, fmt.Errorf("rss HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, nil, fmt.Errorf("rss HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxFeedBytes+1))
 	if err != nil {
-		return nil, fmt.Errorf("read rss: %w", err)
+		return nil, nil, fmt.Errorf("read rss: %w", err)
 	}
 	if len(body) > maxFeedBytes {
-		return nil, fmt.Errorf("rss feed exceeds %d bytes", maxFeedBytes)
+		return nil, nil, fmt.Errorf("rss feed exceeds %d bytes", maxFeedBytes)
 	}
-	return ParseFeed(body, time.Now().UTC())
+	return body, resp.Header, nil
+}
+
+// rssPager fetches one feed page for CollectPages.
+type rssPager struct {
+	adapter *RSSAdapter
+	first   string
+}
+
+func (p *rssPager) FetchPage(ctx context.Context, pageURL string, _ int) (Page, error) {
+	body, header, err := p.adapter.fetchPage(ctx, pageURL)
+	if err != nil {
+		return Page{}, err
+	}
+	records, links, err := ParseFeedPage(body, time.Now().UTC())
+	if err != nil {
+		return Page{}, err
+	}
+	var candidates candidateList
+	candidates.add(linkHeaderNext(header, pageURL), MethodLinkHeader, false)
+	if next := relNext(links); next != "" {
+		candidates.add(resolveAgainst(pageURL, next), MethodRelNext, false)
+	}
+	candidates.urlCandidates(pageURL, records, pageURL == p.first, []string{"page", "paged"}, true)
+	return Page{URL: pageURL, Records: records, Candidates: candidates}, nil
 }
 
 type feedDocument struct {
 	Channel struct {
 		Items []rssItem `xml:"item"`
+		// <atom:link rel="next"> inside an RSS channel (RFC 5005).
+		AtomLinks []atomLink `xml:"http://www.w3.org/2005/Atom link"`
 	} `xml:"channel"`
 	Items   []rssItem   `xml:"item"`
 	Entries []atomEntry `xml:"entry"`
+	// Feed-level Atom links, e.g. <link rel="next" href="…"/>.
+	Links []atomLink `xml:"link"`
 }
 
 type rssItem struct {
@@ -124,10 +181,28 @@ type atomCategory struct {
 
 // ParseFeed accepts RSS 2.0, RSS 1.0 (RDF) and Atom documents.
 func ParseFeed(body []byte, now time.Time) ([]RawRecord, error) {
+	records, _, err := ParseFeedPage(body, now)
+	return records, err
+}
+
+// ParseFeedPage parses a feed and also returns its feed-level links (with
+// their rel attributes) so callers can find the next page.
+func ParseFeedPage(body []byte, now time.Time) ([]RawRecord, []pageLink, error) {
 	var doc feedDocument
 	if err := xml.Unmarshal(body, &doc); err != nil {
-		return nil, fmt.Errorf("invalid RSS/Atom XML: %w", err)
+		return nil, nil, fmt.Errorf("invalid RSS/Atom XML: %w", err)
 	}
+	var links []pageLink
+	for _, link := range append(append([]atomLink{}, doc.Links...), doc.Channel.AtomLinks...) {
+		if href := strings.TrimSpace(link.Href); href != "" {
+			links = append(links, pageLink{Href: href, Rel: link.Rel})
+		}
+	}
+	records, err := parseFeedRecords(doc, now)
+	return records, links, err
+}
+
+func parseFeedRecords(doc feedDocument, now time.Time) ([]RawRecord, error) {
 	items := append(doc.Channel.Items, doc.Items...)
 	if len(items) == 0 && len(doc.Entries) == 0 {
 		return nil, errors.New("document does not contain an RSS or Atom feed")

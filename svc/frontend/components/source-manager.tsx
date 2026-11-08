@@ -6,6 +6,8 @@ import {
   getSource,
   listSources,
   pollSource,
+  updateSourceBackfill,
+  type BackfillReport,
   type Source,
   type SourceKind,
 } from "@/lib/source-api";
@@ -13,6 +15,9 @@ import { getAnduinClient } from "@/lib/anduin-client";
 import ConfirmDeleteDialog from "@/components/confirm-delete-dialog";
 
 const maxCSVBytes = 20 * 1024 * 1024;
+// Only used to seed the editor for sources that predate backfill targets; new
+// sources take the server's BACKFILL_DEFAULT_ROWS when the field is left empty.
+const FALLBACK_BACKFILL_ROWS = 500;
 
 const defaultSchema = JSON.stringify(
   {
@@ -89,6 +94,57 @@ function interval(source: Source) {
   return source.poll_interval_s ?? source.pollIntervalSeconds ?? null;
 }
 
+/** Empty input means "use the server default"; otherwise a whole number ≥ 1. */
+function optionalPositiveInt(value: FormDataEntryValue | null): number | undefined {
+  const text = String(value ?? "").trim();
+  if (!text) return undefined;
+  const parsed = Number(text);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new Error("The row count must be a whole number of at least 1.");
+  }
+  return parsed;
+}
+
+function backfillRows(source: Source) {
+  return source.backfill_rows ?? source.backfillRows ?? null;
+}
+
+function backfillPending(source: Source) {
+  return Boolean(source.backfill_pending ?? source.backfillPending);
+}
+
+function lastBackfill(source: Source): BackfillReport | null {
+  return source.last_backfill ?? source.lastBackfill ?? null;
+}
+
+const methodLabels: Record<string, string> = {
+  "link-header": "server next link",
+  "rel-next": "next link",
+  anchor: "next button",
+  "page-number": "page numbers",
+  offset: "offsets",
+  cursor: "cursor",
+  llm: "AI-found next link",
+  scroll: "scrolling",
+};
+
+/** Turns a backfill report into e.g. "12 pages via next link · reached target". */
+function describeBackfill(report: BackfillReport) {
+  const pages = report.pages ?? 1;
+  const methods = Object.entries(report.methods ?? {})
+    .sort((a, b) => b[1] - a[1])
+    .map(([method]) => methodLabels[method] ?? method);
+  const stopped = report.stopped ?? "";
+  let reason = stopped;
+  if (stopped === "limit") reason = "reached target";
+  else if (stopped === "no-next") reason = "no more pages";
+  else if (stopped === "no-new-records") reason = "no new rows on the next page";
+  else if (stopped === "max-pages") reason = "page limit reached";
+  else if (stopped.startsWith("error: ")) reason = `stopped early: ${stopped.slice(7)}`;
+  const via = methods.length ? ` via ${methods.join(", ")}` : "";
+  return `${pages.toLocaleString()} ${pages === 1 ? "page" : "pages"}${via}${reason ? ` · ${reason}` : ""}`;
+}
+
 function createdAt(source: Source) {
   const value = source.created_at ?? source.createdAt;
   if (!value) return "—";
@@ -117,6 +173,9 @@ export default function SourceManager() {
   const [deletingSourceId, setDeletingSourceId] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [sourceToDelete, setSourceToDelete] = useState<Source | null>(null);
+  const [savingBackfill, setSavingBackfill] = useState(false);
+  const [backfillNotice, setBackfillNotice] = useState("");
+  const [backfillError, setBackfillError] = useState("");
 
   async function refreshSources(signal?: AbortSignal) {
     setLoadError("");
@@ -163,11 +222,35 @@ export default function SourceManager() {
     return () => controller.abort();
   }, [selectedId]);
 
+  // While a backfill is queued or running, refresh the open source every 10s
+  // so the stored-row count and the final report appear without a reload.
+  const selectedPending = selectedSource ? backfillPending(selectedSource) : false;
+  useEffect(() => {
+    if (!selectedId || !selectedPending) return;
+    let cancelled = false;
+    const timer = window.setInterval(() => {
+      void Promise.all([getSource(selectedId), listSources()])
+        .then(([fresh, rows]) => {
+          if (cancelled) return;
+          setSelectedSource(fresh);
+          setSources(rows);
+        })
+        .catch(() => {
+          // Best-effort refresh; the next tick retries.
+        });
+    }, 10_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [selectedId, selectedPending]);
+
   async function handleCreate(input: {
     name: string;
     kind: SourceKind;
     url: string;
     pollIntervalSeconds: number;
+    backfillRows?: number;
     query: string;
     schema: string;
     timeField: string;
@@ -180,6 +263,8 @@ export default function SourceManager() {
         name: input.name.trim(),
         fileName: input.file.name,
         csvData: new Uint8Array(await input.file.arrayBuffer()),
+        // 0 keeps every row: an uploaded file cannot be re-read later.
+        backfillRows: input.backfillRows ?? 0,
       });
       if (!uploaded.source) throw new Error("The API returned no uploaded source.");
       created = await getSource(uploaded.source.id);
@@ -205,6 +290,7 @@ export default function SourceManager() {
         kind: input.kind,
         config,
         pollIntervalSeconds: input.pollIntervalSeconds,
+        backfillRows: input.backfillRows,
       });
     }
 
@@ -216,7 +302,35 @@ export default function SourceManager() {
     setDetailError("");
     setPollNotice("");
     setPollError("");
+    setBackfillNotice("");
+    setBackfillError("");
     setSelectedId(created.id);
+  }
+
+  async function saveBackfill(rows: number) {
+    if (!selectedId || savingBackfill) return;
+    setSavingBackfill(true);
+    setBackfillNotice("");
+    setBackfillError("");
+    try {
+      const { backfillScheduled } = await updateSourceBackfill(selectedId, rows);
+      setBackfillNotice(
+        backfillScheduled
+          ? `Saved. Loading up to ${rows.toLocaleString()} rows in the background…`
+          : "Saved. Stored rows are kept.",
+      );
+      try {
+        const [list, fresh] = await Promise.all([listSources(), getSource(selectedId)]);
+        setSources(list);
+        setSelectedSource(fresh);
+      } catch {
+        // The update succeeded; refreshing the cached view is best-effort.
+      }
+    } catch (error) {
+      setBackfillError(error instanceof Error ? error.message : "Could not update the backfill target.");
+    } finally {
+      setSavingBackfill(false);
+    }
   }
 
   async function pollSelected() {
@@ -225,11 +339,15 @@ export default function SourceManager() {
     setPollNotice("");
     setPollError("");
     try {
-      const { inserted } = await pollSource(selectedId);
+      const { inserted, queued, backfill } = await pollSource(selectedId);
       setPollNotice(
-        inserted === 0
-          ? "Poll finished. No new records."
-          : `Poll finished. ${inserted} new ${inserted === 1 ? "record" : "records"} stored.`,
+        backfill
+          ? "The backfill is loading in the background. Rows will appear here as it finishes."
+          : queued
+            ? "This source is already queued to poll. It will run in a moment."
+            : inserted === 0
+              ? "Poll finished. No new records."
+              : `Poll finished. ${inserted} new ${inserted === 1 ? "record" : "records"} stored.`,
       );
       try {
         const [rows, fresh] = await Promise.all([listSources(), getSource(selectedId)]);
@@ -276,6 +394,8 @@ export default function SourceManager() {
     setDetailError("");
     setPollNotice("");
     setPollError("");
+    setBackfillNotice("");
+    setBackfillError("");
     setSelectedId(source.id);
   }
 
@@ -395,11 +515,17 @@ export default function SourceManager() {
           pollNotice={pollNotice}
           pollError={pollError}
           onPoll={() => void pollSelected()}
+          savingBackfill={savingBackfill}
+          backfillNotice={backfillNotice}
+          backfillError={backfillError}
+          onSaveBackfill={(rows) => void saveBackfill(rows)}
           onClose={() => {
             setSelectedId("");
             setSelectedSource(null);
             setPollNotice("");
             setPollError("");
+            setBackfillNotice("");
+            setBackfillError("");
           }}
         />
       )}
@@ -429,6 +555,7 @@ function CreateSourceDialog({
     kind: SourceKind;
     url: string;
     pollIntervalSeconds: number;
+    backfillRows?: number;
     query: string;
     schema: string;
     timeField: string;
@@ -479,6 +606,7 @@ function CreateSourceDialog({
         kind,
         url: String(form.get("url") ?? ""),
         pollIntervalSeconds: Number(form.get("pollIntervalSeconds") ?? 300),
+        backfillRows: optionalPositiveInt(form.get("backfillRows")),
         query: String(form.get("query") ?? ""),
         schema: String(form.get("schema") ?? ""),
         timeField: String(form.get("timeField") ?? ""),
@@ -599,6 +727,23 @@ function CreateSourceDialog({
             </label>
           )}
 
+          <label className="source-field">
+            <span>{kind === "csv" ? <>Rows to keep <em>Optional</em></> : <>Initial rows to load <em>Optional</em></>}</span>
+            <input
+              name="backfillRows"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step={1}
+              placeholder={kind === "csv" ? "All rows" : "Default"}
+            />
+            <small>
+              {kind === "csv"
+                ? "Leave blank to keep every row. Otherwise we keep the newest rows by time, or the last rows in the file."
+                : "We’ll page through the source until this many recent rows are loaded. Leave blank for the default. After that, each refresh adds only new rows."}
+            </small>
+          </label>
+
           {error && <p className="source-form-error" role="alert">{error}</p>}
 
           <div className="source-dialog-actions">
@@ -621,6 +766,10 @@ function SourceDetailDialog({
   pollNotice,
   pollError,
   onPoll,
+  savingBackfill,
+  backfillNotice,
+  backfillError,
+  onSaveBackfill,
   onClose,
 }: {
   source: Source | null;
@@ -630,9 +779,16 @@ function SourceDetailDialog({
   pollNotice: string;
   pollError: string;
   onPoll: () => void;
+  savingBackfill: boolean;
+  backfillNotice: string;
+  backfillError: string;
+  onSaveBackfill: (rows: number) => void;
   onClose: () => void;
 }) {
   const failed = source ? Boolean(lastError(source)) : false;
+  const target = source ? backfillRows(source) : null;
+  const pending = source ? backfillPending(source) : false;
+  const report = source ? lastBackfill(source) : null;
   return (
     <div className="source-dialog-backdrop" onMouseDown={(event) => {
       if (event.target === event.currentTarget && !polling) onClose();
@@ -664,7 +820,29 @@ function SourceDetailDialog({
               <div><dt>Refresh interval</dt><dd>{interval(source) ? `${interval(source)} seconds` : "One-off"}</dd></div>
               <div><dt>Last checked</dt><dd>{lastPolled(source) ? new Date(lastPolled(source) as string).toLocaleString() : "Not checked yet"}</dd></div>
               <div><dt>Added</dt><dd>{createdAt(source)}</dd></div>
+              <div>
+                <dt>Backfill target</dt>
+                <dd>
+                  {target ? `${target.toLocaleString()} rows` : "—"}
+                  {pending && <span className="source-backfill-pending"> · loading…</span>}
+                </dd>
+              </div>
+              <div>
+                <dt>Last backfill</dt>
+                <dd>{report ? describeBackfill(report) : pending ? "Queued" : "—"}</dd>
+              </div>
             </dl>
+            <BackfillEditor
+              key={`${source.id}:${target ?? ""}`}
+              initial={target ?? FALLBACK_BACKFILL_ROWS}
+              stored={recordCount(source)}
+              pending={pending}
+              oneOff={interval(source) === null}
+              saving={savingBackfill}
+              onSave={onSaveBackfill}
+            />
+            {backfillError && <p className="source-poll-status source-poll-fail" role="alert">{backfillError}</p>}
+            {backfillNotice && <p className="source-poll-status source-poll-ok" role="status">{backfillNotice}</p>}
             {source.profile?.summary && (
               <div className="source-profile-summary">
                 <span className="eyebrow">DATA PROFILE</span>
@@ -692,5 +870,64 @@ function SourceDetailDialog({
         </div>
       </section>
     </div>
+  );
+}
+
+function BackfillEditor({
+  initial,
+  stored,
+  pending,
+  oneOff,
+  saving,
+  onSave,
+}: {
+  initial: number;
+  stored: number;
+  pending: boolean;
+  oneOff: boolean;
+  saving: boolean;
+  onSave: (rows: number) => void;
+}) {
+  const [value, setValue] = useState(String(initial));
+  const rows = Number(value);
+  const valid = Number.isInteger(rows) && rows >= 1;
+  const changed = rows !== initial;
+  // Saving the same target again re-runs the backfill when fewer rows are
+  // stored (e.g. a source that was only ever fetched one page at a time).
+  const canLoadMore = !changed && !oneOff && !pending && rows > stored;
+  const canSubmit = valid && !saving && (changed || canLoadMore);
+
+  return (
+    <form
+      className="source-backfill-editor"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (canSubmit) onSave(rows);
+      }}
+    >
+      <div className="source-backfill-row">
+        <label className="source-field">
+          <span>Rows to backfill</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            step={1}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            disabled={saving}
+            aria-describedby="backfill-help"
+          />
+        </label>
+        <button type="submit" className="button button-outline" disabled={!canSubmit}>
+          {saving ? <><i className="source-spinner" /> Saving…</> : canLoadMore ? `Load up to ${rows.toLocaleString()} rows` : "Save"}
+        </button>
+      </div>
+      <small id="backfill-help" className="source-backfill-help">
+        {oneOff
+          ? "Uploaded files are stored once, so a higher number can't load more rows."
+          : "Raise it to load older rows in the background. Lowering it keeps the rows already stored."}
+      </small>
+    </form>
   );
 }

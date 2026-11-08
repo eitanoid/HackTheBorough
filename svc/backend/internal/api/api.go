@@ -33,6 +33,8 @@ type Server struct {
 
 	Store  *ingest.Store
 	Ingest *ingest.Loop
+	// BackfillDefault is the backfill target for sources created without one.
+	BackfillDefault int
 	// AnalysisDebug enables the /api/debug seed/generate/state endpoints,
 	// which write to Pool and spend LLM budget for any caller.
 	AnalysisDebug bool
@@ -79,6 +81,7 @@ func (s *Server) Routes() http.Handler {
 	connectServer := connect.NewServer()
 	v1connect.RegisterAnduinServiceHandler(connectServer, &ConnectService{
 		Store: s.Store, Bus: s.Bus, Author: s.Author, Investigator: s.Investigator, Runner: s.Runner,
+		BackfillDefault: s.BackfillDefault,
 	})
 	connecthttp.Mount(mux, connectServer, connecthttp.WithReadMaxBytes(ingest.MaxCSVBytes*4/3+(1<<20)))
 

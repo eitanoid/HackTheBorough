@@ -35,6 +35,18 @@ type ConnectService struct {
 	// Investigator writes investigation workflows; nil when investigations are disabled.
 	Investigator *investigate.Investigator
 	Runner       *workflows.Runner
+	// BackfillDefault is the backfill target used when a request leaves
+	// backfill_rows at zero (see ingest.ResolveBackfillRows).
+	BackfillDefault int
+}
+
+// backfillRows resolves a requested backfill target (0 = server default).
+func (s *ConnectService) backfillRows(requested int32) (int, error) {
+	rows, err := ingest.ResolveBackfillRows(int(requested), s.BackfillDefault)
+	if err != nil {
+		return 0, connect.NewError(connect.CodeInvalidArgument, err.Error())
+	}
+	return rows, nil
 }
 
 var _ v1connect.AnduinServiceHandler = (*ConnectService)(nil)
@@ -58,8 +70,12 @@ func (s *ConnectService) CreateSource(ctx context.Context, req *v1.CreateSourceR
 	if interval < 1 || interval > 86400 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "poll_interval_seconds must be from 1 to 86400")
 	}
+	backfillRows, err := s.backfillRows(req.GetBackfillRows())
+	if err != nil {
+		return nil, err
+	}
 	intervalValue := int(interval)
-	source, err := s.Store.CreateSource(ctx, name, kind, config, &intervalValue)
+	source, err := s.Store.CreateSourceWithBackfill(ctx, name, kind, config, &intervalValue, backfillRows)
 	if err != nil {
 		return nil, internalError(err)
 	}
@@ -89,11 +105,17 @@ func (s *ConnectService) UploadCSVSource(ctx context.Context, req *v1.UploadCSVS
 	if len(data) > ingest.MaxCSVBytes {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Sprintf("csv_data exceeds %d bytes", ingest.MaxCSVBytes))
 	}
+	// Uploads are only capped when the caller asks: the file is not kept, so
+	// dropped rows could never be recovered.
+	if req.GetBackfillRows() < 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, ingest.ErrInvalidBackfillRows.Error())
+	}
+	backfillRows := int(req.GetBackfillRows())
 	records, err := ingest.ParseCSV(data, "", time.Now().UTC())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err.Error())
 	}
-	source, err := s.Store.CreateUploadedCSV(ctx, name, fileName, records)
+	source, err := s.Store.CreateUploadedCSV(ctx, name, fileName, records, backfillRows)
 	if err != nil {
 		return nil, internalError(err)
 	}
@@ -155,6 +177,35 @@ func (s *ConnectService) GetSource(ctx context.Context, req *v1.GetSourceRequest
 		})
 	}
 	return response, nil
+}
+
+// UpdateSource changes a source's backfill target. Raising it above the
+// number of stored rows queues a re-backfill, which the ingest loop picks up
+// on its next tick (and publishes SourceUpdated once rows arrive). Lowering it
+// never deletes stored rows.
+func (s *ConnectService) UpdateSource(ctx context.Context, req *v1.UpdateSourceRequest) (*v1.UpdateSourceResponse, error) {
+	if s.Store == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, "database unavailable")
+	}
+	id := strings.TrimSpace(req.GetId())
+	if id == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "id is required")
+	}
+	if req.BackfillRows == nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "nothing to update: set backfill_rows")
+	}
+	if req.GetBackfillRows() < 1 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "backfill_rows must be at least 1")
+	}
+	source, scheduled, err := s.Store.SetBackfillRows(ctx, id, int(req.GetBackfillRows()))
+	if err != nil {
+		return nil, sourceLookupError(err)
+	}
+	message, err := sourceMessage(source)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	return &v1.UpdateSourceResponse{Source: message, BackfillScheduled: scheduled}, nil
 }
 
 func (s *ConnectService) DeleteSource(ctx context.Context, req *v1.DeleteSourceRequest) (*v1.DeleteSourceResponse, error) {
@@ -339,6 +390,15 @@ func sourceMessage(source ingest.Source) (*v1.Source, error) {
 		interval := int32(*source.PollIntervalS)
 		message.PollIntervalSeconds = &interval
 	}
+	message.BackfillRows = int32(source.BackfillRows)
+	message.BackfillPending = source.BackfillPending
+	if len(source.LastBackfill) > 0 && string(source.LastBackfill) != "null" {
+		var report ingest.PagingReport
+		if err := json.Unmarshal(source.LastBackfill, &report); err != nil {
+			return nil, fmt.Errorf("decode backfill report: %w", err)
+		}
+		message.LastBackfill = backfillReportMessage(report)
+	}
 	if len(source.Profile) > 0 && string(source.Profile) != "null" {
 		var profile contracts.SourceProfile
 		if err := json.Unmarshal(source.Profile, &profile); err != nil {
@@ -347,6 +407,21 @@ func sourceMessage(source ingest.Source) (*v1.Source, error) {
 		message.Profile = sourceProfileMessage(profile)
 	}
 	return message, nil
+}
+
+func backfillReportMessage(report ingest.PagingReport) *v1.BackfillReport {
+	message := &v1.BackfillReport{
+		Pages: int32(report.Pages), RejectedProbes: int32(report.RejectedProbes),
+		Rows: int32(report.Rows), Stopped: report.Stopped,
+		Methods: make(map[string]int32, len(report.Methods)),
+	}
+	for method, count := range report.Methods {
+		message.Methods[method] = int32(count)
+	}
+	if !report.FinishedAt.IsZero() {
+		message.FinishedAt = timestamppb.New(report.FinishedAt)
+	}
+	return message
 }
 
 func sourceProfileMessage(profile contracts.SourceProfile) *v1.SourceProfile {
