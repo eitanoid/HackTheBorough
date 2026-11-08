@@ -281,3 +281,11 @@ func (i *Investigator) publish(typ string, id uuid.UUID) {
 		i.Bus.Publish(events.Event{Type: typ, ID: id.String()})
 	}
 }
+
+// Generating reports whether an investigation is being written for the project
+// right now.
+func (i *Investigator) Generating(projectID uuid.UUID) bool {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	return i.inFlight[projectID]
+}

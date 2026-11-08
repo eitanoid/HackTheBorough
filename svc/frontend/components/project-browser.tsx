@@ -12,6 +12,7 @@ import {
   type Insight,
   type Project,
   type ProjectSummary,
+  type Run,
   type Source,
   type Workflow,
   ProjectSummarySchema,
@@ -54,6 +55,95 @@ function workflowKindLabel(kind: WorkflowKind) {
     default:
       return "Workflow";
   }
+}
+
+const INVESTIGATION_ERROR_PREFIX = "investigation: ";
+
+// The project keeps one generation error. The investigator marks its own with a
+// prefix; anything else came from writing the statistical workflow.
+function generationError(lastError: string): { kind: WorkflowKind; message: string } | null {
+  if (!lastError) return null;
+  if (lastError.startsWith(INVESTIGATION_ERROR_PREFIX)) {
+    return { kind: WorkflowKind.INVESTIGATION, message: lastError.slice(INVESTIGATION_ERROR_PREFIX.length) };
+  }
+  return { kind: WorkflowKind.STATISTICAL, message: lastError };
+}
+
+function GenerationStatus({
+  generating,
+  lastError,
+  latestRun,
+  busy,
+  retryError,
+  onRetryGeneration,
+  onRetryRun,
+}: {
+  generating: WorkflowKind[];
+  lastError: string;
+  latestRun?: Run;
+  busy: boolean;
+  retryError: string;
+  onRetryGeneration: (kind: WorkflowKind) => void;
+  onRetryRun: () => void;
+}) {
+  const failure = generationError(lastError);
+  // A retry in flight replaces the error it is retrying.
+  const shownFailure = failure && !generating.includes(failure.kind) ? failure : null;
+  const runFailed = latestRun?.status === RunStatus.FAILED;
+  if (!generating.length && !shownFailure && !runFailed && !retryError) return null;
+
+  return (
+    <div className="generation-status">
+      {generating.includes(WorkflowKind.STATISTICAL) && (
+        <p className="generation-banner" role="status" aria-live="polite">
+          <i className="project-spinner" aria-hidden="true" />
+          <span>
+            <strong>Writing the statistical workflow…</strong>
+            <small>An LLM is drafting the analysis and test-running it on your data.</small>
+          </span>
+        </p>
+      )}
+      {generating.includes(WorkflowKind.INVESTIGATION) && (
+        <p className="generation-banner generation-banner-investigation" role="status" aria-live="polite">
+          <i className="project-spinner" aria-hidden="true" />
+          <span>
+            <strong>Investigation in progress…</strong>
+            <small>An LLM is exploring the data with code. This can take a few minutes; its findings appear when it finishes.</small>
+          </span>
+        </p>
+      )}
+      {shownFailure && (
+        <div className="generation-banner generation-banner-error" role="alert">
+          <span>
+            <strong>
+              {shownFailure.kind === WorkflowKind.INVESTIGATION ? "Investigation failed" : "Statistical workflow generation failed"}
+            </strong>
+            <small>{shownFailure.message}</small>
+          </span>
+          <button
+            type="button"
+            className="button button-outline project-force-run"
+            disabled={busy}
+            onClick={() => onRetryGeneration(shownFailure.kind)}
+          >
+            {busy ? "Retrying…" : "Retry"}
+          </button>
+        </div>
+      )}
+      {runFailed && latestRun && (
+        <div className="generation-banner generation-banner-error" role="alert">
+          <span>
+            <strong>The latest run failed</strong>
+            <small>{latestRun.error || "No error message was recorded."}</small>
+          </span>
+          <button type="button" className="button button-outline project-force-run" disabled={busy} onClick={onRetryRun}>
+            {busy ? "Retrying…" : "Retry"}
+          </button>
+        </div>
+      )}
+      {retryError && <p className="project-force-run-error" role="alert">{retryError}</p>}
+    </div>
+  );
 }
 
 function InsightOriginBadge({ origin }: { origin: InsightOrigin }) {
@@ -176,6 +266,11 @@ export default function ProjectBrowser() {
   const [forceRunBaseId, setForceRunBaseId] = useState("");
   const [forceRunNotice, setForceRunNotice] = useState("");
   const [forceRunError, setForceRunError] = useState("");
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState("");
+
+  const generating = detail?.generating;
+  const isGenerating = Boolean(generating?.length);
 
   const sourceNames = useMemo(
     () => new Map(sources.map((source) => [source.id, source.name])),
@@ -321,8 +416,60 @@ export default function ProjectBrowser() {
     };
   }, [forceRunBaseId, forceRunPending, selectedId, updateProjectData]);
 
+  // Generations start without the page asking (a new project, a data update),
+  // so keep looking: quickly while one is running, slowly otherwise.
+  useEffect(() => {
+    if (!selectedId) return;
+    let cancelled = false;
+    const timer = setInterval(() => {
+      if (document.hidden) return;
+      void Promise.all([
+        getAnduinClient().getProject({ id: selectedId }),
+        getAnduinClient().listInsights({ projectId: selectedId }),
+        getAnduinClient().listWorkflows({ projectId: selectedId }),
+      ])
+        .then(([projectResponse, insightResponse, workflowResponse]) => {
+          if (!cancelled) updateProjectData(projectResponse, insightResponse.insights, workflowResponse.workflows);
+        })
+        .catch(() => {
+          // A missed poll is harmless; the next one retries.
+        });
+    }, isGenerating ? 3000 : 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [selectedId, isGenerating, updateProjectData]);
+
+  async function retryGeneration(kind: WorkflowKind) {
+    if (!selectedId) return;
+    setRetrying(true);
+    setRetryError("");
+    try {
+      await getAnduinClient().regenerateWorkflow({ projectId: selectedId, kind });
+    } catch (error: unknown) {
+      setRetryError(error instanceof Error ? error.message : "Could not retry the workflow.");
+      setRetrying(false);
+      return;
+    }
+    try {
+      // The server marks the project as generating before it answers, so this
+      // shows the progress banner at once.
+      const [projectResponse, insightResponse, workflowResponse] = await Promise.all([
+        getAnduinClient().getProject({ id: selectedId }),
+        getAnduinClient().listInsights({ projectId: selectedId }),
+        getAnduinClient().listWorkflows({ projectId: selectedId }),
+      ]);
+      updateProjectData(projectResponse, insightResponse.insights, workflowResponse.workflows);
+    } catch {
+      // The next poll picks the new state up.
+    }
+    setRetrying(false);
+  }
+
   function selectProject(id: string) {
     if (id === selectedId) return;
+    setRetryError("");
     setForceRunPending(false);
     setForceRunNotice("");
     setForceRunError("");
@@ -502,6 +649,16 @@ export default function ProjectBrowser() {
                     {forceRunError || forceRunNotice}
                   </p>
                 )}
+
+                <GenerationStatus
+                  generating={generating ?? []}
+                  lastError={selectedProject.lastError}
+                  latestRun={latestRun ?? undefined}
+                  busy={retrying || forceRunPending}
+                  retryError={retryError}
+                  onRetryGeneration={(kind) => void retryGeneration(kind)}
+                  onRetryRun={() => void forceRerun()}
+                />
 
                 <div className="project-detail-stats">
                   <div><strong>{selectedProject.sourceIds.length}</strong><span>Sources</span></div>

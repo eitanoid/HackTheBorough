@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	v1 "hacktheburgh/backend/gen/hacktheburgh/v1"
 	"hacktheburgh/backend/internal/events"
+	"hacktheburgh/backend/internal/investigate"
 	"hacktheburgh/backend/internal/workflows"
 )
 
@@ -110,8 +111,66 @@ func (s *ConnectService) CreateProject(ctx context.Context, req *v1.CreateProjec
 	return &v1.CreateProjectResponse{Project: &project}, nil
 }
 
-func (s *ConnectService) RegenerateWorkflow(_ context.Context, _ *v1.RegenerateWorkflowRequest) (*v1.RegenerateWorkflowResponse, error) {
-	return nil, connect.NewError(connect.CodeFailedPrecondition, "workflow regeneration service is not configured")
+// RegenerateWorkflow starts writing a new version of the project's workflow of
+// the given kind, ignoring the automatic start's retry backoff: it is the
+// retry button for a generation that failed. The generation is asynchronous,
+// so the response carries no workflow; GetProject reports it in `generating`
+// until it finishes, and a failure is written to the project's last_error.
+func (s *ConnectService) RegenerateWorkflow(ctx context.Context, req *v1.RegenerateWorkflowRequest) (*v1.RegenerateWorkflowResponse, error) {
+	if s.Store == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, "database unavailable")
+	}
+	projectID := strings.TrimSpace(req.GetProjectId())
+	if projectID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "project_id is required")
+	}
+	id, err := uuid.Parse(projectID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "project_id must be a UUID")
+	}
+	if err := s.ensureExists(ctx, "projects", projectID, "project"); err != nil {
+		return nil, err
+	}
+	switch req.GetKind() {
+	case v1.WorkflowKind_WORKFLOW_KIND_STATISTICAL:
+		if s.Author == nil {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "workflow generation is not configured (no LLM)")
+		}
+		err = s.Author.Start(id, nil)
+	case v1.WorkflowKind_WORKFLOW_KIND_INVESTIGATION:
+		if s.Investigator == nil {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "investigations are not configured (they need an LLM and the Python runner)")
+		}
+		err = s.Investigator.Start(id, nil)
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, "kind must be statistical or investigation")
+	}
+	switch {
+	case errors.Is(err, workflows.ErrBusy), errors.Is(err, investigate.ErrBusy):
+		return nil, connect.NewError(connect.CodeFailedPrecondition, "this workflow is already being generated")
+	case err != nil:
+		return nil, internalError(err)
+	}
+	if s.Bus != nil {
+		s.Bus.Publish(events.Event{Type: events.ProjectUpdated, ID: projectID})
+	}
+	return &v1.RegenerateWorkflowResponse{}, nil
+}
+
+// generating lists the workflow kinds being written for the project right now.
+func (s *ConnectService) generating(projectID string) []v1.WorkflowKind {
+	id, err := uuid.Parse(projectID)
+	if err != nil {
+		return nil
+	}
+	var kinds []v1.WorkflowKind
+	if s.Author != nil && s.Author.Generating(id) {
+		kinds = append(kinds, v1.WorkflowKind_WORKFLOW_KIND_STATISTICAL)
+	}
+	if s.Investigator != nil && s.Investigator.Generating(id) {
+		kinds = append(kinds, v1.WorkflowKind_WORKFLOW_KIND_INVESTIGATION)
+	}
+	return kinds
 }
 
 func (s *ConnectService) Replay(_ context.Context, _ *v1.ReplayRequest) (*v1.ReplayResponse, error) {
@@ -179,7 +238,7 @@ func (s *ConnectService) GetProject(ctx context.Context, req *v1.GetProjectReque
 	if err != nil {
 		return nil, internalError(err)
 	}
-	response := &v1.GetProjectResponse{Project: project, ActiveWorkflows: make([]*v1.Workflow, 0)}
+	response := &v1.GetProjectResponse{Project: project, ActiveWorkflows: make([]*v1.Workflow, 0), Generating: s.generating(id)}
 	workflows, err := s.loadWorkflows(ctx, "project_id", id, true)
 	if err != nil {
 		return nil, internalError(err)

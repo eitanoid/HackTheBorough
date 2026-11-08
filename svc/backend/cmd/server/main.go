@@ -122,6 +122,7 @@ func main() {
 	// generating one also needs the LLM. Both stay nil interfaces otherwise.
 	var replayer workflows.InvestigationReplayer
 	var investigatorStarter workflows.InvestigationStarter
+	var investigator *investigate.Investigator // also serves the API's retry and "generating" state
 	if runner != nil {
 		investigateStore := &investigate.PgStore{Pool: pool, Sources: analysisStore}
 		inputs := &investigate.InputBuilder{Store: analysisStore, History: cfg.AnalysisHistory}
@@ -129,7 +130,7 @@ func main() {
 			Store: investigateStore, Inputs: inputs, Runner: runner, Timeout: cfg.RunPythonTimeout, Chart: charts.Build,
 		}
 		if llmClient != nil {
-			investigator := &investigate.Investigator{
+			investigator = &investigate.Investigator{
 				LLM: llmClient, Runner: runner, Store: investigateStore, Inputs: inputs, Bus: bus, Chart: charts.Build,
 				Budget: cfg.InvestigatorBudget, MaxSteps: cfg.MaxInvestigatorIt, Timeout: cfg.RunPythonTimeout,
 			}
@@ -166,7 +167,7 @@ func main() {
 	go runLoop.Run(ctx)
 
 	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{
-		Bus: bus, LLM: llmClient, Author: author, DebugLLM: cfg.LLMDebug,
+		Bus: bus, LLM: llmClient, Author: author, Investigator: investigator, DebugLLM: cfg.LLMDebug,
 		AnalysisDebug: cfg.AnalysisDebug, Pool: pool, Store: store, Ingest: loop, Runner: runLoop,
 	}).Routes()}
 	go func() {

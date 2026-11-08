@@ -193,8 +193,6 @@ Connect-Protocol-Version: 1
 
 { "workflowId": "{{workflowId}}" }
 
-### Manually replay the investigation's recorded steps (no LLM call; FailedPrecondition until an investigation exists)
-# @ref createProject
 ### Force-run the active statistical workflow without requiring new data
 # Requires an active statistical workflow and data for the created project.
 # @ref createProject
@@ -203,16 +201,29 @@ POST {{baseUrl}}/hacktheburgh.v1.AnduinService/RunWorkflow
 Content-Type: application/json
 Connect-Protocol-Version: 1
 
-{ "projectId": "{{createProject.project.id}}", "kind": "WORKFLOW_KIND_INVESTIGATION" }
-
-### Regeneration and replay currently return FailedPrecondition until their services are wired
-{
-  "projectId": "{{createProject.project.id}}",
-  "kind": "WORKFLOW_KIND_STATISTICAL"
-}
+{ "projectId": "{{createProject.project.id}}", "kind": "WORKFLOW_KIND_STATISTICAL" }
 
 ?? status == 200
 ?? body.accepted == true
+
+### Manually replay the investigation's recorded steps (no LLM call; FailedPrecondition until an investigation exists)
+# @ref createProject
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/RunWorkflow
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "projectId": "{{createProject.project.id}}", "kind": "WORKFLOW_KIND_INVESTIGATION" }
+
+### Retry generating a workflow: starts an LLM-written new version in the background
+# Use WORKFLOW_KIND_STATISTICAL or WORKFLOW_KIND_INVESTIGATION. FailedPrecondition when
+# that kind is already being generated or no LLM is configured. GetProject lists the kinds
+# being generated in `generating`; a failure lands in project.lastError.
+# @ref createProject
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/RegenerateWorkflow
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "projectId": "{{createProject.project.id}}", "kind": "WORKFLOW_KIND_INVESTIGATION" }
 
 ### Delete an unlinked source (destructive)
 # Deleting a linked source also clears workflow runs and insights for affected projects.

@@ -183,6 +183,16 @@ h1, h2, h3, p { margin-top: 0; }
 .project-force-run-notice, .project-force-run-error { margin: 8px 0 0; font-size: 10px; line-height: 1.5; }
 .project-force-run-notice { color: #4f8763; }
 .project-force-run-error { color: #a65e51; }
+.generation-status { display: grid; gap: 8px; margin-top: 10px; }
+.generation-banner { display: flex; align-items: center; gap: 10px; margin: 0; padding: 9px 11px; border: 1px solid #c8e4ec; border-radius: 7px; background: #eff8fa; color: #287c96; font-size: 10px; line-height: 1.5; }
+.generation-banner > span { display: grid; flex: 1 1 auto; min-width: 0; gap: 1px; }
+.generation-banner strong { font-weight: 650; }
+.generation-banner small { color: inherit; font-size: 9px; opacity: .85; overflow-wrap: anywhere; }
+.generation-banner .project-spinner { flex: 0 0 auto; }
+.generation-banner-investigation { border-color: #ead9b8; background: #fbf5e8; color: #8a6a2a; }
+.generation-banner-investigation .project-spinner { border-color: #ecdcb9; border-top-color: #b98a2e; }
+.generation-banner-error { border-color: #f0d8d1; background: #fff8f6; color: #a65e51; }
+.generation-banner-error .project-force-run { flex: 0 0 auto; }
 .project-run-badge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid #e6ede7; border-radius: 14px; background: #f9fbf9; color: #839389; font-size: 9px; font-weight: 620; white-space: nowrap; }
 .project-run-badge i { width: 6px; height: 6px; border-radius: 50%; background: #b7c4bc; }
 .project-run-2 { border-color: #d8ecdd; background: #f2f9f3; color: #4f8763; }

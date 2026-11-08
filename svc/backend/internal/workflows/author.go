@@ -219,3 +219,11 @@ func (a *Author) publish(typ string, id uuid.UUID) {
 		a.Bus.Publish(events.Event{Type: typ, ID: id.String()})
 	}
 }
+
+// Generating reports whether a statistical workflow is being written for the
+// project right now.
+func (a *Author) Generating(projectID uuid.UUID) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.inFlight[projectID]
+}
