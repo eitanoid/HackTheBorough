@@ -34,19 +34,20 @@ type Config struct {
 	RunnerMemMB         int
 	RunnerMaxResultMB   int
 
-	IngestTick       time.Duration
-	IngestMaxPar     int
-	RunDebounce      time.Duration
-	RunSweep         time.Duration
-	LLMTimeout       time.Duration
-	ScriptTimeout    time.Duration // analysis script, passed to the runner
-	RunPythonTimeout time.Duration // investigator run_python tool
-	AuthorBudget     time.Duration // overall context for one generation
-	FDRQ             float64
-	MinN             int
-	MaxTests         int
-	AnalysisHistory  time.Duration
-	MaxNarrations    int
+	IngestTick         time.Duration
+	IngestMaxPar       int
+	RunDebounce        time.Duration
+	RunSweep           time.Duration
+	LLMTimeout         time.Duration
+	ScriptTimeout      time.Duration // analysis script, passed to the runner
+	RunPythonTimeout   time.Duration // investigator run_python tool
+	AuthorBudget       time.Duration // overall context for one generation
+	InvestigatorBudget time.Duration // overall context for one investigation
+	FDRQ               float64
+	MinN               int
+	MaxTests           int
+	AnalysisHistory    time.Duration
+	MaxNarrations      int
 
 	// Regeneration limits live in config, not in prompts.
 	ReviewMinInterval time.Duration // at most one review per workflow per interval
@@ -80,19 +81,20 @@ func Load() Config {
 		RunnerMemMB:         envInt("RUNNER_MEM_MB", 1024),
 		RunnerMaxResultMB:   envInt("RUNNER_MAX_RESULT_MB", 16),
 
-		IngestTick:       10 * time.Second,
-		IngestMaxPar:     envInt("INGEST_MAX_PAR", 4),
-		RunDebounce:      envSeconds("RUN_DEBOUNCE_S", 30),
-		RunSweep:         envSeconds("RUN_SWEEP_S", 300),
-		LLMTimeout:       60 * time.Second,
-		ScriptTimeout:    envSeconds("SCRIPT_TIMEOUT_S", 60),
-		RunPythonTimeout: envSeconds("RUN_PYTHON_TIMEOUT_S", 30),
-		AuthorBudget:     5 * time.Minute,
-		FDRQ:             envFloat("FDR_Q", 0.1),
-		MinN:             envInt("MIN_N", 30),
-		MaxTests:         envInt("MAX_TESTS", 2000),
-		AnalysisHistory:  time.Duration(envInt("ANALYSIS_HISTORY_DAYS", 365)) * 24 * time.Hour,
-		MaxNarrations:    5,
+		IngestTick:         10 * time.Second,
+		IngestMaxPar:       envInt("INGEST_MAX_PAR", 4),
+		RunDebounce:        envSeconds("RUN_DEBOUNCE_S", 30),
+		RunSweep:           envSeconds("RUN_SWEEP_S", 300),
+		LLMTimeout:         60 * time.Second,
+		ScriptTimeout:      envSeconds("SCRIPT_TIMEOUT_S", 60),
+		RunPythonTimeout:   envSeconds("RUN_PYTHON_TIMEOUT_S", 30),
+		AuthorBudget:       5 * time.Minute,
+		InvestigatorBudget: envSeconds("INVESTIGATOR_BUDGET_S", 480),
+		FDRQ:               envFloat("FDR_Q", 0.1),
+		MinN:               envInt("MIN_N", 30),
+		MaxTests:           envInt("MAX_TESTS", 2000),
+		AnalysisHistory:    time.Duration(envInt("ANALYSIS_HISTORY_DAYS", 365)) * 24 * time.Hour,
+		MaxNarrations:      5,
 
 		ReviewMinInterval: time.Duration(envInt("REVIEW_MIN_INTERVAL", 60)) * time.Second,
 		MaxRegenerations:  envInt("MAX_REGENERATIONS", 3),

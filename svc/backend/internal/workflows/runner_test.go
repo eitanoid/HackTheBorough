@@ -22,6 +22,15 @@ type fakeRunStore struct {
 	workflow       *StatisticalWorkflow
 	state          RunState
 
+	// Investigation side: kept apart so the statistical assertions stay as they were.
+	invWorkflow  *InvestigationWorkflow
+	invState     RunState
+	invRuns      map[uuid.UUID]bool
+	invStarts    int
+	invSuccesses int
+	invFails     int
+	invWatermark time.Time
+
 	startCalls       int
 	successCalls     int
 	failCalls        int
@@ -61,18 +70,54 @@ func (s *fakeRunStore) ProjectContext(context.Context, uuid.UUID) (RunProjectCon
 	return RunProjectContext{}, nil
 }
 
-func (s *fakeRunStore) State(context.Context, uuid.UUID) (RunState, error) {
+func (s *fakeRunStore) ActiveInvestigationWorkflow(context.Context, uuid.UUID) (*InvestigationWorkflow, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.invWorkflow == nil {
+		return nil, nil
+	}
+	wf := *s.invWorkflow
+	return &wf, nil
+}
+
+func (s *fakeRunStore) isInv(workflowID uuid.UUID) bool {
+	return s.invWorkflow != nil && s.invWorkflow.ID == workflowID
+}
+
+func (s *fakeRunStore) State(_ context.Context, workflowID uuid.UUID) (RunState, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.isInv(workflowID) {
+		return s.invState, nil
+	}
 	return s.state, nil
 }
 
-func (s *fakeRunStore) StartRun(_ context.Context, _ uuid.UUID, watermark, _ time.Time) (uuid.UUID, error) {
+func (s *fakeRunStore) StartRun(_ context.Context, workflowID uuid.UUID, watermark, _ time.Time) (uuid.UUID, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	id := uuid.New()
+	if s.isInv(workflowID) {
+		if s.invRuns == nil {
+			s.invRuns = map[uuid.UUID]bool{}
+		}
+		s.invRuns[id] = true
+		s.invStarts++
+		s.invWatermark = watermark
+		return id, nil
+	}
 	s.startCalls++
 	s.startedWatermark = watermark
-	return uuid.New(), nil
+	return id, nil
+}
+
+func (s *fakeRunStore) SucceedReplay(_ context.Context, _, _ uuid.UUID, _ contracts.ReplayResult, _ []InsightRow, finishedAt time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.invSuccesses++
+	watermark := s.invWatermark
+	s.invState = RunState{SuccessfulDataUpTo: &watermark, LastStatus: "succeeded", LastFinishedAt: &finishedAt}
+	return nil
 }
 
 func (s *fakeRunStore) SucceedRun(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ contracts.AnalysisResult, _ []InsightRow, finishedAt time.Time) error {
@@ -91,9 +136,16 @@ func (s *fakeRunStore) SucceedRun(_ context.Context, _ uuid.UUID, _ uuid.UUID, _
 	return nil
 }
 
-func (s *fakeRunStore) FailRun(_ context.Context, _ uuid.UUID, _ string, finishedAt time.Time) error {
+func (s *fakeRunStore) FailRun(_ context.Context, runID uuid.UUID, _ string, finishedAt time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.invRuns[runID] {
+		s.invFails++
+		s.invState.LastStatus = "failed"
+		s.invState.LastFinishedAt = &finishedAt
+		s.invState.ConsecutiveFailures++
+		return nil
+	}
 	s.failCalls++
 	failures := s.state.ConsecutiveFailures + 1
 	s.state.LastStatus = "failed"
@@ -271,7 +323,7 @@ func TestForceRunBypassesWatermarkAndRetryCooldown(t *testing.T) {
 	}
 	store.onSuccess = make(chan struct{}, 1)
 
-	if err := runner.ForceRun(context.Background(), projectID); err != nil {
+	if err := runner.ForceRun(context.Background(), projectID, KindStatistical); err != nil {
 		t.Fatalf("ForceRun: %v", err)
 	}
 	select {
@@ -302,7 +354,7 @@ func TestForceRunRejectsWorkflowAlreadyInFlight(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("scheduled run did not start")
 	}
-	if err := runner.ForceRun(context.Background(), projectID); !errors.Is(err, ErrBusy) {
+	if err := runner.ForceRun(context.Background(), projectID, KindStatistical); !errors.Is(err, ErrBusy) {
 		t.Fatalf("ForceRun error = %v, want ErrBusy", err)
 	}
 	close(analyser.resume)

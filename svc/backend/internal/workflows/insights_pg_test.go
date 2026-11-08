@@ -12,6 +12,7 @@ import (
 	"hacktheburgh/backend/internal/analysis"
 	"hacktheburgh/backend/internal/contracts"
 	"hacktheburgh/backend/internal/db"
+	"hacktheburgh/backend/internal/insightrows"
 )
 
 // TestInsightsPostgres needs a database: TEST_DATABASE_URL=postgres://... go test ./internal/workflows
@@ -76,7 +77,7 @@ func TestInsightsPostgres(t *testing.T) {
 	// insertInsights is idempotent per (run, finding_key).
 	tx, err := pool.Begin(ctx)
 	must(err)
-	must(insertInsights(ctx, tx, pid, run, rows))
+	must(insightrows.Insert(ctx, tx, pid, run, rows))
 	must(tx.Commit(ctx))
 	var n int
 	must(pool.QueryRow(ctx, `SELECT count(*) FROM insights WHERE run_id = $1`, run).Scan(&n))

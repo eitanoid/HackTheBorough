@@ -135,3 +135,28 @@ func TestNarrationSchemaRequiresPlausibility(t *testing.T) {
 		t.Fatalf("plausibility enum = %v", enum)
 	}
 }
+
+func TestReplayResultRoundTrip(t *testing.T) {
+	at := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	msg := "step raised"
+	in := ReplayResult{DataUpTo: at, Steps: []StepOutput{
+		{Seq: 1, Output: json.RawMessage(`{"result":{"rho":0.4}}`), AsOf: at},
+		{Seq: 2, Output: json.RawMessage(`{"result":{"rho":0.1}}`), Error: &msg, AsOf: at.Add(-24 * time.Hour)},
+	}}
+	b, err := json.Marshal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out ReplayResult
+	if err := json.Unmarshal(b, &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Steps[0].Error != nil || out.Steps[1].Error == nil || *out.Steps[1].Error != msg || !out.Steps[1].AsOf.Equal(at.Add(-24*time.Hour)) {
+		t.Fatalf("round trip lost fields: %+v", out)
+	}
+	c := Claim{Seq: 1, Path: "result.rho", Label: "rho"}
+	cb, _ := json.Marshal(c)
+	if string(cb) != `{"seq":1,"path":"result.rho","label":"rho"}` {
+		t.Fatalf("claim json = %s", cb)
+	}
+}

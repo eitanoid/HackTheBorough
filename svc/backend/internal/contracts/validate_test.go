@@ -119,3 +119,33 @@ func TestScriptResultValidate(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckScript(t *testing.T) {
+	if err := CheckScript(cleanScript); err != nil {
+		t.Fatalf("clean script: %v", err)
+	}
+	for _, c := range []struct{ name, code, want string }{
+		{"no INPUT", "result = {}\n", "INPUT"},
+		{"no result", "x = INPUT\n", "result"},
+		{"open", "x = INPUT\nopen('f')\nresult = {}\n", "open("},
+		{"too long", "result = INPUT\n" + strings.Repeat("#", MaxScriptChars), "limit"},
+	} {
+		err := CheckScript(c.code)
+		if err == nil || !strings.Contains(err.Error(), c.want) {
+			t.Errorf("%s: err = %v, want substring %q", c.name, err, c.want)
+		}
+	}
+}
+
+func TestChartValidate(t *testing.T) {
+	ok := Chart{Type: "series_line", Points: []map[string]any{{"t": "2026-11-01T00:00:00Z", "v": 1.0}}}
+	if err := ok.Validate(); err != nil {
+		t.Fatalf("valid chart: %v", err)
+	}
+	if err := (Chart{Type: "pie", Points: ok.Points}).Validate(); err == nil {
+		t.Error("unknown type accepted")
+	}
+	if err := (Chart{Type: "series_line"}).Validate(); err == nil {
+		t.Error("empty chart accepted")
+	}
+}

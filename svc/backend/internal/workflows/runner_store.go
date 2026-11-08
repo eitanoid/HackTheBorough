@@ -13,6 +13,7 @@ import (
 
 	"hacktheburgh/backend/internal/analysis"
 	"hacktheburgh/backend/internal/contracts"
+	"hacktheburgh/backend/internal/insightrows"
 )
 
 // PgRunStore persists scheduler state and statistical run results.
@@ -146,7 +147,7 @@ func (s *PgRunStore) SucceedRun(ctx context.Context, projectID, runID uuid.UUID,
 	}
 	defer tx.Rollback(context.WithoutCancel(ctx))
 
-	if err := insertInsights(ctx, tx, projectID, runID, insights); err != nil {
+	if err := insightrows.Insert(ctx, tx, projectID, runID, insights); err != nil {
 		return fmt.Errorf("insert insights: %w", err)
 	}
 	tag, err := tx.Exec(ctx, `
@@ -173,6 +174,50 @@ func (s *PgRunStore) FailRun(ctx context.Context, runID uuid.UUID, message strin
 	}
 	if tag.RowsAffected() != 1 {
 		return fmt.Errorf("mark run failed: run %s is not running", runID)
+	}
+	return nil
+}
+
+func (s *PgRunStore) ActiveInvestigationWorkflow(ctx context.Context, projectID uuid.UUID) (*InvestigationWorkflow, error) {
+	var workflow InvestigationWorkflow
+	err := s.Pool.QueryRow(ctx, `
+		SELECT id, project_id FROM workflows
+		WHERE project_id = $1 AND kind = 'investigation' AND is_active`, projectID).
+		Scan(&workflow.ID, &workflow.ProjectID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load active investigation workflow: %w", err)
+	}
+	return &workflow, nil
+}
+
+func (s *PgRunStore) SucceedReplay(ctx context.Context, projectID, runID uuid.UUID, result contracts.ReplayResult, insights []InsightRow, finishedAt time.Time) error {
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("encode replay result: %w", err)
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin successful run transaction: %w", err)
+	}
+	defer tx.Rollback(context.WithoutCancel(ctx))
+
+	if err := insightrows.Insert(ctx, tx, projectID, runID, insights); err != nil {
+		return fmt.Errorf("insert insights: %w", err)
+	}
+	tag, err := tx.Exec(ctx, `
+		UPDATE runs SET status = 'succeeded', result = $2, error = NULL, finished_at = $3
+		WHERE id = $1 AND status = 'running'`, runID, resultJSON, finishedAt)
+	if err != nil {
+		return fmt.Errorf("finish successful run: %w", err)
+	}
+	if tag.RowsAffected() != 1 {
+		return fmt.Errorf("finish successful run: run %s is not running", runID)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit successful run: %w", err)
 	}
 	return nil
 }

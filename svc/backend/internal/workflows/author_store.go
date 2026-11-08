@@ -12,6 +12,7 @@ import (
 
 	"hacktheburgh/backend/internal/analysis"
 	"hacktheburgh/backend/internal/contracts"
+	"hacktheburgh/backend/internal/insightrows"
 )
 
 type AuthorSource struct {
@@ -149,7 +150,7 @@ func (s *PgAuthorStore) SaveVersion(ctx context.Context, v SaveVersion) (uuid.UU
 		wfID, v.DataUpTo, result, v.StartedAt).Scan(&runID); err != nil {
 		return wfID, runID, fmt.Errorf("insert run: %w", err)
 	}
-	if err := insertInsights(ctx, tx, v.ProjectID, runID, v.Insights); err != nil {
+	if err := insightrows.Insert(ctx, tx, v.ProjectID, runID, v.Insights); err != nil {
 		return wfID, runID, err
 	}
 	if v.ReviewID != nil {

@@ -165,7 +165,7 @@ func newHarness(t *testing.T, runner pyrunner.Runner, replies ...string) *harnes
 		Store:  h.store,
 		Bus:    h.bus,
 		Budget: time.Minute,
-		OnFirstRun: func(_ context.Context, wf, _ uuid.UUID, _ contracts.AnalysisResult) {
+		OnFirstRun: func(_ context.Context, _, wf, _ uuid.UUID, _ contracts.AnalysisResult) {
 			h.first <- wf
 		},
 	}
