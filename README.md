@@ -1,3 +1,5 @@
+This project was a collaboration between [@eitanoid](https://github.com/eitanoid), [@tim4ik](https://github.com/tim4ik) and [@worm-eyes444](https://github.com/worm-eyes444) during the 2026 HacktheBurgh hackathon. 
+
 # Anduin
 
 Just like the great river that spans all of Middle-earth, Anduin seamlessly
@@ -7,10 +9,10 @@ actionable intelligence.
 
 ## Screenshots
 
-|  |  |
-| --- | --- |
 | <img src="assets/project-overview.png" alt="Anduin project overview" width="100%"> | <img src="assets/data-view.png" alt="Anduin data view" width="100%"> |
-| <img src="assets/data-sources.png" alt="Anduin data sources" width="100%"> | <img src="assets/create-project.png" alt="Anduin create project form" width="100%"> |
+| :- | :- |
+<img src="assets/data-sources.png" alt="Anduin data sources" width="100%">
+<img src="assets/create-project.png" alt="Anduin create project form" width="100%">
 
 ## Description
 
