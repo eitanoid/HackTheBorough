@@ -58,7 +58,7 @@ backend:
     - name: LLM_MODEL_REVIEWER
       value: "gpt-4.1"
     - name: LLM_MODEL_NARRATOR
-      value: "gpt-4.1-mini"
+      value: "gpt-5.4-mini"
     - name: LLM_DEBUG # "1" exposes POST /api/debug/chat; turn off outside dev
       value: "1"
     - name: FDR_Q # false-discovery level for the statistical findings; was the 0.05 code default

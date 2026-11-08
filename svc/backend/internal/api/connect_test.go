@@ -219,8 +219,9 @@ func TestConnectProjectReadRPCsIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `
-		INSERT INTO insights (run_id, project_id, origin, finding_key, kind, headline, explanation, caveats, stats, narrated_by)
-		VALUES ($1::uuid, $2::uuid, 'statistical', 'finding-1', 'correlation', 'Headline', 'Explanation', '["caveat"]'::jsonb, '{"rho": 0.5}'::jsonb, 'template')`, runID, projectID); err != nil {
+		INSERT INTO insights (run_id, project_id, origin, finding_key, kind, headline, explanation, caveats, stats, narrated_by, plausibility)
+		VALUES ($1::uuid, $2::uuid, 'statistical', 'finding-1', 'correlation', 'Headline', 'Explanation', '["caveat"]'::jsonb, '{"rho": 0.5}'::jsonb, 'llm', 'doubtful'),
+		       ($1::uuid, $2::uuid, 'statistical', 'finding-2', 'anomaly', 'Headline 2', 'Explanation 2', '[]'::jsonb, '{"rho": 0.6}'::jsonb, 'template', NULL)`, runID, projectID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -232,7 +233,7 @@ func TestConnectProjectReadRPCsIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListProjects: %v", err)
 	}
-	if len(projects.GetProjects()) != 1 || projects.GetProjects()[0].GetLatestRunStatus() != v1.RunStatus_RUN_STATUS_SUCCEEDED || projects.GetProjects()[0].GetFindingCount() != 1 || len(projects.GetProjects()[0].GetProject().GetSourceIds()) != 1 {
+	if len(projects.GetProjects()) != 1 || projects.GetProjects()[0].GetLatestRunStatus() != v1.RunStatus_RUN_STATUS_SUCCEEDED || projects.GetProjects()[0].GetFindingCount() != 2 || len(projects.GetProjects()[0].GetProject().GetSourceIds()) != 1 {
 		t.Fatalf("projects = %#v", projects.GetProjects())
 	}
 
@@ -248,8 +249,20 @@ func TestConnectProjectReadRPCsIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListInsights: %v", err)
 	}
-	if len(insights.GetInsights()) != 1 || insights.GetInsights()[0].GetStats().GetFields()["rho"].GetNumberValue() != 0.5 {
+	if len(insights.GetInsights()) != 2 {
 		t.Fatalf("insights = %#v", insights.GetInsights())
+	}
+	got := map[string]v1.Plausibility{}
+	for _, in := range insights.GetInsights() {
+		got[in.GetFindingKey()] = in.GetPlausibility()
+	}
+	if got["finding-1"] != v1.Plausibility_PLAUSIBILITY_DOUBTFUL || got["finding-2"] != v1.Plausibility_PLAUSIBILITY_UNSPECIFIED {
+		t.Fatalf("plausibility = %v", got)
+	}
+	for _, in := range insights.GetInsights() {
+		if in.GetFindingKey() == "finding-1" && in.GetStats().GetFields()["rho"].GetNumberValue() != 0.5 {
+			t.Fatalf("stats = %#v", in.GetStats())
+		}
 	}
 
 	workflows, err := client.ListWorkflows(ctx, &v1.ListWorkflowsRequest{ProjectId: projectID})

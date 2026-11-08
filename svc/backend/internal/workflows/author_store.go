@@ -41,11 +41,12 @@ type SaveVersion struct {
 	Result    contracts.AnalysisResult
 	StartedAt time.Time
 	ReviewID  *uuid.UUID
+	Insights  []InsightRow // stored with the run, in the same transaction
 }
 
 type AuthorStore interface {
 	LoadInputs(ctx context.Context, projectID uuid.UUID) (AuthorInputs, error)
-	// SaveVersion writes the new workflow and its run in one transaction and
+	// SaveVersion writes the new workflow, its run and its insight rows in one transaction and
 	// makes the new version the only active one.
 	SaveVersion(ctx context.Context, v SaveVersion) (workflowID, runID uuid.UUID, err error)
 	SetProjectError(ctx context.Context, projectID uuid.UUID, msg string) error
@@ -147,6 +148,9 @@ func (s *PgAuthorStore) SaveVersion(ctx context.Context, v SaveVersion) (uuid.UU
 		VALUES ($1, $2, 'succeeded', $3, $4, now()) RETURNING id`,
 		wfID, v.DataUpTo, result, v.StartedAt).Scan(&runID); err != nil {
 		return wfID, runID, fmt.Errorf("insert run: %w", err)
+	}
+	if err := insertInsights(ctx, tx, v.ProjectID, runID, v.Insights); err != nil {
+		return wfID, runID, err
 	}
 	if v.ReviewID != nil {
 		if _, err := tx.Exec(ctx, `UPDATE reviews SET next_workflow_id = $1 WHERE id = $2`, wfID, *v.ReviewID); err != nil {

@@ -90,6 +90,14 @@ enum NarratedBy {
   NARRATED_BY_TEMPLATE = 2;
 }
 
+// The narrator's verdict on a statistical finding. UNSPECIFIED covers template
+// text and investigation cards. A doubtful card is shown with a badge.
+enum Plausibility {
+  PLAUSIBILITY_UNSPECIFIED = 0;
+  PLAUSIBILITY_PLAUSIBLE = 1;
+  PLAUSIBILITY_DOUBTFUL = 2;
+}
+
 message SourceConfig {
   // URL is used by RSS and web sources.
   string url = 1;
@@ -249,6 +257,7 @@ message Insight {
   google.protobuf.Struct chart_spec = 12;
   NarratedBy narrated_by = 13;
   google.protobuf.Timestamp created_at = 14;
+  Plausibility plausibility = 15;
 }
 
 message WorkflowStep {

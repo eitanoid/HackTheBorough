@@ -17,6 +17,7 @@ import (
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/ingest"
 	"hacktheburgh/backend/internal/llm"
+	"hacktheburgh/backend/internal/narration"
 	"hacktheburgh/backend/internal/pyrunner"
 	"hacktheburgh/backend/internal/pyrunner/subproc"
 	"hacktheburgh/backend/internal/workflows"
@@ -103,6 +104,11 @@ func main() {
 			Store:  &workflows.PgAuthorStore{Pool: pool, Sources: analysisStore},
 			Bus:    bus,
 			Budget: cfg.AuthorBudget,
+			Insights: &workflows.InsightBuilder{
+				Store:         &workflows.PgInsightStore{Pool: pool},
+				Narrator:      &narration.Narrator{LLM: llmClient},
+				MaxNarrations: cfg.MaxNarrations,
+			},
 		}
 	}
 
