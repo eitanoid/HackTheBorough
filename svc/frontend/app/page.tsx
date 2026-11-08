@@ -39,6 +39,19 @@ function NavigationIcon({ kind }: { kind: "overview" | "sources" | "findings" | 
   );
 }
 
+function BrandMark() {
+  return (
+    <span className="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 40 40">
+        <circle className="river-disc" cx="20" cy="20" r="18" />
+        <path className="river-current" d="M9 10c8-3 21-2 22 4 1 5-8 6-15 9-7 3-7 8 1 10 4 1 8 0 13-2" />
+        <path className="river-shimmer" d="M10 10c8-2 17-1 19 3 1 3-4 5-10 7" />
+        <circle className="river-source" cx="9" cy="10" r="1.5" />
+      </svg>
+    </span>
+  );
+}
+
 function CorrelationChart() {
   return (
     <div className="chart-frame">
@@ -106,32 +119,26 @@ export default function Home() {
     <div className="app-shell">
       <aside className="sidebar">
         <a className="brand" href="#project" aria-label="Anduin home">
-          <span className="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 30 30">
-              <path d="M5 19.5 10.3 14l4 3.2L25 6.5" />
-              <path d="M19.5 6.5H25V12" />
-              <circle cx="5" cy="19.5" r="1.5" />
-            </svg>
-          </span>
+          <BrandMark />
           <span className="brand-copy"><strong>anduin</strong><small>INSIGHT STUDIO</small></span>
         </a>
 
-        <div className="workspace-switcher">
+        <a className="workspace-switcher" href="#projects" aria-label="Open project workspace">
           <span className="workspace-avatar">H</span>
           <span className="workspace-copy"><small>WORKSPACE</small><strong>Hack the Borough</strong></span>
           <span className="workspace-chevron" aria-hidden="true">⌄</span>
-        </div>
+        </a>
 
         <nav className="sidebar-nav" aria-label="Main navigation">
           <p className="nav-label">WORKSPACE</p>
-          <a className="nav-link active" href="#project">
-            <NavigationIcon kind="overview" /> <span>Overview</span>
+          <a className="nav-link active" href="#projects">
+            <NavigationIcon kind="overview" /> <span>Projects</span>
           </a>
           <a className="nav-link" href="#sources">
             <NavigationIcon kind="sources" /> <span>Sources</span>
           </a>
           <a className="nav-link" href="#findings">
-            <NavigationIcon kind="findings" /> <span>Findings</span><span className="nav-count">2</span>
+            <NavigationIcon kind="findings" /> <span>Insights</span>
           </a>
           <p className="nav-label nav-label-spaced">PROJECT</p>
           <a className="nav-link" href="#analysis-plan">
@@ -140,7 +147,7 @@ export default function Home() {
         </nav>
 
         <div className="sidebar-bottom">
-          <div className="system-status"><span className="status-dot" /> DEMO WORKSPACE</div>
+          <div className="system-status"><span className="status-dot" /> PROJECT WORKSPACE</div>
           <p>Insights that hold up.</p>
           <span>Built for curious people in Hackney.</span>
         </div>
@@ -148,7 +155,7 @@ export default function Home() {
 
       <div className="mobile-header">
         <a className="brand" href="#project">
-          <span className="brand-mark" aria-hidden="true"><svg viewBox="0 0 30 30"><path d="M5 19.5 10.3 14l4 3.2L25 6.5" /><path d="M19.5 6.5H25V12" /><circle cx="5" cy="19.5" r="1.5" /></svg></span>
+          <BrandMark />
           <span className="brand-copy"><strong>anduin</strong><small>INSIGHT STUDIO</small></span>
         </a>
         <span className="mobile-demo-label"><i className="status-dot" /> DEMO PREVIEW</span>
@@ -188,7 +195,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="findings-section" id="findings" aria-labelledby="findings-heading">
+          <section className="findings-section" aria-labelledby="findings-heading">
             <div className="section-heading findings-heading">
               <div><span className="eyebrow">VERIFIED INSIGHTS</span><h2 id="findings-heading">What stands out</h2></div>
               <span className="verified-count"><span>✓</span> 2 findings held up</span>
