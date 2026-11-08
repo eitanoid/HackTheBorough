@@ -33,9 +33,14 @@ const (
 	AnduinServiceListSourcesProcedure = "/hacktheburgh.v1.AnduinService/ListSources"
 	// AnduinServiceGetSourceProcedure is the procedure name of the AnduinService's GetSource RPC.
 	AnduinServiceGetSourceProcedure = "/hacktheburgh.v1.AnduinService/GetSource"
+	// AnduinServiceDeleteSourceProcedure is the procedure name of the AnduinService's DeleteSource RPC.
+	AnduinServiceDeleteSourceProcedure = "/hacktheburgh.v1.AnduinService/DeleteSource"
 	// AnduinServiceCreateProjectProcedure is the procedure name of the AnduinService's CreateProject
 	// RPC.
 	AnduinServiceCreateProjectProcedure = "/hacktheburgh.v1.AnduinService/CreateProject"
+	// AnduinServiceDeleteProjectProcedure is the procedure name of the AnduinService's DeleteProject
+	// RPC.
+	AnduinServiceDeleteProjectProcedure = "/hacktheburgh.v1.AnduinService/DeleteProject"
 	// AnduinServiceListProjectsProcedure is the procedure name of the AnduinService's ListProjects RPC.
 	AnduinServiceListProjectsProcedure = "/hacktheburgh.v1.AnduinService/ListProjects"
 	// AnduinServiceGetProjectProcedure is the procedure name of the AnduinService's GetProject RPC.
@@ -86,11 +91,25 @@ var (
 			Procedure:  AnduinServiceGetSourceProcedure,
 		}
 	})
+	anduinServiceDeleteSourceSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_hacktheburgh_v1_service_proto.Services().ByName("AnduinService").Methods().ByName("DeleteSource"),
+			Procedure:  AnduinServiceDeleteSourceProcedure,
+		}
+	})
 	anduinServiceCreateProjectSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
 			Schema:     v1.File_hacktheburgh_v1_service_proto.Services().ByName("AnduinService").Methods().ByName("CreateProject"),
 			Procedure:  AnduinServiceCreateProjectProcedure,
+		}
+	})
+	anduinServiceDeleteProjectSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_hacktheburgh_v1_service_proto.Services().ByName("AnduinService").Methods().ByName("DeleteProject"),
+			Procedure:  AnduinServiceDeleteProjectProcedure,
 		}
 	})
 	anduinServiceListProjectsSpec = sync.OnceValue(func() connect.Spec {
@@ -157,7 +176,9 @@ type AnduinServiceClient interface {
 	UploadCSVSource(context.Context, *v1.UploadCSVSourceRequest) (*v1.UploadCSVSourceResponse, error)
 	ListSources(context.Context, *v1.ListSourcesRequest) (*v1.ListSourcesResponse, error)
 	GetSource(context.Context, *v1.GetSourceRequest) (*v1.GetSourceResponse, error)
+	DeleteSource(context.Context, *v1.DeleteSourceRequest) (*v1.DeleteSourceResponse, error)
 	CreateProject(context.Context, *v1.CreateProjectRequest) (*v1.CreateProjectResponse, error)
+	DeleteProject(context.Context, *v1.DeleteProjectRequest) (*v1.DeleteProjectResponse, error)
 	ListProjects(context.Context, *v1.ListProjectsRequest) (*v1.ListProjectsResponse, error)
 	GetProject(context.Context, *v1.GetProjectRequest) (*v1.GetProjectResponse, error)
 	ListInsights(context.Context, *v1.ListInsightsRequest) (*v1.ListInsightsResponse, error)
@@ -180,7 +201,9 @@ type AnduinServiceHandler interface {
 	UploadCSVSource(context.Context, *v1.UploadCSVSourceRequest) (*v1.UploadCSVSourceResponse, error)
 	ListSources(context.Context, *v1.ListSourcesRequest) (*v1.ListSourcesResponse, error)
 	GetSource(context.Context, *v1.GetSourceRequest) (*v1.GetSourceResponse, error)
+	DeleteSource(context.Context, *v1.DeleteSourceRequest) (*v1.DeleteSourceResponse, error)
 	CreateProject(context.Context, *v1.CreateProjectRequest) (*v1.CreateProjectResponse, error)
+	DeleteProject(context.Context, *v1.DeleteProjectRequest) (*v1.DeleteProjectResponse, error)
 	ListProjects(context.Context, *v1.ListProjectsRequest) (*v1.ListProjectsResponse, error)
 	GetProject(context.Context, *v1.GetProjectRequest) (*v1.GetProjectResponse, error)
 	ListInsights(context.Context, *v1.ListInsightsRequest) (*v1.ListInsightsResponse, error)
@@ -200,7 +223,9 @@ func RegisterAnduinServiceHandler(server *connect.Server, svc AnduinServiceHandl
 		connect.Method{Spec: anduinServiceUploadCSVSourceSpec(), Handler: adapter.uploadCSVSource},
 		connect.Method{Spec: anduinServiceListSourcesSpec(), Handler: adapter.listSources},
 		connect.Method{Spec: anduinServiceGetSourceSpec(), Handler: adapter.getSource},
+		connect.Method{Spec: anduinServiceDeleteSourceSpec(), Handler: adapter.deleteSource},
 		connect.Method{Spec: anduinServiceCreateProjectSpec(), Handler: adapter.createProject},
+		connect.Method{Spec: anduinServiceDeleteProjectSpec(), Handler: adapter.deleteProject},
 		connect.Method{Spec: anduinServiceListProjectsSpec(), Handler: adapter.listProjects},
 		connect.Method{Spec: anduinServiceGetProjectSpec(), Handler: adapter.getProject},
 		connect.Method{Spec: anduinServiceListInsightsSpec(), Handler: adapter.listInsights},
@@ -231,8 +256,16 @@ func (UnimplementedAnduinServiceHandler) GetSource(context.Context, *v1.GetSourc
 	return nil, connect.NewError(connect.CodeUnimplemented, "hacktheburgh.v1.AnduinService.GetSource is not implemented")
 }
 
+func (UnimplementedAnduinServiceHandler) DeleteSource(context.Context, *v1.DeleteSourceRequest) (*v1.DeleteSourceResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "hacktheburgh.v1.AnduinService.DeleteSource is not implemented")
+}
+
 func (UnimplementedAnduinServiceHandler) CreateProject(context.Context, *v1.CreateProjectRequest) (*v1.CreateProjectResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "hacktheburgh.v1.AnduinService.CreateProject is not implemented")
+}
+
+func (UnimplementedAnduinServiceHandler) DeleteProject(context.Context, *v1.DeleteProjectRequest) (*v1.DeleteProjectResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "hacktheburgh.v1.AnduinService.DeleteProject is not implemented")
 }
 
 func (UnimplementedAnduinServiceHandler) ListProjects(context.Context, *v1.ListProjectsRequest) (*v1.ListProjectsResponse, error) {
@@ -303,9 +336,25 @@ func (c *anduinServiceClient) GetSource(ctx context.Context, req *v1.GetSourceRe
 	return &res, nil
 }
 
+func (c *anduinServiceClient) DeleteSource(ctx context.Context, req *v1.DeleteSourceRequest) (*v1.DeleteSourceResponse, error) {
+	var res v1.DeleteSourceResponse
+	if err := c.client.CallUnary(ctx, anduinServiceDeleteSourceSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
 func (c *anduinServiceClient) CreateProject(ctx context.Context, req *v1.CreateProjectRequest) (*v1.CreateProjectResponse, error) {
 	var res v1.CreateProjectResponse
 	if err := c.client.CallUnary(ctx, anduinServiceCreateProjectSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *anduinServiceClient) DeleteProject(ctx context.Context, req *v1.DeleteProjectRequest) (*v1.DeleteProjectResponse, error) {
+	var res v1.DeleteProjectResponse
+	if err := c.client.CallUnary(ctx, anduinServiceDeleteProjectSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -425,12 +474,36 @@ func (h anduinServiceHandler) getSource(ctx context.Context, _ connect.Spec, str
 	return stream.Send(res)
 }
 
+func (h anduinServiceHandler) deleteSource(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteSourceRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteSource(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
 func (h anduinServiceHandler) createProject(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
 	var req v1.CreateProjectRequest
 	if err := stream.Receive(&req); err != nil {
 		return err
 	}
 	res, err := h.svc.CreateProject(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h anduinServiceHandler) deleteProject(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.DeleteProjectRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.DeleteProject(ctx, &req)
 	if err != nil {
 		return err
 	}

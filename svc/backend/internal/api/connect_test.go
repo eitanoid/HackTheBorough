@@ -466,3 +466,57 @@ func TestConnectRunWorkflowForcesRerunAtSameWatermark(t *testing.T) {
 	}
 	t.Fatal("forced rerun did not persist a new succeeded run")
 }
+
+func TestConnectDeleteSourceAndProjectRPCs(t *testing.T) {
+	pool := testdb.Open(t)
+	ctx := context.Background()
+	store := ingest.NewStore(pool)
+	source, err := store.CreateSource(ctx, "Delete source", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projectID, workflowID uuid.UUID
+	if err := pool.QueryRow(ctx, `INSERT INTO projects (name, goal) VALUES ('Delete project', 'Cleanup test') RETURNING id`).Scan(&projectID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO project_sources (project_id, data_source_id) VALUES ($1, $2)`, projectID, source.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO workflows (project_id, kind, version, analysis_script, insight_prompt, rationale)
+		VALUES ($1, 'statistical', 1, 'result = {}', 'Prompt', 'Workflow') RETURNING id`, projectID).Scan(&workflowID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO runs (workflow_id, data_up_to, status, result, finished_at)
+		VALUES ($1, now(), 'succeeded', '{}'::jsonb, now())`, workflowID); err != nil {
+		t.Fatal(err)
+	}
+
+	httpServer := httptest.NewServer((&Server{Store: store}).Routes())
+	t.Cleanup(httpServer.Close)
+	client := connectTestClient(t, httpServer)
+	deletedSource, err := client.DeleteSource(ctx, &v1.DeleteSourceRequest{Id: source.ID})
+	if err != nil || !deletedSource.GetDeleted() || len(deletedSource.GetAffectedProjectIds()) != 1 || deletedSource.GetAffectedProjectIds()[0] != projectID.String() {
+		t.Fatalf("DeleteSource response = %#v, err=%v", deletedSource, err)
+	}
+	if _, err := client.GetSource(ctx, &v1.GetSourceRequest{Id: source.ID}); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetSource after deletion code = %v, want NotFound; err=%v", connect.CodeOf(err), err)
+	}
+	project, err := client.GetProject(ctx, &v1.GetProjectRequest{Id: projectID.String()})
+	if err != nil || len(project.GetActiveWorkflows()) != 0 || project.GetLatestRun() != nil || project.GetProject().GetLastError() == "" {
+		t.Fatalf("project after source deletion = %#v, err=%v", project, err)
+	}
+	insights, err := client.ListInsights(ctx, &v1.ListInsightsRequest{ProjectId: projectID.String()})
+	if err != nil || len(insights.GetInsights()) != 0 {
+		t.Fatalf("insights after source deletion = %#v, err=%v", insights, err)
+	}
+
+	deletedProject, err := client.DeleteProject(ctx, &v1.DeleteProjectRequest{Id: projectID.String()})
+	if err != nil || !deletedProject.GetDeleted() {
+		t.Fatalf("DeleteProject response = %#v, err=%v", deletedProject, err)
+	}
+	if _, err := client.GetProject(ctx, &v1.GetProjectRequest{Id: projectID.String()}); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("GetProject after deletion code = %v, want NotFound; err=%v", connect.CodeOf(err), err)
+	}
+}

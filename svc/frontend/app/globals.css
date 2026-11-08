@@ -181,10 +181,30 @@ h1, h2, h3, p { margin-top: 0; }
 .projects-panel-heading h2 { margin: 5px 0 0; color: #25483b; font-size: 23px; font-weight: 610; letter-spacing: -.65px; }
 .projects-panel-heading .new-project-button { min-height: 42px; }
 .projects-browser-grid { display: grid; grid-template-columns: minmax(230px, .82fr) minmax(0, 1.5fr); gap: 11px; align-items: stretch; }
-.projects-list { display: grid; align-content: start; max-height: 390px; gap: 6px; overflow-y: auto; padding-right: 2px; }
-.project-list-item { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 13px 12px; border: 1px solid #e9efeb; border-radius: 9px; background: #fcfdfc; color: inherit; text-align: left; font-family: inherit; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.projects-list { display: grid; min-height: 0; max-height: min(70vh, 760px); align-content: start; gap: 6px; overflow-y: auto; overscroll-behavior: contain; padding: 0 4px 0 0; }
+.project-list-item { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; width: 100%; padding: 13px 12px; border: 1px solid #e9efeb; border-radius: 9px; background: #fcfdfc; color: inherit; font-family: inherit; transition: border-color .15s ease, background .15s ease; }
 .project-list-item:hover, .project-list-item.is-selected { border-color: #c9dfd0; background: #f3f9f4; }
-.project-list-item:focus-visible, .project-browser-empty button:focus-visible { outline: 3px solid rgba(61, 152, 118, .24); outline-offset: 2px; }
+.project-list-select { min-width: 0; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.project-list-select:focus-visible, .project-browser-empty button:focus-visible, .project-delete-button:focus-visible, .source-delete-button:focus-visible { outline: 3px solid rgba(61, 152, 118, .24); outline-offset: 2px; }
+.project-delete-button, .source-delete-button { display: grid; width: 26px; height: 26px; flex: 0 0 auto; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #91a399; font: inherit; font-size: 19px; line-height: 1; cursor: pointer; }
+.project-delete-button:hover, .source-delete-button:hover { border-color: #f0d8d1; background: #fff8f6; color: #a65e51; }
+.project-delete-button:disabled, .source-delete-button:disabled { cursor: wait; opacity: .6; }
+.confirm-delete-backdrop { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 20px; background: rgba(11, 33, 27, .5); backdrop-filter: blur(4px); }
+.confirm-delete-dialog { width: min(430px, 100%); padding: 23px; border: 1px solid #e7ebe8; border-radius: 15px; background: #fff; box-shadow: 0 24px 80px rgba(10, 39, 28, .24); }
+.confirm-delete-heading { display: flex; align-items: center; justify-content: space-between; }
+.confirm-delete-icon { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid #f2dcd6; border-radius: 12px; background: #fff6f3; color: #b76758; }
+.confirm-delete-icon svg { width: 21px; height: 21px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
+.confirm-delete-close { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid #e7ece8; border-radius: 8px; background: #fbfcfb; color: #71857b; font-size: 20px; cursor: pointer; }
+.confirm-delete-dialog h2 { margin: 18px 0 5px; color: #1e4035; font-size: 20px; font-weight: 650; letter-spacing: -.35px; }
+.confirm-delete-name { margin: 0; color: #526d60; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.confirm-delete-impact { margin: 15px 0 0; padding: 11px 12px; border: 1px solid #f0e7d6; border-radius: 8px; background: #fffcf5; color: #81704f; font-size: 10px; line-height: 1.6; }
+.confirm-delete-error { margin: 10px 0 0; color: #a65e51; font-size: 10px; line-height: 1.5; }
+.confirm-delete-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.confirm-delete-actions .button { min-width: 100px; padding: 0 13px; cursor: pointer; }
+.button-danger { border: 1px solid #a95447; background: #ad5b4e; color: #fff; }
+.button-danger:hover { background: #984a3f; }
+.button-danger:disabled, .confirm-delete-close:disabled { cursor: wait; opacity: .68; }
+.confirm-delete-spinner { width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.45); border-top-color: #fff; border-radius: 50%; animation: source-spin .7s linear infinite; }
 .project-list-status { width: 8px; height: 8px; border-radius: 50%; background: #b7c4bc; }
 .project-status-1 { background: #d5a44c; }
 .project-status-2 { background: #77b987; }
@@ -194,7 +214,7 @@ h1, h2, h3, p { margin-top: 0; }
 .project-list-copy small { overflow: hidden; color: #87968f; font-size: 10px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
 .project-list-meta { color: #9aa69f; font-size: 9px; }
 .project-list-arrow { color: #91a399; font-size: 17px; }
-.project-detail-card { min-width: 0; padding: 22px; border: 1px solid #e8efea; border-radius: 11px; background: #fff; }
+.project-detail-card { min-width: 0; max-height: min(70vh, 760px); overflow-y: auto; overscroll-behavior: contain; padding: 22px; border: 1px solid #e8efea; border-radius: 11px; background: #fff; }
 .project-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 13px; }
 .project-detail-heading h3 { margin: 6px 0 5px; color: #1e4035; font-size: 24px; font-weight: 610; letter-spacing: -.65px; }
 .project-detail-heading p { margin: 0; color: #71857b; font-size: 12px; line-height: 1.6; }
@@ -242,9 +262,10 @@ h1, h2, h3, p { margin-top: 0; }
 .button-primary:disabled, .button-outline:disabled { cursor: wait; opacity: .68; }
 .source-refresh { border: 0; background: none; cursor: pointer; }
 .source-refresh:disabled { cursor: wait; opacity: .55; }
-.source-item-button { width: 100%; min-height: 52px; text-align: left; font-family: inherit; cursor: pointer; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
-.source-item-button:hover { border-color: #cfe1d5; background: #f6faf7; transform: translateY(-1px); }
-.source-item-button:focus-visible, .source-dialog button:focus-visible, .source-field input:focus-visible, .source-field select:focus-visible, .source-field textarea:focus-visible { outline: 3px solid rgba(61, 152, 118, .24); outline-offset: 2px; }
+.source-item-row { gap: 4px; }
+.source-item-select { display: flex; min-width: 0; min-height: 38px; flex: 1; align-items: center; gap: 9px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.source-item-select:hover { background: #f6faf7; }
+.source-item-select:focus-visible, .source-dialog button:focus-visible, .source-field input:focus-visible, .source-field select:focus-visible, .source-field textarea:focus-visible { outline: 3px solid rgba(61, 152, 118, .24); outline-offset: 2px; }
 .source-item-copy { display: grid; min-width: 0; flex: 1; gap: 3px; }
 .source-state { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; margin-left: auto; color: #57906d; font-size: 8px; font-weight: 650; white-space: nowrap; }
 .source-state i { width: 6px; height: 6px; border-radius: 50%; background: #78bc89; }

@@ -15,6 +15,7 @@ import {
 } from "@/gen/hacktheburgh/v1/service_pb";
 import { getAnduinClient } from "@/lib/anduin-client";
 import NewProjectLauncher from "@/components/new-project-launcher";
+import ConfirmDeleteDialog from "@/components/confirm-delete-dialog";
 
 function runStatusLabel(status: RunStatus) {
   switch (status) {
@@ -56,6 +57,9 @@ export default function ProjectBrowser() {
   const [selectedId, setSelectedId] = useState("");
   const [projectListLoading, setProjectListLoading] = useState(true);
   const [projectListError, setProjectListError] = useState("");
+  const [deletingProjectId, setDeletingProjectId] = useState("");
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [deleteProjectError, setDeleteProjectError] = useState("");
   const [detail, setDetail] = useState<GetProjectResponse | null>(null);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -85,6 +89,7 @@ export default function ProjectBrowser() {
         summary.project?.id === projectId
           ? {
               ...summary,
+              project: projectResponse.project ?? summary.project,
               latestRunStatus: projectResponse.latestRun?.status ?? RunStatus.UNSPECIFIED,
               findingCount: currentInsights.length,
             }
@@ -145,6 +150,26 @@ export default function ProjectBrowser() {
     return () => {
       cancelled = true;
     };
+  }, [selectedId, updateProjectData]);
+
+  useEffect(() => {
+    function sourceDeleted(event: Event) {
+      const projectIds = (event as CustomEvent<string[]>).detail ?? [];
+      if (!selectedId || !projectIds.includes(selectedId)) return;
+      void Promise.all([
+        getAnduinClient().getProject({ id: selectedId }),
+        getAnduinClient().listInsights({ projectId: selectedId }),
+        getAnduinClient().listWorkflows({ projectId: selectedId }),
+      ])
+        .then(([projectResponse, insightResponse, workflowResponse]) => {
+          updateProjectData(projectResponse, insightResponse.insights, workflowResponse.workflows);
+        })
+        .catch((error: unknown) => {
+          setDetailError(error instanceof Error ? error.message : "Could not refresh the project after source deletion.");
+        });
+    }
+    window.addEventListener("anduin:source-deleted", sourceDeleted);
+    return () => window.removeEventListener("anduin:source-deleted", sourceDeleted);
   }, [selectedId, updateProjectData]);
 
   useEffect(() => {
@@ -235,6 +260,29 @@ export default function ProjectBrowser() {
     setSelectedId(project.id);
   }
 
+  async function deleteProject(project: Project) {
+    setDeletingProjectId(project.id);
+    setDeleteProjectError("");
+    try {
+      await getAnduinClient().deleteProject({ id: project.id });
+      setProjectToDelete(null);
+      const remaining = projects.filter((summary) => summary.project?.id !== project.id);
+      setProjects(remaining);
+      if (selectedId === project.id) {
+        const nextId = preferredProject(remaining);
+        setDetail(null);
+        setInsights([]);
+        setWorkflows([]);
+        setSelectedId(nextId);
+        setDetailLoading(Boolean(nextId));
+      }
+    } catch (error) {
+      setDeleteProjectError(error instanceof Error ? error.message : "Could not delete this project.");
+    } finally {
+      setDeletingProjectId("");
+    }
+  }
+
   const selectedProject = detail?.project;
   const selectedSummary = projects.find((summary) => summary.project?.id === selectedId);
   const latestRun = detail?.latestRun;
@@ -272,24 +320,42 @@ export default function ProjectBrowser() {
               if (!project) return null;
               const selected = project.id === selectedId;
               return (
-                <button
-                  type="button"
+                <div
                   className={`project-list-item ${selected ? "is-selected" : ""}`}
                   key={project.id}
-                  onClick={() => selectProject(project.id)}
-                  aria-current={selected ? "true" : undefined}
+                  role="listitem"
                 >
                   <span className={`project-list-status project-status-${summary.latestRunStatus}`} aria-hidden="true" />
-                  <span className="project-list-copy">
-                    <strong>{project.name}</strong>
-                    <small>{project.goal}</small>
-                    <span className="project-list-meta">
-                      {project.sourceIds.length} {project.sourceIds.length === 1 ? "source" : "sources"}
-                      {summary.findingCount ? ` · ${summary.findingCount} findings` : ""}
+                  <button
+                    type="button"
+                    className="project-list-select"
+                    onClick={() => selectProject(project.id)}
+                    aria-current={selected ? "true" : undefined}
+                  >
+                    <span className="project-list-copy">
+                      <strong>{project.name}</strong>
+                      <small>{project.goal}</small>
+                      <span className="project-list-meta">
+                        {project.sourceIds.length} {project.sourceIds.length === 1 ? "source" : "sources"}
+                        {summary.findingCount ? ` · ${summary.findingCount} findings` : ""}
+                      </span>
                     </span>
-                  </span>
+                  </button>
                   <span className="project-list-arrow" aria-hidden="true">›</span>
-                </button>
+                  <button
+                    type="button"
+                    className="project-delete-button"
+                    aria-label={`Delete ${project.name}`}
+                    title={`Delete ${project.name}`}
+                    disabled={Boolean(deletingProjectId)}
+                    onClick={() => {
+                      setDeleteProjectError("");
+                      setProjectToDelete(project);
+                    }}
+                  >
+                    {deletingProjectId === project.id ? "…" : "×"}
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -396,6 +462,18 @@ export default function ProjectBrowser() {
           </div>
         </div>
       )}
+      <ConfirmDeleteDialog
+        open={Boolean(projectToDelete)}
+        itemName={projectToDelete?.name ?? ""}
+        itemType="project"
+        impact="Its workflow versions, run history, and insights will be permanently removed. Connected data sources will remain available."
+        busy={Boolean(projectToDelete && deletingProjectId === projectToDelete.id)}
+        error={deleteProjectError}
+        onCancel={() => {
+          if (!deletingProjectId) setProjectToDelete(null);
+        }}
+        onConfirm={() => projectToDelete && void deleteProject(projectToDelete)}
+      />
     </section>
   );
 }

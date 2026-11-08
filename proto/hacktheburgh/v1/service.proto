@@ -12,8 +12,10 @@ service AnduinService {
   rpc UploadCSVSource(UploadCSVSourceRequest) returns (UploadCSVSourceResponse);
   rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse);
   rpc GetSource(GetSourceRequest) returns (GetSourceResponse);
+  rpc DeleteSource(DeleteSourceRequest) returns (DeleteSourceResponse);
 
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  rpc DeleteProject(DeleteProjectRequest) returns (DeleteProjectResponse);
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
   rpc GetProject(GetProjectRequest) returns (GetProjectResponse);
   rpc ListInsights(ListInsightsRequest) returns (ListInsightsResponse);
@@ -193,6 +195,16 @@ message GetSourceResponse {
   repeated DataRecord recent_records = 2;
 }
 
+message DeleteSourceRequest {
+  string id = 1;
+}
+
+message DeleteSourceResponse {
+  bool deleted = 1;
+  // Projects that lost a linked source and had their workflow results cleared.
+  repeated string affected_project_ids = 2;
+}
+
 message Project {
   string id = 1;
   string name = 2;
@@ -279,6 +291,14 @@ message CreateProjectResponse {
   Project project = 1;
   Workflow active_workflow = 2;
   Run latest_run = 3;
+}
+
+message DeleteProjectRequest {
+  string id = 1;
+}
+
+message DeleteProjectResponse {
+  bool deleted = 1;
 }
 
 message ListProjectsRequest {}
