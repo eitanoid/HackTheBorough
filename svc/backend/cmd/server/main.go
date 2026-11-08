@@ -59,7 +59,7 @@ func main() {
 	llmClient, err := llm.New(cfg)
 	if err != nil {
 		// Keep serving without an LLM so the rest of the app still works.
-		slog.Warn("llm disabled", "err", err)
+		slog.Error("llm disabled", "err", err)
 	}
 
 	// The statistical author needs the Python runner. If it can't start, the

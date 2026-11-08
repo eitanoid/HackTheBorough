@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -186,6 +187,9 @@ func (c *Client) call(ctx context.Context, p Purpose, attempt int, req ChatReque
 	defer cancel()
 	start := time.Now()
 	resp, err := c.Provider.Chat(ctx, req)
+	if err != nil {
+		slog.Error("llm request failed", "purpose", p, "model", req.Model, "attempt", attempt, "err", err)
+	}
 	e := logEntry{TS: start, Purpose: p, Model: req.Model, Attempt: attempt, LatencyMS: time.Since(start).Milliseconds(),
 		InputTokens: resp.InputTokens, OutputTokens: resp.OutputTokens, Error: errStr(err), Prompt: req.Messages, Reply: resp.Content}
 	c.Log.write(e)
