@@ -23,7 +23,7 @@ func TestStoreCreateAndGetSource(t *testing.T) {
 	ctx := context.Background()
 
 	config := json.RawMessage(`{"url":"https://example.com/feed.xml"}`)
-	source, err := store.CreateSource(ctx, "Example", "rss", config, intPtr(300))
+	source, err := store.CreateSource(ctx, "Example", "rss", config, intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestStoreCreateAndGetSource(t *testing.T) {
 func TestStoreOneOffSourceHasNilInterval(t *testing.T) {
 	store := newTestStore(t)
 
-	source, err := store.CreateSource(context.Background(), "Upload", "csv", json.RawMessage(`{}`), nil)
+	source, err := store.CreateSource(context.Background(), "Upload", "csv", json.RawMessage(`{}`), nil, 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestStoreDueSources(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSource(ctx, "Due", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(60))
+	source, err := store.CreateSource(ctx, "Due", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(60), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestStoreInsertRecordsDedup(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSource(ctx, "Records", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Records", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestStoreMarkPolled(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSource(ctx, "Errors", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Errors", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -197,11 +197,11 @@ func TestStoreEnsureSourceDoesNotUpdate(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	first, err := store.EnsureSource(ctx, "Stable", "rss", json.RawMessage(`{"url":"https://example.com/one"}`), intPtr(300))
+	first, err := store.EnsureSource(ctx, "Stable", "rss", json.RawMessage(`{"url":"https://example.com/one"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("EnsureSource: %v", err)
 	}
-	second, err := store.EnsureSource(ctx, "Stable", "rss", json.RawMessage(`{"url":"https://example.com/two"}`), intPtr(60))
+	second, err := store.EnsureSource(ctx, "Stable", "rss", json.RawMessage(`{"url":"https://example.com/two"}`), intPtr(60), 0)
 	if err != nil {
 		t.Fatalf("EnsureSource second: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestStoreCascadeDelete(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSource(ctx, "Cascade", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Cascade", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -270,7 +270,7 @@ func TestStoreInsertRecordsEmpty(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSource(ctx, "Empty", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Empty", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}

@@ -49,8 +49,8 @@ func main() {
 
 	store := ingest.NewStore(pool)
 	adapters := map[string]ingest.SourceAdapter{
-		"rss": &ingest.RSSAdapter{},
-		"csv": &ingest.CSVAdapter{},
+		"rss": &ingest.RSSAdapter{PageDelay: time.Second},
+		"csv": &ingest.CSVAdapter{PageDelay: time.Second},
 		"web": &ingest.WebAdapter{
 			Crawl4AIURL: cfg.Crawl4AIURL,
 			Token:       cfg.Crawl4AIToken,
@@ -169,6 +169,7 @@ func main() {
 	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{
 		Bus: bus, LLM: llmClient, Author: author, Investigator: investigator, DebugLLM: cfg.LLMDebug,
 		AnalysisDebug: cfg.AnalysisDebug, Pool: pool, Store: store, Ingest: loop, Runner: runLoop,
+		BackfillDefault: cfg.BackfillDefaultRows,
 	}).Routes()}
 	go func() {
 		slog.Info("backend listening", "addr", cfg.Addr)

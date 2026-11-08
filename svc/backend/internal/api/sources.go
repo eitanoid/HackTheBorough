@@ -18,6 +18,8 @@ type createSourceRequest struct {
 	Kind          string          `json:"kind"`
 	PollIntervalS *int            `json:"poll_interval_s"`
 	Config        json.RawMessage `json:"config"`
+	// BackfillRows is the first poll's row target; omitted selects the default.
+	BackfillRows *int `json:"backfill_rows"`
 }
 
 func (s *Server) createSource(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +73,17 @@ func (s *Server) createSource(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "poll_interval_s must be from 1 to 86400"})
 		return
 	}
-	source, err := s.Store.CreateSource(r.Context(), request.Name, request.Kind, request.Config, interval)
+	// Omitted or 0 selects the server default, as on the Connect API.
+	requested := 0
+	if request.BackfillRows != nil {
+		requested = *request.BackfillRows
+	}
+	backfillRows, err := ingest.ResolveBackfillRows(requested, s.BackfillDefault)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	source, err := s.Store.CreateSource(r.Context(), request.Name, request.Kind, request.Config, interval, backfillRows)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -117,12 +129,21 @@ func (s *Server) pollSource(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "ingestion unavailable"})
 		return
 	}
+	// A pending backfill can page through a site for minutes, longer than an
+	// HTTP request should live; PollNow hands it to the ingest loop instead.
 	ctx, cancel := context.WithTimeout(r.Context(), 4*time.Minute)
 	defer cancel()
-	inserted, err := s.Ingest.PollOnce(ctx, r.PathValue("id"))
-	if err != nil {
+	result, err := s.Ingest.PollNow(ctx, r.PathValue("id"))
+	switch {
+	case errors.Is(err, ingest.ErrPollQueued):
+		writeJSON(w, http.StatusAccepted, map[string]any{"inserted": 0, "queued": true})
+	case errors.Is(err, ingest.ErrPollInProgress):
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "a poll for this source is already running"})
+	case err != nil:
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
-		return
+	case result.Queued:
+		writeJSON(w, http.StatusAccepted, map[string]any{"inserted": 0, "queued": true, "backfill": result.Backfill})
+	default:
+		writeJSON(w, http.StatusOK, map[string]any{"inserted": result.Inserted})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"inserted": inserted})
 }

@@ -12,6 +12,7 @@ service AnduinService {
   rpc UploadCSVSource(UploadCSVSourceRequest) returns (UploadCSVSourceResponse);
   rpc ListSources(ListSourcesRequest) returns (ListSourcesResponse);
   rpc GetSource(GetSourceRequest) returns (GetSourceResponse);
+  rpc UpdateSource(UpdateSourceRequest) returns (UpdateSourceResponse);
   rpc DeleteSource(DeleteSourceRequest) returns (DeleteSourceResponse);
 
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
@@ -149,6 +150,29 @@ message Source {
   google.protobuf.Timestamp created_at = 8;
   // Absent for one-off sources such as CSV uploads.
   optional int32 poll_interval_seconds = 9;
+  // Target row count for the initial (or a re-requested) backfill. Later
+  // polls are not capped.
+  int32 backfill_rows = 10;
+  // True while a backfill is queued or running.
+  bool backfill_pending = 11;
+  // How the most recent backfill walked the source; absent before the first.
+  BackfillReport last_backfill = 12;
+}
+
+message BackfillReport {
+  // Pages accepted, including the first.
+  int32 pages = 1;
+  // How further pages were reached, e.g. {"rel-next": 11}. Methods:
+  // link-header, rel-next, anchor, page-number, offset, cursor, llm, scroll.
+  map<string, int32> methods = 2;
+  // Guessed next pages that were tried and rejected.
+  int32 rejected_probes = 3;
+  // Rows kept by the backfill.
+  int32 rows = 4;
+  // Why paging stopped: limit, no-next, no-new-records, max-pages, or
+  // "error: ..." when a later page failed.
+  string stopped = 5;
+  google.protobuf.Timestamp finished_at = 6;
 }
 
 message DataRecord {
@@ -164,6 +188,8 @@ message CreateSourceRequest {
   SourceConfig config = 3;
   // Zero selects the source adapter's default polling interval.
   int32 poll_interval_seconds = 4;
+  // Rows to backfill on the first poll. Zero selects the server default.
+  int32 backfill_rows = 5;
 }
 
 message CreateSourceResponse {
@@ -174,6 +200,9 @@ message UploadCSVSourceRequest {
   string name = 1;
   string file_name = 2;
   bytes csv_data = 3;
+  // Maximum rows to store from the file (the newest by time, or the last rows
+  // when there is no time column). Zero stores every row.
+  int32 backfill_rows = 4;
 }
 
 message UploadCSVSourceResponse {
@@ -193,6 +222,19 @@ message GetSourceRequest {
 message GetSourceResponse {
   Source source = 1;
   repeated DataRecord recent_records = 2;
+}
+
+message UpdateSourceRequest {
+  string id = 1;
+  // New backfill target. Raising it above the stored row count queues a
+  // re-backfill; lowering it never deletes stored rows.
+  optional int32 backfill_rows = 2;
+}
+
+message UpdateSourceResponse {
+  Source source = 1;
+  // True when the update queued a re-backfill.
+  bool backfill_scheduled = 2;
 }
 
 message DeleteSourceRequest {

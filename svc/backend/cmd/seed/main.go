@@ -85,7 +85,7 @@ func main() {
 			os.Exit(1)
 		}
 		interval := item.interval
-		source, err := store.EnsureSource(ctx, item.name, item.kind, raw, &interval)
+		source, err := store.EnsureSource(ctx, item.name, item.kind, raw, &interval, cfg.BackfillDefaultRows)
 		if err != nil {
 			slog.Error("register source", "source", item.name, "err", err)
 			os.Exit(1)

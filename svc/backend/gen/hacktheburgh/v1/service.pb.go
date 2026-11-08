@@ -883,8 +883,15 @@ type Source struct {
 	CreatedAt    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// Absent for one-off sources such as CSV uploads.
 	PollIntervalSeconds *int32 `protobuf:"varint,9,opt,name=poll_interval_seconds,json=pollIntervalSeconds,proto3,oneof" json:"poll_interval_seconds,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Target row count for the initial (or a re-requested) backfill. Later
+	// polls are not capped.
+	BackfillRows int32 `protobuf:"varint,10,opt,name=backfill_rows,json=backfillRows,proto3" json:"backfill_rows,omitempty"`
+	// True while a backfill is queued or running.
+	BackfillPending bool `protobuf:"varint,11,opt,name=backfill_pending,json=backfillPending,proto3" json:"backfill_pending,omitempty"`
+	// How the most recent backfill walked the source; absent before the first.
+	LastBackfill  *BackfillReport `protobuf:"bytes,12,opt,name=last_backfill,json=lastBackfill,proto3" json:"last_backfill,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Source) Reset() {
@@ -980,6 +987,118 @@ func (x *Source) GetPollIntervalSeconds() int32 {
 	return 0
 }
 
+func (x *Source) GetBackfillRows() int32 {
+	if x != nil {
+		return x.BackfillRows
+	}
+	return 0
+}
+
+func (x *Source) GetBackfillPending() bool {
+	if x != nil {
+		return x.BackfillPending
+	}
+	return false
+}
+
+func (x *Source) GetLastBackfill() *BackfillReport {
+	if x != nil {
+		return x.LastBackfill
+	}
+	return nil
+}
+
+type BackfillReport struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Pages accepted, including the first.
+	Pages int32 `protobuf:"varint,1,opt,name=pages,proto3" json:"pages,omitempty"`
+	// How further pages were reached, e.g. {"rel-next": 11}. Methods:
+	// link-header, rel-next, anchor, page-number, offset, cursor, llm, scroll.
+	Methods map[string]int32 `protobuf:"bytes,2,rep,name=methods,proto3" json:"methods,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	// Guessed next pages that were tried and rejected.
+	RejectedProbes int32 `protobuf:"varint,3,opt,name=rejected_probes,json=rejectedProbes,proto3" json:"rejected_probes,omitempty"`
+	// Rows kept by the backfill.
+	Rows int32 `protobuf:"varint,4,opt,name=rows,proto3" json:"rows,omitempty"`
+	// Why paging stopped: limit, no-next, no-new-records, max-pages, or
+	// "error: ..." when a later page failed.
+	Stopped       string                 `protobuf:"bytes,5,opt,name=stopped,proto3" json:"stopped,omitempty"`
+	FinishedAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BackfillReport) Reset() {
+	*x = BackfillReport{}
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BackfillReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BackfillReport) ProtoMessage() {}
+
+func (x *BackfillReport) ProtoReflect() protoreflect.Message {
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BackfillReport.ProtoReflect.Descriptor instead.
+func (*BackfillReport) Descriptor() ([]byte, []int) {
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *BackfillReport) GetPages() int32 {
+	if x != nil {
+		return x.Pages
+	}
+	return 0
+}
+
+func (x *BackfillReport) GetMethods() map[string]int32 {
+	if x != nil {
+		return x.Methods
+	}
+	return nil
+}
+
+func (x *BackfillReport) GetRejectedProbes() int32 {
+	if x != nil {
+		return x.RejectedProbes
+	}
+	return 0
+}
+
+func (x *BackfillReport) GetRows() int32 {
+	if x != nil {
+		return x.Rows
+	}
+	return 0
+}
+
+func (x *BackfillReport) GetStopped() string {
+	if x != nil {
+		return x.Stopped
+	}
+	return ""
+}
+
+func (x *BackfillReport) GetFinishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FinishedAt
+	}
+	return nil
+}
+
 type DataRecord struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -992,7 +1111,7 @@ type DataRecord struct {
 
 func (x *DataRecord) Reset() {
 	*x = DataRecord{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[5]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1004,7 +1123,7 @@ func (x *DataRecord) String() string {
 func (*DataRecord) ProtoMessage() {}
 
 func (x *DataRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[5]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1017,7 +1136,7 @@ func (x *DataRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DataRecord.ProtoReflect.Descriptor instead.
 func (*DataRecord) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{5}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DataRecord) GetId() int64 {
@@ -1055,13 +1174,15 @@ type CreateSourceRequest struct {
 	Config *SourceConfig          `protobuf:"bytes,3,opt,name=config,proto3" json:"config,omitempty"`
 	// Zero selects the source adapter's default polling interval.
 	PollIntervalSeconds int32 `protobuf:"varint,4,opt,name=poll_interval_seconds,json=pollIntervalSeconds,proto3" json:"poll_interval_seconds,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Rows to backfill on the first poll. Zero selects the server default.
+	BackfillRows  int32 `protobuf:"varint,5,opt,name=backfill_rows,json=backfillRows,proto3" json:"backfill_rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateSourceRequest) Reset() {
 	*x = CreateSourceRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[6]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1073,7 +1194,7 @@ func (x *CreateSourceRequest) String() string {
 func (*CreateSourceRequest) ProtoMessage() {}
 
 func (x *CreateSourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[6]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1086,7 +1207,7 @@ func (x *CreateSourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSourceRequest.ProtoReflect.Descriptor instead.
 func (*CreateSourceRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{6}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CreateSourceRequest) GetName() string {
@@ -1117,6 +1238,13 @@ func (x *CreateSourceRequest) GetPollIntervalSeconds() int32 {
 	return 0
 }
 
+func (x *CreateSourceRequest) GetBackfillRows() int32 {
+	if x != nil {
+		return x.BackfillRows
+	}
+	return 0
+}
+
 type CreateSourceResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Source        *Source                `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
@@ -1126,7 +1254,7 @@ type CreateSourceResponse struct {
 
 func (x *CreateSourceResponse) Reset() {
 	*x = CreateSourceResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[7]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1138,7 +1266,7 @@ func (x *CreateSourceResponse) String() string {
 func (*CreateSourceResponse) ProtoMessage() {}
 
 func (x *CreateSourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[7]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1151,7 +1279,7 @@ func (x *CreateSourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateSourceResponse.ProtoReflect.Descriptor instead.
 func (*CreateSourceResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{7}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CreateSourceResponse) GetSource() *Source {
@@ -1162,17 +1290,20 @@ func (x *CreateSourceResponse) GetSource() *Source {
 }
 
 type UploadCSVSourceRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	FileName      string                 `protobuf:"bytes,2,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
-	CsvData       []byte                 `protobuf:"bytes,3,opt,name=csv_data,json=csvData,proto3" json:"csv_data,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Name     string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	FileName string                 `protobuf:"bytes,2,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	CsvData  []byte                 `protobuf:"bytes,3,opt,name=csv_data,json=csvData,proto3" json:"csv_data,omitempty"`
+	// Maximum rows to store from the file (the newest by time, or the last rows
+	// when there is no time column). Zero stores every row.
+	BackfillRows  int32 `protobuf:"varint,4,opt,name=backfill_rows,json=backfillRows,proto3" json:"backfill_rows,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UploadCSVSourceRequest) Reset() {
 	*x = UploadCSVSourceRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[8]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1184,7 +1315,7 @@ func (x *UploadCSVSourceRequest) String() string {
 func (*UploadCSVSourceRequest) ProtoMessage() {}
 
 func (x *UploadCSVSourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[8]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1197,7 +1328,7 @@ func (x *UploadCSVSourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadCSVSourceRequest.ProtoReflect.Descriptor instead.
 func (*UploadCSVSourceRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{8}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UploadCSVSourceRequest) GetName() string {
@@ -1221,6 +1352,13 @@ func (x *UploadCSVSourceRequest) GetCsvData() []byte {
 	return nil
 }
 
+func (x *UploadCSVSourceRequest) GetBackfillRows() int32 {
+	if x != nil {
+		return x.BackfillRows
+	}
+	return 0
+}
+
 type UploadCSVSourceResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Source        *Source                `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
@@ -1230,7 +1368,7 @@ type UploadCSVSourceResponse struct {
 
 func (x *UploadCSVSourceResponse) Reset() {
 	*x = UploadCSVSourceResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[9]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1242,7 +1380,7 @@ func (x *UploadCSVSourceResponse) String() string {
 func (*UploadCSVSourceResponse) ProtoMessage() {}
 
 func (x *UploadCSVSourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[9]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1255,7 +1393,7 @@ func (x *UploadCSVSourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadCSVSourceResponse.ProtoReflect.Descriptor instead.
 func (*UploadCSVSourceResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{9}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UploadCSVSourceResponse) GetSource() *Source {
@@ -1273,7 +1411,7 @@ type ListSourcesRequest struct {
 
 func (x *ListSourcesRequest) Reset() {
 	*x = ListSourcesRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[10]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1285,7 +1423,7 @@ func (x *ListSourcesRequest) String() string {
 func (*ListSourcesRequest) ProtoMessage() {}
 
 func (x *ListSourcesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[10]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1298,7 +1436,7 @@ func (x *ListSourcesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSourcesRequest.ProtoReflect.Descriptor instead.
 func (*ListSourcesRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{10}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{11}
 }
 
 type ListSourcesResponse struct {
@@ -1310,7 +1448,7 @@ type ListSourcesResponse struct {
 
 func (x *ListSourcesResponse) Reset() {
 	*x = ListSourcesResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[11]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1322,7 +1460,7 @@ func (x *ListSourcesResponse) String() string {
 func (*ListSourcesResponse) ProtoMessage() {}
 
 func (x *ListSourcesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[11]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1335,7 +1473,7 @@ func (x *ListSourcesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSourcesResponse.ProtoReflect.Descriptor instead.
 func (*ListSourcesResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{11}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListSourcesResponse) GetSources() []*Source {
@@ -1354,7 +1492,7 @@ type GetSourceRequest struct {
 
 func (x *GetSourceRequest) Reset() {
 	*x = GetSourceRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[12]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1366,7 +1504,7 @@ func (x *GetSourceRequest) String() string {
 func (*GetSourceRequest) ProtoMessage() {}
 
 func (x *GetSourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[12]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1379,7 +1517,7 @@ func (x *GetSourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSourceRequest.ProtoReflect.Descriptor instead.
 func (*GetSourceRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{12}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetSourceRequest) GetId() string {
@@ -1399,7 +1537,7 @@ type GetSourceResponse struct {
 
 func (x *GetSourceResponse) Reset() {
 	*x = GetSourceResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[13]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1411,7 +1549,7 @@ func (x *GetSourceResponse) String() string {
 func (*GetSourceResponse) ProtoMessage() {}
 
 func (x *GetSourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[13]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1424,7 +1562,7 @@ func (x *GetSourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSourceResponse.ProtoReflect.Descriptor instead.
 func (*GetSourceResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{13}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetSourceResponse) GetSource() *Source {
@@ -1441,6 +1579,113 @@ func (x *GetSourceResponse) GetRecentRecords() []*DataRecord {
 	return nil
 }
 
+type UpdateSourceRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// New backfill target. Raising it above the stored row count queues a
+	// re-backfill; lowering it never deletes stored rows.
+	BackfillRows  *int32 `protobuf:"varint,2,opt,name=backfill_rows,json=backfillRows,proto3,oneof" json:"backfill_rows,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateSourceRequest) Reset() {
+	*x = UpdateSourceRequest{}
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateSourceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateSourceRequest) ProtoMessage() {}
+
+func (x *UpdateSourceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateSourceRequest.ProtoReflect.Descriptor instead.
+func (*UpdateSourceRequest) Descriptor() ([]byte, []int) {
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *UpdateSourceRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateSourceRequest) GetBackfillRows() int32 {
+	if x != nil && x.BackfillRows != nil {
+		return *x.BackfillRows
+	}
+	return 0
+}
+
+type UpdateSourceResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Source *Source                `protobuf:"bytes,1,opt,name=source,proto3" json:"source,omitempty"`
+	// True when the update queued a re-backfill.
+	BackfillScheduled bool `protobuf:"varint,2,opt,name=backfill_scheduled,json=backfillScheduled,proto3" json:"backfill_scheduled,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *UpdateSourceResponse) Reset() {
+	*x = UpdateSourceResponse{}
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateSourceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateSourceResponse) ProtoMessage() {}
+
+func (x *UpdateSourceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateSourceResponse.ProtoReflect.Descriptor instead.
+func (*UpdateSourceResponse) Descriptor() ([]byte, []int) {
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *UpdateSourceResponse) GetSource() *Source {
+	if x != nil {
+		return x.Source
+	}
+	return nil
+}
+
+func (x *UpdateSourceResponse) GetBackfillScheduled() bool {
+	if x != nil {
+		return x.BackfillScheduled
+	}
+	return false
+}
+
 type DeleteSourceRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1450,7 +1695,7 @@ type DeleteSourceRequest struct {
 
 func (x *DeleteSourceRequest) Reset() {
 	*x = DeleteSourceRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[14]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1462,7 +1707,7 @@ func (x *DeleteSourceRequest) String() string {
 func (*DeleteSourceRequest) ProtoMessage() {}
 
 func (x *DeleteSourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[14]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1475,7 +1720,7 @@ func (x *DeleteSourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSourceRequest.ProtoReflect.Descriptor instead.
 func (*DeleteSourceRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{14}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *DeleteSourceRequest) GetId() string {
@@ -1496,7 +1741,7 @@ type DeleteSourceResponse struct {
 
 func (x *DeleteSourceResponse) Reset() {
 	*x = DeleteSourceResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[15]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1508,7 +1753,7 @@ func (x *DeleteSourceResponse) String() string {
 func (*DeleteSourceResponse) ProtoMessage() {}
 
 func (x *DeleteSourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[15]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1521,7 +1766,7 @@ func (x *DeleteSourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteSourceResponse.ProtoReflect.Descriptor instead.
 func (*DeleteSourceResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{15}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DeleteSourceResponse) GetDeleted() bool {
@@ -1552,7 +1797,7 @@ type Project struct {
 
 func (x *Project) Reset() {
 	*x = Project{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[16]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1564,7 +1809,7 @@ func (x *Project) String() string {
 func (*Project) ProtoMessage() {}
 
 func (x *Project) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[16]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1577,7 +1822,7 @@ func (x *Project) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Project.ProtoReflect.Descriptor instead.
 func (*Project) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{16}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Project) GetId() string {
@@ -1640,7 +1885,7 @@ type Run struct {
 
 func (x *Run) Reset() {
 	*x = Run{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[17]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1652,7 +1897,7 @@ func (x *Run) String() string {
 func (*Run) ProtoMessage() {}
 
 func (x *Run) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[17]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1665,7 +1910,7 @@ func (x *Run) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Run.ProtoReflect.Descriptor instead.
 func (*Run) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{17}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Run) GetId() string {
@@ -1736,7 +1981,7 @@ type AnalysisFunnel struct {
 
 func (x *AnalysisFunnel) Reset() {
 	*x = AnalysisFunnel{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[18]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1748,7 +1993,7 @@ func (x *AnalysisFunnel) String() string {
 func (*AnalysisFunnel) ProtoMessage() {}
 
 func (x *AnalysisFunnel) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[18]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1761,7 +2006,7 @@ func (x *AnalysisFunnel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalysisFunnel.ProtoReflect.Descriptor instead.
 func (*AnalysisFunnel) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{18}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AnalysisFunnel) GetTestsRun() int32 {
@@ -1803,7 +2048,7 @@ type ProjectSummary struct {
 
 func (x *ProjectSummary) Reset() {
 	*x = ProjectSummary{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[19]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1815,7 +2060,7 @@ func (x *ProjectSummary) String() string {
 func (*ProjectSummary) ProtoMessage() {}
 
 func (x *ProjectSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[19]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1828,7 +2073,7 @@ func (x *ProjectSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectSummary.ProtoReflect.Descriptor instead.
 func (*ProjectSummary) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{19}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ProjectSummary) GetProject() *Project {
@@ -1872,7 +2117,7 @@ type Workflow struct {
 
 func (x *Workflow) Reset() {
 	*x = Workflow{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[20]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1884,7 +2129,7 @@ func (x *Workflow) String() string {
 func (*Workflow) ProtoMessage() {}
 
 func (x *Workflow) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[20]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1897,7 +2142,7 @@ func (x *Workflow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Workflow.ProtoReflect.Descriptor instead.
 func (*Workflow) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{20}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *Workflow) GetId() string {
@@ -1993,7 +2238,7 @@ type Insight struct {
 
 func (x *Insight) Reset() {
 	*x = Insight{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[21]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2005,7 +2250,7 @@ func (x *Insight) String() string {
 func (*Insight) ProtoMessage() {}
 
 func (x *Insight) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[21]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2018,7 +2263,7 @@ func (x *Insight) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Insight.ProtoReflect.Descriptor instead.
 func (*Insight) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{21}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *Insight) GetId() string {
@@ -2139,7 +2384,7 @@ type WorkflowStep struct {
 
 func (x *WorkflowStep) Reset() {
 	*x = WorkflowStep{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[22]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2151,7 +2396,7 @@ func (x *WorkflowStep) String() string {
 func (*WorkflowStep) ProtoMessage() {}
 
 func (x *WorkflowStep) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[22]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2164,7 +2409,7 @@ func (x *WorkflowStep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowStep.ProtoReflect.Descriptor instead.
 func (*WorkflowStep) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{22}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *WorkflowStep) GetWorkflowId() string {
@@ -2213,7 +2458,7 @@ type CreateProjectRequest struct {
 
 func (x *CreateProjectRequest) Reset() {
 	*x = CreateProjectRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[23]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2225,7 +2470,7 @@ func (x *CreateProjectRequest) String() string {
 func (*CreateProjectRequest) ProtoMessage() {}
 
 func (x *CreateProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[23]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2238,7 +2483,7 @@ func (x *CreateProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProjectRequest.ProtoReflect.Descriptor instead.
 func (*CreateProjectRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{23}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *CreateProjectRequest) GetName() string {
@@ -2273,7 +2518,7 @@ type CreateProjectResponse struct {
 
 func (x *CreateProjectResponse) Reset() {
 	*x = CreateProjectResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[24]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2285,7 +2530,7 @@ func (x *CreateProjectResponse) String() string {
 func (*CreateProjectResponse) ProtoMessage() {}
 
 func (x *CreateProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[24]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2298,7 +2543,7 @@ func (x *CreateProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateProjectResponse.ProtoReflect.Descriptor instead.
 func (*CreateProjectResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{24}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *CreateProjectResponse) GetProject() *Project {
@@ -2331,7 +2576,7 @@ type DeleteProjectRequest struct {
 
 func (x *DeleteProjectRequest) Reset() {
 	*x = DeleteProjectRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[25]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2343,7 +2588,7 @@ func (x *DeleteProjectRequest) String() string {
 func (*DeleteProjectRequest) ProtoMessage() {}
 
 func (x *DeleteProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[25]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2356,7 +2601,7 @@ func (x *DeleteProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteProjectRequest.ProtoReflect.Descriptor instead.
 func (*DeleteProjectRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{25}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *DeleteProjectRequest) GetId() string {
@@ -2375,7 +2620,7 @@ type DeleteProjectResponse struct {
 
 func (x *DeleteProjectResponse) Reset() {
 	*x = DeleteProjectResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[26]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2387,7 +2632,7 @@ func (x *DeleteProjectResponse) String() string {
 func (*DeleteProjectResponse) ProtoMessage() {}
 
 func (x *DeleteProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[26]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2400,7 +2645,7 @@ func (x *DeleteProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteProjectResponse.ProtoReflect.Descriptor instead.
 func (*DeleteProjectResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{26}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *DeleteProjectResponse) GetDeleted() bool {
@@ -2418,7 +2663,7 @@ type ListProjectsRequest struct {
 
 func (x *ListProjectsRequest) Reset() {
 	*x = ListProjectsRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[27]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2430,7 +2675,7 @@ func (x *ListProjectsRequest) String() string {
 func (*ListProjectsRequest) ProtoMessage() {}
 
 func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[27]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2443,7 +2688,7 @@ func (x *ListProjectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsRequest.ProtoReflect.Descriptor instead.
 func (*ListProjectsRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{27}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{30}
 }
 
 type ListProjectsResponse struct {
@@ -2455,7 +2700,7 @@ type ListProjectsResponse struct {
 
 func (x *ListProjectsResponse) Reset() {
 	*x = ListProjectsResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[28]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2467,7 +2712,7 @@ func (x *ListProjectsResponse) String() string {
 func (*ListProjectsResponse) ProtoMessage() {}
 
 func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[28]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2480,7 +2725,7 @@ func (x *ListProjectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListProjectsResponse.ProtoReflect.Descriptor instead.
 func (*ListProjectsResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{28}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ListProjectsResponse) GetProjects() []*ProjectSummary {
@@ -2499,7 +2744,7 @@ type GetProjectRequest struct {
 
 func (x *GetProjectRequest) Reset() {
 	*x = GetProjectRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[29]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2511,7 +2756,7 @@ func (x *GetProjectRequest) String() string {
 func (*GetProjectRequest) ProtoMessage() {}
 
 func (x *GetProjectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[29]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2524,7 +2769,7 @@ func (x *GetProjectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProjectRequest.ProtoReflect.Descriptor instead.
 func (*GetProjectRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{29}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetProjectRequest) GetId() string {
@@ -2549,7 +2794,7 @@ type GetProjectResponse struct {
 
 func (x *GetProjectResponse) Reset() {
 	*x = GetProjectResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[30]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2561,7 +2806,7 @@ func (x *GetProjectResponse) String() string {
 func (*GetProjectResponse) ProtoMessage() {}
 
 func (x *GetProjectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[30]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2574,7 +2819,7 @@ func (x *GetProjectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetProjectResponse.ProtoReflect.Descriptor instead.
 func (*GetProjectResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{30}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetProjectResponse) GetProject() *Project {
@@ -2622,7 +2867,7 @@ type RunWorkflowRequest struct {
 
 func (x *RunWorkflowRequest) Reset() {
 	*x = RunWorkflowRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[31]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2634,7 +2879,7 @@ func (x *RunWorkflowRequest) String() string {
 func (*RunWorkflowRequest) ProtoMessage() {}
 
 func (x *RunWorkflowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[31]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2647,7 +2892,7 @@ func (x *RunWorkflowRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunWorkflowRequest.ProtoReflect.Descriptor instead.
 func (*RunWorkflowRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{31}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *RunWorkflowRequest) GetProjectId() string {
@@ -2674,7 +2919,7 @@ type RunWorkflowResponse struct {
 
 func (x *RunWorkflowResponse) Reset() {
 	*x = RunWorkflowResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[32]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2686,7 +2931,7 @@ func (x *RunWorkflowResponse) String() string {
 func (*RunWorkflowResponse) ProtoMessage() {}
 
 func (x *RunWorkflowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[32]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2699,7 +2944,7 @@ func (x *RunWorkflowResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunWorkflowResponse.ProtoReflect.Descriptor instead.
 func (*RunWorkflowResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{32}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *RunWorkflowResponse) GetAccepted() bool {
@@ -2725,7 +2970,7 @@ type ListInsightsRequest struct {
 
 func (x *ListInsightsRequest) Reset() {
 	*x = ListInsightsRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[33]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2737,7 +2982,7 @@ func (x *ListInsightsRequest) String() string {
 func (*ListInsightsRequest) ProtoMessage() {}
 
 func (x *ListInsightsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[33]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2750,7 +2995,7 @@ func (x *ListInsightsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInsightsRequest.ProtoReflect.Descriptor instead.
 func (*ListInsightsRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{33}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ListInsightsRequest) GetProjectId() string {
@@ -2769,7 +3014,7 @@ type ListInsightsResponse struct {
 
 func (x *ListInsightsResponse) Reset() {
 	*x = ListInsightsResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[34]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2781,7 +3026,7 @@ func (x *ListInsightsResponse) String() string {
 func (*ListInsightsResponse) ProtoMessage() {}
 
 func (x *ListInsightsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[34]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2794,7 +3039,7 @@ func (x *ListInsightsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInsightsResponse.ProtoReflect.Descriptor instead.
 func (*ListInsightsResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{34}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ListInsightsResponse) GetInsights() []*Insight {
@@ -2813,7 +3058,7 @@ type ListWorkflowsRequest struct {
 
 func (x *ListWorkflowsRequest) Reset() {
 	*x = ListWorkflowsRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[35]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2825,7 +3070,7 @@ func (x *ListWorkflowsRequest) String() string {
 func (*ListWorkflowsRequest) ProtoMessage() {}
 
 func (x *ListWorkflowsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[35]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2838,7 +3083,7 @@ func (x *ListWorkflowsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkflowsRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkflowsRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{35}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ListWorkflowsRequest) GetProjectId() string {
@@ -2857,7 +3102,7 @@ type ListWorkflowsResponse struct {
 
 func (x *ListWorkflowsResponse) Reset() {
 	*x = ListWorkflowsResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[36]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2869,7 +3114,7 @@ func (x *ListWorkflowsResponse) String() string {
 func (*ListWorkflowsResponse) ProtoMessage() {}
 
 func (x *ListWorkflowsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[36]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2882,7 +3127,7 @@ func (x *ListWorkflowsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkflowsResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkflowsResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{36}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ListWorkflowsResponse) GetWorkflows() []*Workflow {
@@ -2901,7 +3146,7 @@ type ListWorkflowStepsRequest struct {
 
 func (x *ListWorkflowStepsRequest) Reset() {
 	*x = ListWorkflowStepsRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[37]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2913,7 +3158,7 @@ func (x *ListWorkflowStepsRequest) String() string {
 func (*ListWorkflowStepsRequest) ProtoMessage() {}
 
 func (x *ListWorkflowStepsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[37]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2926,7 +3171,7 @@ func (x *ListWorkflowStepsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkflowStepsRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkflowStepsRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{37}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ListWorkflowStepsRequest) GetWorkflowId() string {
@@ -2945,7 +3190,7 @@ type ListWorkflowStepsResponse struct {
 
 func (x *ListWorkflowStepsResponse) Reset() {
 	*x = ListWorkflowStepsResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[38]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2957,7 +3202,7 @@ func (x *ListWorkflowStepsResponse) String() string {
 func (*ListWorkflowStepsResponse) ProtoMessage() {}
 
 func (x *ListWorkflowStepsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[38]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2970,7 +3215,7 @@ func (x *ListWorkflowStepsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkflowStepsResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkflowStepsResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{38}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ListWorkflowStepsResponse) GetSteps() []*WorkflowStep {
@@ -2990,7 +3235,7 @@ type RegenerateWorkflowRequest struct {
 
 func (x *RegenerateWorkflowRequest) Reset() {
 	*x = RegenerateWorkflowRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[39]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3002,7 +3247,7 @@ func (x *RegenerateWorkflowRequest) String() string {
 func (*RegenerateWorkflowRequest) ProtoMessage() {}
 
 func (x *RegenerateWorkflowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[39]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3015,7 +3260,7 @@ func (x *RegenerateWorkflowRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegenerateWorkflowRequest.ProtoReflect.Descriptor instead.
 func (*RegenerateWorkflowRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{39}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *RegenerateWorkflowRequest) GetProjectId() string {
@@ -3041,7 +3286,7 @@ type RegenerateWorkflowResponse struct {
 
 func (x *RegenerateWorkflowResponse) Reset() {
 	*x = RegenerateWorkflowResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[40]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3053,7 +3298,7 @@ func (x *RegenerateWorkflowResponse) String() string {
 func (*RegenerateWorkflowResponse) ProtoMessage() {}
 
 func (x *RegenerateWorkflowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[40]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3066,7 +3311,7 @@ func (x *RegenerateWorkflowResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegenerateWorkflowResponse.ProtoReflect.Descriptor instead.
 func (*RegenerateWorkflowResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{40}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *RegenerateWorkflowResponse) GetWorkflow() *Workflow {
@@ -3088,7 +3333,7 @@ type ReplayRequest struct {
 
 func (x *ReplayRequest) Reset() {
 	*x = ReplayRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[41]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3100,7 +3345,7 @@ func (x *ReplayRequest) String() string {
 func (*ReplayRequest) ProtoMessage() {}
 
 func (x *ReplayRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[41]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3113,7 +3358,7 @@ func (x *ReplayRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayRequest.ProtoReflect.Descriptor instead.
 func (*ReplayRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{41}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *ReplayRequest) GetSourceIds() []string {
@@ -3148,7 +3393,7 @@ type ReplayResponse struct {
 
 func (x *ReplayResponse) Reset() {
 	*x = ReplayResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[42]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3160,7 +3405,7 @@ func (x *ReplayResponse) String() string {
 func (*ReplayResponse) ProtoMessage() {}
 
 func (x *ReplayResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[42]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3173,7 +3418,7 @@ func (x *ReplayResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayResponse.ProtoReflect.Descriptor instead.
 func (*ReplayResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{42}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *ReplayResponse) GetAccepted() bool {
@@ -3227,7 +3472,7 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"\x06fields\x18\x01 \x03(\v2\x1d.hacktheburgh.v1.FieldProfileR\x06fields\x12*\n" +
 	"\x0etimestamp_path\x18\x02 \x01(\tH\x00R\rtimestampPath\x88\x01\x01\x12\x18\n" +
 	"\asummary\x18\x03 \x01(\tR\asummaryB\x11\n" +
-	"\x0f_timestamp_path\"\xa9\x03\n" +
+	"\x0f_timestamp_path\"\xbf\x04\n" +
 	"\x06Source\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12/\n" +
@@ -3239,8 +3484,23 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"\aprofile\x18\a \x01(\v2\x1e.hacktheburgh.v1.SourceProfileR\aprofile\x129\n" +
 	"\n" +
 	"created_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x127\n" +
-	"\x15poll_interval_seconds\x18\t \x01(\x05H\x00R\x13pollIntervalSeconds\x88\x01\x01B\x18\n" +
-	"\x16_poll_interval_seconds\"\xad\x01\n" +
+	"\x15poll_interval_seconds\x18\t \x01(\x05H\x00R\x13pollIntervalSeconds\x88\x01\x01\x12#\n" +
+	"\rbackfill_rows\x18\n" +
+	" \x01(\x05R\fbackfillRows\x12)\n" +
+	"\x10backfill_pending\x18\v \x01(\bR\x0fbackfillPending\x12D\n" +
+	"\rlast_backfill\x18\f \x01(\v2\x1f.hacktheburgh.v1.BackfillReportR\flastBackfillB\x18\n" +
+	"\x16_poll_interval_seconds\"\xbe\x02\n" +
+	"\x0eBackfillReport\x12\x14\n" +
+	"\x05pages\x18\x01 \x01(\x05R\x05pages\x12F\n" +
+	"\amethods\x18\x02 \x03(\v2,.hacktheburgh.v1.BackfillReport.MethodsEntryR\amethods\x12'\n" +
+	"\x0frejected_probes\x18\x03 \x01(\x05R\x0erejectedProbes\x12\x12\n" +
+	"\x04rows\x18\x04 \x01(\x05R\x04rows\x12\x18\n" +
+	"\astopped\x18\x05 \x01(\tR\astopped\x12;\n" +
+	"\vfinished_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"finishedAt\x1a:\n" +
+	"\fMethodsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\xad\x01\n" +
 	"\n" +
 	"DataRecord\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1f\n" +
@@ -3248,18 +3508,20 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"externalId\x12;\n" +
 	"\vobserved_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"observedAt\x121\n" +
-	"\apayload\x18\x04 \x01(\v2\x17.google.protobuf.StructR\apayload\"\xc5\x01\n" +
+	"\apayload\x18\x04 \x01(\v2\x17.google.protobuf.StructR\apayload\"\xea\x01\n" +
 	"\x13CreateSourceRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12/\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1b.hacktheburgh.v1.SourceKindR\x04kind\x125\n" +
 	"\x06config\x18\x03 \x01(\v2\x1d.hacktheburgh.v1.SourceConfigR\x06config\x122\n" +
-	"\x15poll_interval_seconds\x18\x04 \x01(\x05R\x13pollIntervalSeconds\"G\n" +
+	"\x15poll_interval_seconds\x18\x04 \x01(\x05R\x13pollIntervalSeconds\x12#\n" +
+	"\rbackfill_rows\x18\x05 \x01(\x05R\fbackfillRows\"G\n" +
 	"\x14CreateSourceResponse\x12/\n" +
-	"\x06source\x18\x01 \x01(\v2\x17.hacktheburgh.v1.SourceR\x06source\"d\n" +
+	"\x06source\x18\x01 \x01(\v2\x17.hacktheburgh.v1.SourceR\x06source\"\x89\x01\n" +
 	"\x16UploadCSVSourceRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
 	"\tfile_name\x18\x02 \x01(\tR\bfileName\x12\x19\n" +
-	"\bcsv_data\x18\x03 \x01(\fR\acsvData\"J\n" +
+	"\bcsv_data\x18\x03 \x01(\fR\acsvData\x12#\n" +
+	"\rbackfill_rows\x18\x04 \x01(\x05R\fbackfillRows\"J\n" +
 	"\x17UploadCSVSourceResponse\x12/\n" +
 	"\x06source\x18\x01 \x01(\v2\x17.hacktheburgh.v1.SourceR\x06source\"\x14\n" +
 	"\x12ListSourcesRequest\"H\n" +
@@ -3269,7 +3531,14 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x88\x01\n" +
 	"\x11GetSourceResponse\x12/\n" +
 	"\x06source\x18\x01 \x01(\v2\x17.hacktheburgh.v1.SourceR\x06source\x12B\n" +
-	"\x0erecent_records\x18\x02 \x03(\v2\x1b.hacktheburgh.v1.DataRecordR\rrecentRecords\"%\n" +
+	"\x0erecent_records\x18\x02 \x03(\v2\x1b.hacktheburgh.v1.DataRecordR\rrecentRecords\"a\n" +
+	"\x13UpdateSourceRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12(\n" +
+	"\rbackfill_rows\x18\x02 \x01(\x05H\x00R\fbackfillRows\x88\x01\x01B\x10\n" +
+	"\x0e_backfill_rows\"v\n" +
+	"\x14UpdateSourceResponse\x12/\n" +
+	"\x06source\x18\x01 \x01(\v2\x17.hacktheburgh.v1.SourceR\x06source\x12-\n" +
+	"\x12backfill_scheduled\x18\x02 \x01(\bR\x11backfillScheduled\"%\n" +
 	"\x13DeleteSourceRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"b\n" +
 	"\x14DeleteSourceResponse\x12\x18\n" +
@@ -3467,12 +3736,13 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"\fPlausibility\x12\x1c\n" +
 	"\x18PLAUSIBILITY_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16PLAUSIBILITY_PLAUSIBLE\x10\x01\x12\x19\n" +
-	"\x15PLAUSIBILITY_DOUBTFUL\x10\x022\x8e\v\n" +
+	"\x15PLAUSIBILITY_DOUBTFUL\x10\x022\xeb\v\n" +
 	"\rAnduinService\x12[\n" +
 	"\fCreateSource\x12$.hacktheburgh.v1.CreateSourceRequest\x1a%.hacktheburgh.v1.CreateSourceResponse\x12d\n" +
 	"\x0fUploadCSVSource\x12'.hacktheburgh.v1.UploadCSVSourceRequest\x1a(.hacktheburgh.v1.UploadCSVSourceResponse\x12X\n" +
 	"\vListSources\x12#.hacktheburgh.v1.ListSourcesRequest\x1a$.hacktheburgh.v1.ListSourcesResponse\x12R\n" +
 	"\tGetSource\x12!.hacktheburgh.v1.GetSourceRequest\x1a\".hacktheburgh.v1.GetSourceResponse\x12[\n" +
+	"\fUpdateSource\x12$.hacktheburgh.v1.UpdateSourceRequest\x1a%.hacktheburgh.v1.UpdateSourceResponse\x12[\n" +
 	"\fDeleteSource\x12$.hacktheburgh.v1.DeleteSourceRequest\x1a%.hacktheburgh.v1.DeleteSourceResponse\x12^\n" +
 	"\rCreateProject\x12%.hacktheburgh.v1.CreateProjectRequest\x1a&.hacktheburgh.v1.CreateProjectResponse\x12^\n" +
 	"\rDeleteProject\x12%.hacktheburgh.v1.DeleteProjectRequest\x1a&.hacktheburgh.v1.DeleteProjectResponse\x12[\n" +
@@ -3500,7 +3770,7 @@ func file_hacktheburgh_v1_service_proto_rawDescGZIP() []byte {
 }
 
 var file_hacktheburgh_v1_service_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
-var file_hacktheburgh_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
+var file_hacktheburgh_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
 var file_hacktheburgh_v1_service_proto_goTypes = []any{
 	(SourceKind)(0),                    // 0: hacktheburgh.v1.SourceKind
 	(PaginationStrategy)(0),            // 1: hacktheburgh.v1.PaginationStrategy
@@ -3517,139 +3787,149 @@ var file_hacktheburgh_v1_service_proto_goTypes = []any{
 	(*FieldProfile)(nil),               // 12: hacktheburgh.v1.FieldProfile
 	(*SourceProfile)(nil),              // 13: hacktheburgh.v1.SourceProfile
 	(*Source)(nil),                     // 14: hacktheburgh.v1.Source
-	(*DataRecord)(nil),                 // 15: hacktheburgh.v1.DataRecord
-	(*CreateSourceRequest)(nil),        // 16: hacktheburgh.v1.CreateSourceRequest
-	(*CreateSourceResponse)(nil),       // 17: hacktheburgh.v1.CreateSourceResponse
-	(*UploadCSVSourceRequest)(nil),     // 18: hacktheburgh.v1.UploadCSVSourceRequest
-	(*UploadCSVSourceResponse)(nil),    // 19: hacktheburgh.v1.UploadCSVSourceResponse
-	(*ListSourcesRequest)(nil),         // 20: hacktheburgh.v1.ListSourcesRequest
-	(*ListSourcesResponse)(nil),        // 21: hacktheburgh.v1.ListSourcesResponse
-	(*GetSourceRequest)(nil),           // 22: hacktheburgh.v1.GetSourceRequest
-	(*GetSourceResponse)(nil),          // 23: hacktheburgh.v1.GetSourceResponse
-	(*DeleteSourceRequest)(nil),        // 24: hacktheburgh.v1.DeleteSourceRequest
-	(*DeleteSourceResponse)(nil),       // 25: hacktheburgh.v1.DeleteSourceResponse
-	(*Project)(nil),                    // 26: hacktheburgh.v1.Project
-	(*Run)(nil),                        // 27: hacktheburgh.v1.Run
-	(*AnalysisFunnel)(nil),             // 28: hacktheburgh.v1.AnalysisFunnel
-	(*ProjectSummary)(nil),             // 29: hacktheburgh.v1.ProjectSummary
-	(*Workflow)(nil),                   // 30: hacktheburgh.v1.Workflow
-	(*Insight)(nil),                    // 31: hacktheburgh.v1.Insight
-	(*WorkflowStep)(nil),               // 32: hacktheburgh.v1.WorkflowStep
-	(*CreateProjectRequest)(nil),       // 33: hacktheburgh.v1.CreateProjectRequest
-	(*CreateProjectResponse)(nil),      // 34: hacktheburgh.v1.CreateProjectResponse
-	(*DeleteProjectRequest)(nil),       // 35: hacktheburgh.v1.DeleteProjectRequest
-	(*DeleteProjectResponse)(nil),      // 36: hacktheburgh.v1.DeleteProjectResponse
-	(*ListProjectsRequest)(nil),        // 37: hacktheburgh.v1.ListProjectsRequest
-	(*ListProjectsResponse)(nil),       // 38: hacktheburgh.v1.ListProjectsResponse
-	(*GetProjectRequest)(nil),          // 39: hacktheburgh.v1.GetProjectRequest
-	(*GetProjectResponse)(nil),         // 40: hacktheburgh.v1.GetProjectResponse
-	(*RunWorkflowRequest)(nil),         // 41: hacktheburgh.v1.RunWorkflowRequest
-	(*RunWorkflowResponse)(nil),        // 42: hacktheburgh.v1.RunWorkflowResponse
-	(*ListInsightsRequest)(nil),        // 43: hacktheburgh.v1.ListInsightsRequest
-	(*ListInsightsResponse)(nil),       // 44: hacktheburgh.v1.ListInsightsResponse
-	(*ListWorkflowsRequest)(nil),       // 45: hacktheburgh.v1.ListWorkflowsRequest
-	(*ListWorkflowsResponse)(nil),      // 46: hacktheburgh.v1.ListWorkflowsResponse
-	(*ListWorkflowStepsRequest)(nil),   // 47: hacktheburgh.v1.ListWorkflowStepsRequest
-	(*ListWorkflowStepsResponse)(nil),  // 48: hacktheburgh.v1.ListWorkflowStepsResponse
-	(*RegenerateWorkflowRequest)(nil),  // 49: hacktheburgh.v1.RegenerateWorkflowRequest
-	(*RegenerateWorkflowResponse)(nil), // 50: hacktheburgh.v1.RegenerateWorkflowResponse
-	(*ReplayRequest)(nil),              // 51: hacktheburgh.v1.ReplayRequest
-	(*ReplayResponse)(nil),             // 52: hacktheburgh.v1.ReplayResponse
-	(*structpb.Struct)(nil),            // 53: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),      // 54: google.protobuf.Timestamp
-	(*structpb.Value)(nil),             // 55: google.protobuf.Value
+	(*BackfillReport)(nil),             // 15: hacktheburgh.v1.BackfillReport
+	(*DataRecord)(nil),                 // 16: hacktheburgh.v1.DataRecord
+	(*CreateSourceRequest)(nil),        // 17: hacktheburgh.v1.CreateSourceRequest
+	(*CreateSourceResponse)(nil),       // 18: hacktheburgh.v1.CreateSourceResponse
+	(*UploadCSVSourceRequest)(nil),     // 19: hacktheburgh.v1.UploadCSVSourceRequest
+	(*UploadCSVSourceResponse)(nil),    // 20: hacktheburgh.v1.UploadCSVSourceResponse
+	(*ListSourcesRequest)(nil),         // 21: hacktheburgh.v1.ListSourcesRequest
+	(*ListSourcesResponse)(nil),        // 22: hacktheburgh.v1.ListSourcesResponse
+	(*GetSourceRequest)(nil),           // 23: hacktheburgh.v1.GetSourceRequest
+	(*GetSourceResponse)(nil),          // 24: hacktheburgh.v1.GetSourceResponse
+	(*UpdateSourceRequest)(nil),        // 25: hacktheburgh.v1.UpdateSourceRequest
+	(*UpdateSourceResponse)(nil),       // 26: hacktheburgh.v1.UpdateSourceResponse
+	(*DeleteSourceRequest)(nil),        // 27: hacktheburgh.v1.DeleteSourceRequest
+	(*DeleteSourceResponse)(nil),       // 28: hacktheburgh.v1.DeleteSourceResponse
+	(*Project)(nil),                    // 29: hacktheburgh.v1.Project
+	(*Run)(nil),                        // 30: hacktheburgh.v1.Run
+	(*AnalysisFunnel)(nil),             // 31: hacktheburgh.v1.AnalysisFunnel
+	(*ProjectSummary)(nil),             // 32: hacktheburgh.v1.ProjectSummary
+	(*Workflow)(nil),                   // 33: hacktheburgh.v1.Workflow
+	(*Insight)(nil),                    // 34: hacktheburgh.v1.Insight
+	(*WorkflowStep)(nil),               // 35: hacktheburgh.v1.WorkflowStep
+	(*CreateProjectRequest)(nil),       // 36: hacktheburgh.v1.CreateProjectRequest
+	(*CreateProjectResponse)(nil),      // 37: hacktheburgh.v1.CreateProjectResponse
+	(*DeleteProjectRequest)(nil),       // 38: hacktheburgh.v1.DeleteProjectRequest
+	(*DeleteProjectResponse)(nil),      // 39: hacktheburgh.v1.DeleteProjectResponse
+	(*ListProjectsRequest)(nil),        // 40: hacktheburgh.v1.ListProjectsRequest
+	(*ListProjectsResponse)(nil),       // 41: hacktheburgh.v1.ListProjectsResponse
+	(*GetProjectRequest)(nil),          // 42: hacktheburgh.v1.GetProjectRequest
+	(*GetProjectResponse)(nil),         // 43: hacktheburgh.v1.GetProjectResponse
+	(*RunWorkflowRequest)(nil),         // 44: hacktheburgh.v1.RunWorkflowRequest
+	(*RunWorkflowResponse)(nil),        // 45: hacktheburgh.v1.RunWorkflowResponse
+	(*ListInsightsRequest)(nil),        // 46: hacktheburgh.v1.ListInsightsRequest
+	(*ListInsightsResponse)(nil),       // 47: hacktheburgh.v1.ListInsightsResponse
+	(*ListWorkflowsRequest)(nil),       // 48: hacktheburgh.v1.ListWorkflowsRequest
+	(*ListWorkflowsResponse)(nil),      // 49: hacktheburgh.v1.ListWorkflowsResponse
+	(*ListWorkflowStepsRequest)(nil),   // 50: hacktheburgh.v1.ListWorkflowStepsRequest
+	(*ListWorkflowStepsResponse)(nil),  // 51: hacktheburgh.v1.ListWorkflowStepsResponse
+	(*RegenerateWorkflowRequest)(nil),  // 52: hacktheburgh.v1.RegenerateWorkflowRequest
+	(*RegenerateWorkflowResponse)(nil), // 53: hacktheburgh.v1.RegenerateWorkflowResponse
+	(*ReplayRequest)(nil),              // 54: hacktheburgh.v1.ReplayRequest
+	(*ReplayResponse)(nil),             // 55: hacktheburgh.v1.ReplayResponse
+	nil,                                // 56: hacktheburgh.v1.BackfillReport.MethodsEntry
+	(*structpb.Struct)(nil),            // 57: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),      // 58: google.protobuf.Timestamp
+	(*structpb.Value)(nil),             // 59: google.protobuf.Value
 }
 var file_hacktheburgh_v1_service_proto_depIdxs = []int32{
-	53, // 0: hacktheburgh.v1.SourceConfig.schema:type_name -> google.protobuf.Struct
+	57, // 0: hacktheburgh.v1.SourceConfig.schema:type_name -> google.protobuf.Struct
 	11, // 1: hacktheburgh.v1.SourceConfig.pagination:type_name -> hacktheburgh.v1.WebPagination
 	1,  // 2: hacktheburgh.v1.WebPagination.strategy:type_name -> hacktheburgh.v1.PaginationStrategy
 	2,  // 3: hacktheburgh.v1.FieldProfile.role:type_name -> hacktheburgh.v1.FieldRole
 	3,  // 4: hacktheburgh.v1.FieldProfile.aggregation:type_name -> hacktheburgh.v1.Aggregation
 	12, // 5: hacktheburgh.v1.SourceProfile.fields:type_name -> hacktheburgh.v1.FieldProfile
 	0,  // 6: hacktheburgh.v1.Source.kind:type_name -> hacktheburgh.v1.SourceKind
-	54, // 7: hacktheburgh.v1.Source.last_polled_at:type_name -> google.protobuf.Timestamp
+	58, // 7: hacktheburgh.v1.Source.last_polled_at:type_name -> google.protobuf.Timestamp
 	13, // 8: hacktheburgh.v1.Source.profile:type_name -> hacktheburgh.v1.SourceProfile
-	54, // 9: hacktheburgh.v1.Source.created_at:type_name -> google.protobuf.Timestamp
-	54, // 10: hacktheburgh.v1.DataRecord.observed_at:type_name -> google.protobuf.Timestamp
-	53, // 11: hacktheburgh.v1.DataRecord.payload:type_name -> google.protobuf.Struct
-	0,  // 12: hacktheburgh.v1.CreateSourceRequest.kind:type_name -> hacktheburgh.v1.SourceKind
-	10, // 13: hacktheburgh.v1.CreateSourceRequest.config:type_name -> hacktheburgh.v1.SourceConfig
-	14, // 14: hacktheburgh.v1.CreateSourceResponse.source:type_name -> hacktheburgh.v1.Source
-	14, // 15: hacktheburgh.v1.UploadCSVSourceResponse.source:type_name -> hacktheburgh.v1.Source
-	14, // 16: hacktheburgh.v1.ListSourcesResponse.sources:type_name -> hacktheburgh.v1.Source
-	14, // 17: hacktheburgh.v1.GetSourceResponse.source:type_name -> hacktheburgh.v1.Source
-	15, // 18: hacktheburgh.v1.GetSourceResponse.recent_records:type_name -> hacktheburgh.v1.DataRecord
-	54, // 19: hacktheburgh.v1.Project.created_at:type_name -> google.protobuf.Timestamp
-	54, // 20: hacktheburgh.v1.Run.data_up_to:type_name -> google.protobuf.Timestamp
-	5,  // 21: hacktheburgh.v1.Run.status:type_name -> hacktheburgh.v1.RunStatus
-	53, // 22: hacktheburgh.v1.Run.result:type_name -> google.protobuf.Struct
-	54, // 23: hacktheburgh.v1.Run.started_at:type_name -> google.protobuf.Timestamp
-	54, // 24: hacktheburgh.v1.Run.finished_at:type_name -> google.protobuf.Timestamp
-	26, // 25: hacktheburgh.v1.ProjectSummary.project:type_name -> hacktheburgh.v1.Project
-	5,  // 26: hacktheburgh.v1.ProjectSummary.latest_run_status:type_name -> hacktheburgh.v1.RunStatus
-	4,  // 27: hacktheburgh.v1.Workflow.kind:type_name -> hacktheburgh.v1.WorkflowKind
-	54, // 28: hacktheburgh.v1.Workflow.created_at:type_name -> google.protobuf.Timestamp
-	53, // 29: hacktheburgh.v1.Workflow.report:type_name -> google.protobuf.Struct
-	7,  // 30: hacktheburgh.v1.Insight.origin:type_name -> hacktheburgh.v1.InsightOrigin
-	6,  // 31: hacktheburgh.v1.Insight.kind:type_name -> hacktheburgh.v1.InsightKind
-	53, // 32: hacktheburgh.v1.Insight.stats:type_name -> google.protobuf.Struct
-	55, // 33: hacktheburgh.v1.Insight.evidence:type_name -> google.protobuf.Value
-	53, // 34: hacktheburgh.v1.Insight.chart_spec:type_name -> google.protobuf.Struct
-	8,  // 35: hacktheburgh.v1.Insight.narrated_by:type_name -> hacktheburgh.v1.NarratedBy
-	54, // 36: hacktheburgh.v1.Insight.created_at:type_name -> google.protobuf.Timestamp
-	9,  // 37: hacktheburgh.v1.Insight.plausibility:type_name -> hacktheburgh.v1.Plausibility
-	53, // 38: hacktheburgh.v1.WorkflowStep.input:type_name -> google.protobuf.Struct
-	53, // 39: hacktheburgh.v1.WorkflowStep.output:type_name -> google.protobuf.Struct
-	26, // 40: hacktheburgh.v1.CreateProjectResponse.project:type_name -> hacktheburgh.v1.Project
-	30, // 41: hacktheburgh.v1.CreateProjectResponse.active_workflow:type_name -> hacktheburgh.v1.Workflow
-	27, // 42: hacktheburgh.v1.CreateProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
-	29, // 43: hacktheburgh.v1.ListProjectsResponse.projects:type_name -> hacktheburgh.v1.ProjectSummary
-	26, // 44: hacktheburgh.v1.GetProjectResponse.project:type_name -> hacktheburgh.v1.Project
-	30, // 45: hacktheburgh.v1.GetProjectResponse.active_workflows:type_name -> hacktheburgh.v1.Workflow
-	27, // 46: hacktheburgh.v1.GetProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
-	28, // 47: hacktheburgh.v1.GetProjectResponse.funnel:type_name -> hacktheburgh.v1.AnalysisFunnel
-	4,  // 48: hacktheburgh.v1.GetProjectResponse.generating:type_name -> hacktheburgh.v1.WorkflowKind
-	4,  // 49: hacktheburgh.v1.RunWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
-	31, // 50: hacktheburgh.v1.ListInsightsResponse.insights:type_name -> hacktheburgh.v1.Insight
-	30, // 51: hacktheburgh.v1.ListWorkflowsResponse.workflows:type_name -> hacktheburgh.v1.Workflow
-	32, // 52: hacktheburgh.v1.ListWorkflowStepsResponse.steps:type_name -> hacktheburgh.v1.WorkflowStep
-	4,  // 53: hacktheburgh.v1.RegenerateWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
-	30, // 54: hacktheburgh.v1.RegenerateWorkflowResponse.workflow:type_name -> hacktheburgh.v1.Workflow
-	16, // 55: hacktheburgh.v1.AnduinService.CreateSource:input_type -> hacktheburgh.v1.CreateSourceRequest
-	18, // 56: hacktheburgh.v1.AnduinService.UploadCSVSource:input_type -> hacktheburgh.v1.UploadCSVSourceRequest
-	20, // 57: hacktheburgh.v1.AnduinService.ListSources:input_type -> hacktheburgh.v1.ListSourcesRequest
-	22, // 58: hacktheburgh.v1.AnduinService.GetSource:input_type -> hacktheburgh.v1.GetSourceRequest
-	24, // 59: hacktheburgh.v1.AnduinService.DeleteSource:input_type -> hacktheburgh.v1.DeleteSourceRequest
-	33, // 60: hacktheburgh.v1.AnduinService.CreateProject:input_type -> hacktheburgh.v1.CreateProjectRequest
-	35, // 61: hacktheburgh.v1.AnduinService.DeleteProject:input_type -> hacktheburgh.v1.DeleteProjectRequest
-	37, // 62: hacktheburgh.v1.AnduinService.ListProjects:input_type -> hacktheburgh.v1.ListProjectsRequest
-	39, // 63: hacktheburgh.v1.AnduinService.GetProject:input_type -> hacktheburgh.v1.GetProjectRequest
-	43, // 64: hacktheburgh.v1.AnduinService.ListInsights:input_type -> hacktheburgh.v1.ListInsightsRequest
-	41, // 65: hacktheburgh.v1.AnduinService.RunWorkflow:input_type -> hacktheburgh.v1.RunWorkflowRequest
-	45, // 66: hacktheburgh.v1.AnduinService.ListWorkflows:input_type -> hacktheburgh.v1.ListWorkflowsRequest
-	47, // 67: hacktheburgh.v1.AnduinService.ListWorkflowSteps:input_type -> hacktheburgh.v1.ListWorkflowStepsRequest
-	49, // 68: hacktheburgh.v1.AnduinService.RegenerateWorkflow:input_type -> hacktheburgh.v1.RegenerateWorkflowRequest
-	51, // 69: hacktheburgh.v1.AnduinService.Replay:input_type -> hacktheburgh.v1.ReplayRequest
-	17, // 70: hacktheburgh.v1.AnduinService.CreateSource:output_type -> hacktheburgh.v1.CreateSourceResponse
-	19, // 71: hacktheburgh.v1.AnduinService.UploadCSVSource:output_type -> hacktheburgh.v1.UploadCSVSourceResponse
-	21, // 72: hacktheburgh.v1.AnduinService.ListSources:output_type -> hacktheburgh.v1.ListSourcesResponse
-	23, // 73: hacktheburgh.v1.AnduinService.GetSource:output_type -> hacktheburgh.v1.GetSourceResponse
-	25, // 74: hacktheburgh.v1.AnduinService.DeleteSource:output_type -> hacktheburgh.v1.DeleteSourceResponse
-	34, // 75: hacktheburgh.v1.AnduinService.CreateProject:output_type -> hacktheburgh.v1.CreateProjectResponse
-	36, // 76: hacktheburgh.v1.AnduinService.DeleteProject:output_type -> hacktheburgh.v1.DeleteProjectResponse
-	38, // 77: hacktheburgh.v1.AnduinService.ListProjects:output_type -> hacktheburgh.v1.ListProjectsResponse
-	40, // 78: hacktheburgh.v1.AnduinService.GetProject:output_type -> hacktheburgh.v1.GetProjectResponse
-	44, // 79: hacktheburgh.v1.AnduinService.ListInsights:output_type -> hacktheburgh.v1.ListInsightsResponse
-	42, // 80: hacktheburgh.v1.AnduinService.RunWorkflow:output_type -> hacktheburgh.v1.RunWorkflowResponse
-	46, // 81: hacktheburgh.v1.AnduinService.ListWorkflows:output_type -> hacktheburgh.v1.ListWorkflowsResponse
-	48, // 82: hacktheburgh.v1.AnduinService.ListWorkflowSteps:output_type -> hacktheburgh.v1.ListWorkflowStepsResponse
-	50, // 83: hacktheburgh.v1.AnduinService.RegenerateWorkflow:output_type -> hacktheburgh.v1.RegenerateWorkflowResponse
-	52, // 84: hacktheburgh.v1.AnduinService.Replay:output_type -> hacktheburgh.v1.ReplayResponse
-	70, // [70:85] is the sub-list for method output_type
-	55, // [55:70] is the sub-list for method input_type
-	55, // [55:55] is the sub-list for extension type_name
-	55, // [55:55] is the sub-list for extension extendee
-	0,  // [0:55] is the sub-list for field type_name
+	58, // 9: hacktheburgh.v1.Source.created_at:type_name -> google.protobuf.Timestamp
+	15, // 10: hacktheburgh.v1.Source.last_backfill:type_name -> hacktheburgh.v1.BackfillReport
+	56, // 11: hacktheburgh.v1.BackfillReport.methods:type_name -> hacktheburgh.v1.BackfillReport.MethodsEntry
+	58, // 12: hacktheburgh.v1.BackfillReport.finished_at:type_name -> google.protobuf.Timestamp
+	58, // 13: hacktheburgh.v1.DataRecord.observed_at:type_name -> google.protobuf.Timestamp
+	57, // 14: hacktheburgh.v1.DataRecord.payload:type_name -> google.protobuf.Struct
+	0,  // 15: hacktheburgh.v1.CreateSourceRequest.kind:type_name -> hacktheburgh.v1.SourceKind
+	10, // 16: hacktheburgh.v1.CreateSourceRequest.config:type_name -> hacktheburgh.v1.SourceConfig
+	14, // 17: hacktheburgh.v1.CreateSourceResponse.source:type_name -> hacktheburgh.v1.Source
+	14, // 18: hacktheburgh.v1.UploadCSVSourceResponse.source:type_name -> hacktheburgh.v1.Source
+	14, // 19: hacktheburgh.v1.ListSourcesResponse.sources:type_name -> hacktheburgh.v1.Source
+	14, // 20: hacktheburgh.v1.GetSourceResponse.source:type_name -> hacktheburgh.v1.Source
+	16, // 21: hacktheburgh.v1.GetSourceResponse.recent_records:type_name -> hacktheburgh.v1.DataRecord
+	14, // 22: hacktheburgh.v1.UpdateSourceResponse.source:type_name -> hacktheburgh.v1.Source
+	58, // 23: hacktheburgh.v1.Project.created_at:type_name -> google.protobuf.Timestamp
+	58, // 24: hacktheburgh.v1.Run.data_up_to:type_name -> google.protobuf.Timestamp
+	5,  // 25: hacktheburgh.v1.Run.status:type_name -> hacktheburgh.v1.RunStatus
+	57, // 26: hacktheburgh.v1.Run.result:type_name -> google.protobuf.Struct
+	58, // 27: hacktheburgh.v1.Run.started_at:type_name -> google.protobuf.Timestamp
+	58, // 28: hacktheburgh.v1.Run.finished_at:type_name -> google.protobuf.Timestamp
+	29, // 29: hacktheburgh.v1.ProjectSummary.project:type_name -> hacktheburgh.v1.Project
+	5,  // 30: hacktheburgh.v1.ProjectSummary.latest_run_status:type_name -> hacktheburgh.v1.RunStatus
+	4,  // 31: hacktheburgh.v1.Workflow.kind:type_name -> hacktheburgh.v1.WorkflowKind
+	58, // 32: hacktheburgh.v1.Workflow.created_at:type_name -> google.protobuf.Timestamp
+	57, // 33: hacktheburgh.v1.Workflow.report:type_name -> google.protobuf.Struct
+	7,  // 34: hacktheburgh.v1.Insight.origin:type_name -> hacktheburgh.v1.InsightOrigin
+	6,  // 35: hacktheburgh.v1.Insight.kind:type_name -> hacktheburgh.v1.InsightKind
+	57, // 36: hacktheburgh.v1.Insight.stats:type_name -> google.protobuf.Struct
+	59, // 37: hacktheburgh.v1.Insight.evidence:type_name -> google.protobuf.Value
+	57, // 38: hacktheburgh.v1.Insight.chart_spec:type_name -> google.protobuf.Struct
+	8,  // 39: hacktheburgh.v1.Insight.narrated_by:type_name -> hacktheburgh.v1.NarratedBy
+	58, // 40: hacktheburgh.v1.Insight.created_at:type_name -> google.protobuf.Timestamp
+	9,  // 41: hacktheburgh.v1.Insight.plausibility:type_name -> hacktheburgh.v1.Plausibility
+	57, // 42: hacktheburgh.v1.WorkflowStep.input:type_name -> google.protobuf.Struct
+	57, // 43: hacktheburgh.v1.WorkflowStep.output:type_name -> google.protobuf.Struct
+	29, // 44: hacktheburgh.v1.CreateProjectResponse.project:type_name -> hacktheburgh.v1.Project
+	33, // 45: hacktheburgh.v1.CreateProjectResponse.active_workflow:type_name -> hacktheburgh.v1.Workflow
+	30, // 46: hacktheburgh.v1.CreateProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
+	32, // 47: hacktheburgh.v1.ListProjectsResponse.projects:type_name -> hacktheburgh.v1.ProjectSummary
+	29, // 48: hacktheburgh.v1.GetProjectResponse.project:type_name -> hacktheburgh.v1.Project
+	33, // 49: hacktheburgh.v1.GetProjectResponse.active_workflows:type_name -> hacktheburgh.v1.Workflow
+	30, // 50: hacktheburgh.v1.GetProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
+	31, // 51: hacktheburgh.v1.GetProjectResponse.funnel:type_name -> hacktheburgh.v1.AnalysisFunnel
+	4,  // 52: hacktheburgh.v1.GetProjectResponse.generating:type_name -> hacktheburgh.v1.WorkflowKind
+	4,  // 53: hacktheburgh.v1.RunWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
+	34, // 54: hacktheburgh.v1.ListInsightsResponse.insights:type_name -> hacktheburgh.v1.Insight
+	33, // 55: hacktheburgh.v1.ListWorkflowsResponse.workflows:type_name -> hacktheburgh.v1.Workflow
+	35, // 56: hacktheburgh.v1.ListWorkflowStepsResponse.steps:type_name -> hacktheburgh.v1.WorkflowStep
+	4,  // 57: hacktheburgh.v1.RegenerateWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
+	33, // 58: hacktheburgh.v1.RegenerateWorkflowResponse.workflow:type_name -> hacktheburgh.v1.Workflow
+	17, // 59: hacktheburgh.v1.AnduinService.CreateSource:input_type -> hacktheburgh.v1.CreateSourceRequest
+	19, // 60: hacktheburgh.v1.AnduinService.UploadCSVSource:input_type -> hacktheburgh.v1.UploadCSVSourceRequest
+	21, // 61: hacktheburgh.v1.AnduinService.ListSources:input_type -> hacktheburgh.v1.ListSourcesRequest
+	23, // 62: hacktheburgh.v1.AnduinService.GetSource:input_type -> hacktheburgh.v1.GetSourceRequest
+	25, // 63: hacktheburgh.v1.AnduinService.UpdateSource:input_type -> hacktheburgh.v1.UpdateSourceRequest
+	27, // 64: hacktheburgh.v1.AnduinService.DeleteSource:input_type -> hacktheburgh.v1.DeleteSourceRequest
+	36, // 65: hacktheburgh.v1.AnduinService.CreateProject:input_type -> hacktheburgh.v1.CreateProjectRequest
+	38, // 66: hacktheburgh.v1.AnduinService.DeleteProject:input_type -> hacktheburgh.v1.DeleteProjectRequest
+	40, // 67: hacktheburgh.v1.AnduinService.ListProjects:input_type -> hacktheburgh.v1.ListProjectsRequest
+	42, // 68: hacktheburgh.v1.AnduinService.GetProject:input_type -> hacktheburgh.v1.GetProjectRequest
+	46, // 69: hacktheburgh.v1.AnduinService.ListInsights:input_type -> hacktheburgh.v1.ListInsightsRequest
+	44, // 70: hacktheburgh.v1.AnduinService.RunWorkflow:input_type -> hacktheburgh.v1.RunWorkflowRequest
+	48, // 71: hacktheburgh.v1.AnduinService.ListWorkflows:input_type -> hacktheburgh.v1.ListWorkflowsRequest
+	50, // 72: hacktheburgh.v1.AnduinService.ListWorkflowSteps:input_type -> hacktheburgh.v1.ListWorkflowStepsRequest
+	52, // 73: hacktheburgh.v1.AnduinService.RegenerateWorkflow:input_type -> hacktheburgh.v1.RegenerateWorkflowRequest
+	54, // 74: hacktheburgh.v1.AnduinService.Replay:input_type -> hacktheburgh.v1.ReplayRequest
+	18, // 75: hacktheburgh.v1.AnduinService.CreateSource:output_type -> hacktheburgh.v1.CreateSourceResponse
+	20, // 76: hacktheburgh.v1.AnduinService.UploadCSVSource:output_type -> hacktheburgh.v1.UploadCSVSourceResponse
+	22, // 77: hacktheburgh.v1.AnduinService.ListSources:output_type -> hacktheburgh.v1.ListSourcesResponse
+	24, // 78: hacktheburgh.v1.AnduinService.GetSource:output_type -> hacktheburgh.v1.GetSourceResponse
+	26, // 79: hacktheburgh.v1.AnduinService.UpdateSource:output_type -> hacktheburgh.v1.UpdateSourceResponse
+	28, // 80: hacktheburgh.v1.AnduinService.DeleteSource:output_type -> hacktheburgh.v1.DeleteSourceResponse
+	37, // 81: hacktheburgh.v1.AnduinService.CreateProject:output_type -> hacktheburgh.v1.CreateProjectResponse
+	39, // 82: hacktheburgh.v1.AnduinService.DeleteProject:output_type -> hacktheburgh.v1.DeleteProjectResponse
+	41, // 83: hacktheburgh.v1.AnduinService.ListProjects:output_type -> hacktheburgh.v1.ListProjectsResponse
+	43, // 84: hacktheburgh.v1.AnduinService.GetProject:output_type -> hacktheburgh.v1.GetProjectResponse
+	47, // 85: hacktheburgh.v1.AnduinService.ListInsights:output_type -> hacktheburgh.v1.ListInsightsResponse
+	45, // 86: hacktheburgh.v1.AnduinService.RunWorkflow:output_type -> hacktheburgh.v1.RunWorkflowResponse
+	49, // 87: hacktheburgh.v1.AnduinService.ListWorkflows:output_type -> hacktheburgh.v1.ListWorkflowsResponse
+	51, // 88: hacktheburgh.v1.AnduinService.ListWorkflowSteps:output_type -> hacktheburgh.v1.ListWorkflowStepsResponse
+	53, // 89: hacktheburgh.v1.AnduinService.RegenerateWorkflow:output_type -> hacktheburgh.v1.RegenerateWorkflowResponse
+	55, // 90: hacktheburgh.v1.AnduinService.Replay:output_type -> hacktheburgh.v1.ReplayResponse
+	75, // [75:91] is the sub-list for method output_type
+	59, // [59:75] is the sub-list for method input_type
+	59, // [59:59] is the sub-list for extension type_name
+	59, // [59:59] is the sub-list for extension extendee
+	0,  // [0:59] is the sub-list for field type_name
 }
 
 func init() { file_hacktheburgh_v1_service_proto_init() }
@@ -3661,13 +3941,14 @@ func file_hacktheburgh_v1_service_proto_init() {
 	file_hacktheburgh_v1_service_proto_msgTypes[2].OneofWrappers = []any{}
 	file_hacktheburgh_v1_service_proto_msgTypes[3].OneofWrappers = []any{}
 	file_hacktheburgh_v1_service_proto_msgTypes[4].OneofWrappers = []any{}
+	file_hacktheburgh_v1_service_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hacktheburgh_v1_service_proto_rawDesc), len(file_hacktheburgh_v1_service_proto_rawDesc)),
 			NumEnums:      10,
-			NumMessages:   43,
+			NumMessages:   47,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

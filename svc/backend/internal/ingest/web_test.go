@@ -484,7 +484,7 @@ func TestWebAdapterFetchDirect(t *testing.T) {
 		"id_field":   "url",
 		"time_field": "published_at",
 	})
-	records, err := adapter.Fetch(context.Background(), raw, nil)
+	records, err := fetchRecords(adapter, context.Background(), raw)
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
 	}
@@ -529,7 +529,7 @@ func TestWebAdapterFetchNextPage(t *testing.T) {
 		"time_field": "published_at",
 		"pagination": map[string]any{"strategy": "next", "max_pages": 2},
 	})
-	records, err := adapter.Fetch(context.Background(), raw, nil)
+	records, err := fetchRecords(adapter, context.Background(), raw)
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
 	}
@@ -561,7 +561,7 @@ func TestWebAdapterFetchPageLinks(t *testing.T) {
 		"id_field":   "url",
 		"pagination": map[string]any{"strategy": "page_links", "max_pages": 2},
 	})
-	records, err := adapter.Fetch(context.Background(), raw, nil)
+	records, err := fetchRecords(adapter, context.Background(), raw)
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
 	}
@@ -594,7 +594,7 @@ func TestWebAdapterFetchScroll(t *testing.T) {
 		"id_field":   "url",
 		"pagination": map[string]any{"strategy": "scroll", "max_scrolls": 2},
 	})
-	records, err := adapter.Fetch(context.Background(), raw, nil)
+	records, err := fetchRecords(adapter, context.Background(), raw)
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
 	}
@@ -614,7 +614,7 @@ func TestWebAdapterErrors(t *testing.T) {
 
 	t.Run("missing token", func(t *testing.T) {
 		adapter := &WebAdapter{Crawl4AIURL: "http://127.0.0.1:1"}
-		if _, err := adapter.Fetch(context.Background(), raw, nil); err == nil {
+		if _, err := adapter.Fetch(context.Background(), raw, FetchOptions{}); err == nil {
 			t.Fatal("expected token error")
 		}
 	})
@@ -623,7 +623,7 @@ func TestWebAdapterErrors(t *testing.T) {
 		server := httptest.NewServer(&fakeCrawl4AI{t: t, failStatus: http.StatusUnauthorized})
 		defer server.Close()
 		adapter := &WebAdapter{Crawl4AIURL: server.URL, Token: "test-token"}
-		if _, err := adapter.Fetch(context.Background(), raw, nil); err == nil {
+		if _, err := adapter.Fetch(context.Background(), raw, FetchOptions{}); err == nil {
 			t.Fatal("expected HTTP error")
 		}
 	})
@@ -634,7 +634,7 @@ func TestWebAdapterErrors(t *testing.T) {
 		adapter := &WebAdapter{Crawl4AIURL: server.URL, Token: "test-token"}
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
-		if _, err := adapter.Fetch(ctx, raw, nil); err == nil {
+		if _, err := adapter.Fetch(ctx, raw, FetchOptions{}); err == nil {
 			t.Fatal("expected timeout")
 		}
 	})
@@ -643,7 +643,7 @@ func TestWebAdapterErrors(t *testing.T) {
 		server := httptest.NewServer(&fakeCrawl4AI{t: t, defaultResult: []any{}})
 		defer server.Close()
 		adapter := &WebAdapter{Crawl4AIURL: server.URL, Token: "test-token"}
-		if _, err := adapter.Fetch(context.Background(), raw, nil); err == nil {
+		if _, err := adapter.Fetch(context.Background(), raw, FetchOptions{}); err == nil {
 			t.Fatal("expected empty extraction error")
 		}
 	})
