@@ -211,27 +211,35 @@ func (s *ConnectService) RunWorkflow(ctx context.Context, req *v1.RunWorkflowReq
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, "project_id must be a UUID")
 	}
-	if req.GetKind() != v1.WorkflowKind_WORKFLOW_KIND_STATISTICAL {
-		return nil, connect.NewError(connect.CodeInvalidArgument, "only statistical workflows can be run manually")
+	var kind string
+	switch req.GetKind() {
+	case v1.WorkflowKind_WORKFLOW_KIND_STATISTICAL:
+		kind = workflows.KindStatistical
+	case v1.WorkflowKind_WORKFLOW_KIND_INVESTIGATION:
+		kind = workflows.KindInvestigation
+	default:
+		return nil, connect.NewError(connect.CodeInvalidArgument, "kind must be statistical or investigation")
 	}
 	if err := s.ensureExists(ctx, "projects", projectID, "project"); err != nil {
 		return nil, err
 	}
-	if err := s.Runner.ForceRun(ctx, id); err != nil {
+	if err := s.Runner.ForceRun(ctx, id, kind); err != nil {
 		switch {
 		case errors.Is(err, workflows.ErrBusy):
-			return nil, connect.NewError(connect.CodeFailedPrecondition, "the statistical workflow is already running")
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "the "+kind+" workflow is already running")
 		case errors.Is(err, workflows.ErrNoData):
 			return nil, connect.NewError(connect.CodeFailedPrecondition, "the project has no data to analyze")
 		case errors.Is(err, workflows.ErrNoActiveStatisticalWorkflow):
 			return nil, connect.NewError(connect.CodeFailedPrecondition, "the project has no active statistical workflow")
+		case errors.Is(err, workflows.ErrNoActiveInvestigationWorkflow):
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "the project has no active investigation workflow")
 		case errors.Is(err, workflows.ErrRunnerNotRunning):
 			return nil, connect.NewError(connect.CodeUnavailable, err.Error())
 		default:
 			return nil, internalError(err)
 		}
 	}
-	return &v1.RunWorkflowResponse{Accepted: true, Message: "statistical workflow run queued"}, nil
+	return &v1.RunWorkflowResponse{Accepted: true, Message: kind + " workflow run queued"}, nil
 }
 
 func (s *ConnectService) ListInsights(ctx context.Context, req *v1.ListInsightsRequest) (*v1.ListInsightsResponse, error) {
@@ -453,7 +461,7 @@ func (s *ConnectService) latestRun(ctx context.Context, projectID string) (*v1.R
 		SELECT r.id::text, r.workflow_id::text, r.data_up_to, r.status, r.result,
 	       r.error, r.started_at, r.finished_at
 		FROM runs r JOIN workflows w ON w.id = r.workflow_id
-		WHERE w.project_id = $1::uuid ORDER BY r.started_at DESC LIMIT 1`, projectID).
+		WHERE w.project_id = $1::uuid AND w.kind = 'statistical' ORDER BY r.started_at DESC LIMIT 1`, projectID).
 		Scan(&run.Id, &run.WorkflowId, &dataUpTo, &status, &resultRaw, &runError, &startedAt, &finishedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil, nil

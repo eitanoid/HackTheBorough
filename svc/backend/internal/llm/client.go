@@ -29,8 +29,17 @@ const maxToolOutput = 4096 // bytes of tool output shown to the model
 type Client struct {
 	Provider Provider
 	Models   map[Purpose]string
-	Timeout  time.Duration // per model call
-	MaxIter  int           // tool-runner iterations
+	// Efforts sets reasoning_effort per purpose. An empty or missing entry
+	// omits the parameter, which models without reasoning require.
+	Efforts map[Purpose]string
+	// APIs picks the endpoint per purpose (APIChat or APIResponses); a missing
+	// entry means chat completions. Reasoning models need APIResponses to use
+	// function tools.
+	APIs    map[Purpose]string
+	Timeout time.Duration // per model call
+	// Timeouts overrides Timeout per purpose: reasoning calls take longer.
+	Timeouts map[Purpose]time.Duration
+	MaxIter  int // tool-runner iterations
 	Log      *CallLog
 }
 
@@ -41,8 +50,11 @@ func New(cfg config.Config) (*Client, error) {
 			Profiler: cfg.ModelProfiler, Author: cfg.ModelAuthor, Investigator: cfg.ModelInvestigator,
 			Reviewer: cfg.ModelReviewer, Narrator: cfg.ModelNarrator,
 		},
-		Timeout: cfg.LLMTimeout,
-		MaxIter: cfg.MaxInvestigatorIt,
+		Efforts:  map[Purpose]string{Investigator: cfg.EffortInvestigator},
+		APIs:     map[Purpose]string{Investigator: cfg.APIInvestigator},
+		Timeouts: map[Purpose]time.Duration{Investigator: cfg.TimeoutInvestigator},
+		Timeout:  cfg.LLMTimeout,
+		MaxIter:  cfg.MaxInvestigatorIt,
 	}
 	if cfg.LLMLogPath != "" {
 		l, err := OpenCallLog(cfg.LLMLogPath, cfg.LLMLogPrompts)
@@ -118,7 +130,7 @@ func RunTools[T any](ctx context.Context, c *Client, r Request, tools []Tool, va
 		if len(resp.ToolCalls) == 0 {
 			return finish(ctx, c, r.Purpose, msgs, &resp.Content, &SchemaSpec{Name: name, Schema: schema}, validate)
 		}
-		msgs = append(msgs, Message{Role: "assistant", Content: resp.Content, ToolCalls: resp.ToolCalls})
+		msgs = append(msgs, Message{Role: "assistant", Content: resp.Content, ToolCalls: resp.ToolCalls, Raw: resp.Raw})
 		for _, tc := range resp.ToolCalls {
 			msgs = append(msgs, Message{Role: "tool", ToolCallID: tc.ID, Content: runTool(ctx, byName, tc)})
 		}
@@ -183,7 +195,17 @@ func (c *Client) call(ctx context.Context, p Purpose, attempt int, req ChatReque
 	if req.Model == "" {
 		return ChatResponse{}, fmt.Errorf("llm: no model configured for %s", p)
 	}
-	ctx, cancel := context.WithTimeout(ctx, c.Timeout)
+	if req.ReasoningEffort == "" {
+		req.ReasoningEffort = c.Efforts[p]
+	}
+	if req.API == "" {
+		req.API = c.APIs[p]
+	}
+	timeout := c.Timeout
+	if t := c.Timeouts[p]; t > 0 {
+		timeout = t
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	start := time.Now()
 	resp, err := c.Provider.Chat(ctx, req)

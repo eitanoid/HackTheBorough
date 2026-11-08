@@ -14,6 +14,12 @@ const MaxAnomalies = 50
 
 const MaxChartPoints = 500
 
+// Limits on an investigation report.
+const (
+	MaxInvestigationFindings = 4
+	MaxClaimsPerFinding      = 8
+)
+
 var (
 	scriptAssignsResult = regexp.MustCompile(`(?m)^[ \t]*result[ \t]*=[^=]`)
 	scriptMentionsInput = regexp.MustCompile(`\bINPUT\b`)
@@ -46,17 +52,24 @@ func (d WorkflowDraft) Validate() error {
 	if strings.TrimSpace(d.Rationale) == "" {
 		return fmt.Errorf("rationale is empty")
 	}
-	if len(d.Script) > MaxScriptChars {
-		return fmt.Errorf("script is %d characters; the limit is %d", len(d.Script), MaxScriptChars)
+	return CheckScript(d.Script)
+}
+
+// CheckScript is the lint shared by the author's scripts and the
+// investigator's run_python code: size, reads INPUT, assigns result, and none
+// of the forbidden tokens.
+func CheckScript(code string) error {
+	if len(code) > MaxScriptChars {
+		return fmt.Errorf("script is %d characters; the limit is %d", len(code), MaxScriptChars)
 	}
-	if !scriptMentionsInput.MatchString(d.Script) {
+	if !scriptMentionsInput.MatchString(code) {
 		return fmt.Errorf("script never reads INPUT")
 	}
-	if !scriptAssignsResult.MatchString(d.Script) {
+	if !scriptAssignsResult.MatchString(code) {
 		return fmt.Errorf("script never assigns `result`")
 	}
 	for _, f := range forbiddenInScript {
-		if f.re.MatchString(d.Script) {
+		if f.re.MatchString(code) {
 			return fmt.Errorf("script uses %q, which is not allowed: use only data from INPUT, no files, network, clock or os", f.what)
 		}
 	}
@@ -203,6 +216,9 @@ func checkStats(at string, stats map[string]any) error {
 	}
 	return nil
 }
+
+// Validate checks a chart the way a script result's charts are checked.
+func (c Chart) Validate() error { return checkChart("chart", &c) }
 
 func checkChart(at string, c *Chart) error {
 	if c == nil {

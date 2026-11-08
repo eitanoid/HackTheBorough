@@ -10,13 +10,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
+
 	"hacktheburgh/backend/internal/analysis"
 	"hacktheburgh/backend/internal/api"
 	"hacktheburgh/backend/internal/charts"
 	"hacktheburgh/backend/internal/config"
+	"hacktheburgh/backend/internal/contracts"
 	"hacktheburgh/backend/internal/db"
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/ingest"
+	"hacktheburgh/backend/internal/investigate"
 	"hacktheburgh/backend/internal/llm"
 	"hacktheburgh/backend/internal/narration"
 	"hacktheburgh/backend/internal/pyrunner"
@@ -114,11 +118,46 @@ func main() {
 		}
 	}
 
+	// Investigations replay recorded Python steps, so they need the runner;
+	// generating one also needs the LLM. Both stay nil interfaces otherwise.
+	var replayer workflows.InvestigationReplayer
+	var investigatorStarter workflows.InvestigationStarter
+	if runner != nil {
+		investigateStore := &investigate.PgStore{Pool: pool, Sources: analysisStore}
+		inputs := &investigate.InputBuilder{Store: analysisStore, History: cfg.AnalysisHistory}
+		replayer = &investigate.Replayer{
+			Store: investigateStore, Inputs: inputs, Runner: runner, Timeout: cfg.RunPythonTimeout, Chart: charts.Build,
+		}
+		if llmClient != nil {
+			investigator := &investigate.Investigator{
+				LLM: llmClient, Runner: runner, Store: investigateStore, Inputs: inputs, Bus: bus, Chart: charts.Build,
+				Budget: cfg.InvestigatorBudget, MaxSteps: cfg.MaxInvestigatorIt, Timeout: cfg.RunPythonTimeout,
+			}
+			investigatorStarter = investigator
+			// Hooks run in order after the author stores a first run. The
+			// reviewer adds its own here.
+			hooks := []func(ctx context.Context, projectID uuid.UUID){
+				func(ctx context.Context, projectID uuid.UUID) {
+					if err := investigator.StartIfNone(ctx, projectID); err != nil {
+						slog.Warn("could not start the investigator", "project", projectID, "err", err)
+					}
+				},
+			}
+			author.OnFirstRun = func(ctx context.Context, projectID, _, _ uuid.UUID, _ contracts.AnalysisResult) {
+				for _, h := range hooks {
+					h(ctx, projectID)
+				}
+			}
+		}
+	}
+
 	runLoop := &workflows.Runner{
 		Store:         &workflows.PgRunStore{Pool: pool, Sources: analysisStore},
 		Analyser:      analyser,
 		Insights:      insightBuilder,
 		Author:        author,
+		Replayer:      replayer,
+		Investigator:  investigatorStarter,
 		Bus:           bus,
 		SweepInterval: cfg.RunSweep,
 		Debounce:      cfg.RunDebounce,

@@ -45,7 +45,7 @@ type Author struct {
 	Insights *InsightBuilder
 	// OnFirstRun fires once the run and its cards are stored (the reviewer
 	// hooks in here); may be nil.
-	OnFirstRun func(ctx context.Context, workflowID, runID uuid.UUID, res contracts.AnalysisResult)
+	OnFirstRun func(ctx context.Context, projectID, workflowID, runID uuid.UUID, res contracts.AnalysisResult)
 
 	mu       sync.Mutex
 	inFlight map[uuid.UUID]bool
@@ -182,7 +182,7 @@ func (a *Author) Generate(ctx context.Context, projectID uuid.UUID, t *Trigger) 
 		a.publish(events.ProjectUpdated, projectID) // the dashboard refetches its cards
 	}
 	if a.OnFirstRun != nil {
-		a.OnFirstRun(ctx, wf, run, res)
+		a.OnFirstRun(ctx, projectID, wf, run, res)
 	}
 	return nil
 }

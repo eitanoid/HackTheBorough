@@ -134,8 +134,9 @@ type Narration struct {
 
 // Claim points at one number in a recorded step's output.
 type Claim struct {
-	Seq  int    `json:"seq"`  // workflow_steps.seq this number comes from
-	Path string `json:"path"` // dotted path into that step's output, e.g. "lags.3.rho"
+	Seq   int    `json:"seq"`   // workflow_steps.seq this number comes from
+	Path  string `json:"path"`  // dotted path into that step's output, e.g. "result.lags.3.rho"
+	Label string `json:"label"` // shown on the card's stats line, e.g. "rank correlation, rain vs trips"
 }
 
 type InvestigationFinding struct {
@@ -155,11 +156,14 @@ type InvestigationReport struct {
 // StepOutput is one replayed step.
 type StepOutput struct {
 	Seq    int             `json:"seq"`
-	Output json.RawMessage `json:"output"`
+	Output json.RawMessage `json:"output"` // the fresh output, or the carried one when Error is set
+	Error  *string         `json:"error"`  // why this step couldn't be recomputed; nil when fresh
+	AsOf   time.Time       `json:"as_of"`  // data_up_to the Output was computed at
 }
 
-// ReplayResult is returned by the worker's POST /replay.
-// NOTE: not specified field-by-field in the plan; proposed shape.
+// ReplayResult is built by investigate.Replayer (and, for the first run, from
+// the outputs recorded at generation). It holds only the steps that findings
+// cite; every step stays in workflow_steps.
 type ReplayResult struct {
 	DataUpTo time.Time    `json:"data_up_to"`
 	Steps    []StepOutput `json:"steps"` // one output per recorded step

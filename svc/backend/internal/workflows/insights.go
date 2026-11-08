@@ -12,21 +12,12 @@ import (
 
 	"hacktheburgh/backend/internal/charts"
 	"hacktheburgh/backend/internal/contracts"
+	"hacktheburgh/backend/internal/insightrows"
 	"hacktheburgh/backend/internal/narration"
 )
 
-// InsightRow is one statistical card, ready to insert.
-type InsightRow struct {
-	FindingKey   string
-	Kind         string // correlation | anomaly | custom
-	Headline     string
-	Explanation  string
-	Caveats      []string
-	Stats        map[string]any  // Finding.Stats as-is
-	ChartSpec    json.RawMessage // nil: no chart
-	NarratedBy   string
-	Plausibility *string // nil for template text
-}
+// InsightRow is the shared card row; this package fills statistical ones.
+type InsightRow = insightrows.InsightRow
 
 // InsightBuilder turns an analysis result into card rows: it reuses earlier
 // LLM text, narrates the most important new findings in one call, and gives
@@ -79,7 +70,7 @@ func (b *InsightBuilder) Build(ctx context.Context, projectID uuid.UUID, c narra
 	for _, f := range res.Findings {
 		t := texts[f.FindingKey]
 		rows = append(rows, InsightRow{
-			FindingKey: f.FindingKey, Kind: f.Kind, Headline: t.Headline, Explanation: t.Explanation,
+			Origin: insightrows.OriginStatistical, FindingKey: f.FindingKey, Kind: f.Kind, Headline: t.Headline, Explanation: t.Explanation,
 			Caveats: t.Caveats, Stats: f.Stats, ChartSpec: b.chart(c, f),
 			NarratedBy: t.NarratedBy, Plausibility: t.Plausibility,
 		})

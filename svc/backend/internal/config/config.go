@@ -26,27 +26,39 @@ type Config struct {
 	ModelProfiler     string
 	ModelAuthor       string
 	ModelInvestigator string
-	ModelReviewer     string
-	ModelNarrator     string
+	// EffortInvestigator is sent as reasoning_effort on investigator calls;
+	// empty omits it. Reasoning models need "none" to use function tools on
+	// chat completions.
+	EffortInvestigator string
+	// APIInvestigator is "responses" to call the investigator through the
+	// Responses API (reasoning models only take function tools there); empty
+	// or "chat" uses chat completions.
+	APIInvestigator string
+	// TimeoutInvestigator bounds one investigator model call; reasoning calls
+	// are slower than the default LLMTimeout allows.
+	TimeoutInvestigator time.Duration
+	ModelReviewer       string
+	ModelNarrator       string
 
 	PythonBin           string
 	RunnerMaxConcurrent int
 	RunnerMemMB         int
 	RunnerMaxResultMB   int
 
-	IngestTick       time.Duration
-	IngestMaxPar     int
-	RunDebounce      time.Duration
-	RunSweep         time.Duration
-	LLMTimeout       time.Duration
-	ScriptTimeout    time.Duration // analysis script, passed to the runner
-	RunPythonTimeout time.Duration // investigator run_python tool
-	AuthorBudget     time.Duration // overall context for one generation
-	FDRQ             float64
-	MinN             int
-	MaxTests         int
-	AnalysisHistory  time.Duration
-	MaxNarrations    int
+	IngestTick         time.Duration
+	IngestMaxPar       int
+	RunDebounce        time.Duration
+	RunSweep           time.Duration
+	LLMTimeout         time.Duration
+	ScriptTimeout      time.Duration // analysis script, passed to the runner
+	RunPythonTimeout   time.Duration // investigator run_python tool
+	AuthorBudget       time.Duration // overall context for one generation
+	InvestigatorBudget time.Duration // overall context for one investigation
+	FDRQ               float64
+	MinN               int
+	MaxTests           int
+	AnalysisHistory    time.Duration
+	MaxNarrations      int
 
 	// Regeneration limits live in config, not in prompts.
 	ReviewMinInterval time.Duration // at most one review per workflow per interval
@@ -64,35 +76,39 @@ func Load() Config {
 		LLMStub:          env("LLM_STUB", "") == "1",
 		LLMLogPath:       env("LLM_LOG_PATH", "llm_calls.jsonl"),
 
-		LLMAPIKey:         env("OPENAPI_KEY", ""),
-		LLMBaseURL:        env("LLM_BASE_URL", ""),
-		LLMLogPrompts:     env("LLM_LOG_PROMPTS", "1") == "1",
-		LLMDebug:          env("LLM_DEBUG", "") == "1",
-		AnalysisDebug:     env("ANALYSIS_DEBUG", "") == "1",
-		ModelProfiler:     env("LLM_MODEL_PROFILER", ""),
-		ModelAuthor:       env("LLM_MODEL_AUTHOR", ""),
-		ModelInvestigator: env("LLM_MODEL_INVESTIGATOR", ""),
-		ModelReviewer:     env("LLM_MODEL_REVIEWER", ""),
-		ModelNarrator:     env("LLM_MODEL_NARRATOR", ""),
+		LLMAPIKey:           env("OPENAPI_KEY", ""),
+		LLMBaseURL:          env("LLM_BASE_URL", ""),
+		LLMLogPrompts:       env("LLM_LOG_PROMPTS", "1") == "1",
+		LLMDebug:            env("LLM_DEBUG", "") == "1",
+		AnalysisDebug:       env("ANALYSIS_DEBUG", "") == "1",
+		ModelProfiler:       env("LLM_MODEL_PROFILER", ""),
+		ModelAuthor:         env("LLM_MODEL_AUTHOR", ""),
+		ModelInvestigator:   env("LLM_MODEL_INVESTIGATOR", ""),
+		EffortInvestigator:  env("LLM_REASONING_EFFORT_INVESTIGATOR", ""),
+		APIInvestigator:     env("LLM_API_INVESTIGATOR", ""),
+		TimeoutInvestigator: envSeconds("LLM_TIMEOUT_INVESTIGATOR_S", 180),
+		ModelReviewer:       env("LLM_MODEL_REVIEWER", ""),
+		ModelNarrator:       env("LLM_MODEL_NARRATOR", ""),
 
 		PythonBin:           env("PYTHON_BIN", "python3"),
 		RunnerMaxConcurrent: envInt("RUNNER_MAX_CONCURRENT", 2),
 		RunnerMemMB:         envInt("RUNNER_MEM_MB", 1024),
 		RunnerMaxResultMB:   envInt("RUNNER_MAX_RESULT_MB", 16),
 
-		IngestTick:       10 * time.Second,
-		IngestMaxPar:     envInt("INGEST_MAX_PAR", 4),
-		RunDebounce:      envSeconds("RUN_DEBOUNCE_S", 30),
-		RunSweep:         envSeconds("RUN_SWEEP_S", 300),
-		LLMTimeout:       60 * time.Second,
-		ScriptTimeout:    envSeconds("SCRIPT_TIMEOUT_S", 60),
-		RunPythonTimeout: envSeconds("RUN_PYTHON_TIMEOUT_S", 30),
-		AuthorBudget:     5 * time.Minute,
-		FDRQ:             envFloat("FDR_Q", 0.1),
-		MinN:             envInt("MIN_N", 30),
-		MaxTests:         envInt("MAX_TESTS", 2000),
-		AnalysisHistory:  time.Duration(envInt("ANALYSIS_HISTORY_DAYS", 365)) * 24 * time.Hour,
-		MaxNarrations:    5,
+		IngestTick:         10 * time.Second,
+		IngestMaxPar:       envInt("INGEST_MAX_PAR", 4),
+		RunDebounce:        envSeconds("RUN_DEBOUNCE_S", 30),
+		RunSweep:           envSeconds("RUN_SWEEP_S", 300),
+		LLMTimeout:         60 * time.Second,
+		ScriptTimeout:      envSeconds("SCRIPT_TIMEOUT_S", 60),
+		RunPythonTimeout:   envSeconds("RUN_PYTHON_TIMEOUT_S", 30),
+		AuthorBudget:       5 * time.Minute,
+		InvestigatorBudget: envSeconds("INVESTIGATOR_BUDGET_S", 480),
+		FDRQ:               envFloat("FDR_Q", 0.1),
+		MinN:               envInt("MIN_N", 30),
+		MaxTests:           envInt("MAX_TESTS", 2000),
+		AnalysisHistory:    time.Duration(envInt("ANALYSIS_HISTORY_DAYS", 365)) * 24 * time.Hour,
+		MaxNarrations:      5,
 
 		ReviewMinInterval: time.Duration(envInt("REVIEW_MIN_INTERVAL", 60)) * time.Second,
 		MaxRegenerations:  envInt("MAX_REGENERATIONS", 3),
