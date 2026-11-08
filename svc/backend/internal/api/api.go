@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"hacktheburgh/backend/internal/events"
+	"hacktheburgh/backend/internal/ingest"
 	"hacktheburgh/backend/internal/llm"
 )
 
@@ -15,6 +16,9 @@ type Server struct {
 	LLM *llm.Client // nil disables /api/debug/chat
 	// DebugLLM enables /api/debug/chat, which spends the API key on any caller.
 	DebugLLM bool
+
+	Store  *ingest.Store
+	Ingest *ingest.Loop
 }
 
 type debugChatReq struct {
@@ -54,13 +58,14 @@ func (s *Server) Routes() http.Handler {
 	if s.DebugLLM && s.LLM != nil {
 		mux.HandleFunc("POST /api/debug/chat", s.debugChat)
 	}
+	mux.HandleFunc("POST /api/sources", s.createSource)
+	mux.HandleFunc("GET /api/sources", s.listSources)
+	mux.HandleFunc("GET /api/sources/{id}", s.getSource)
+	mux.HandleFunc("POST /api/sources/{id}/poll", s.pollSource)
 
 	// Stubs: 501 until workstream A implements them.
 	for _, route := range []string{
-		"POST /api/sources",
 		"POST /api/sources/csv",
-		"GET /api/sources",
-		"GET /api/sources/{id}",
 		"POST /api/projects",
 		"GET /api/projects",
 		"GET /api/projects/{id}",
