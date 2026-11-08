@@ -227,6 +227,8 @@ h1, h2, h3, p { margin-top: 0; }
 .project-insight-heading > strong { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .insight-origin-badge { flex: 0 0 auto; padding: 2px 6px; border: 1px solid #c8e4ec; border-radius: 10px; background: #eff8fa; color: #287c96; font-size: 8px; font-weight: 650; letter-spacing: .02em; line-height: 1.5; white-space: nowrap; cursor: help; }
 .insight-origin-investigation { border-color: #ead9b8; background: #fbf5e8; color: #8a6a2a; }
+.insight-plausibility-doubtful { border-color: #e8c9c0; background: #fbefeb; color: #a2492f; }
+.project-insight-card p.insight-doubt-reason { color: #a2492f; }
 .chart-collapse { flex: 0 0 auto; padding: 3px 7px; border: 1px solid #e2ebe4; border-radius: 4px; background: #f7faf7; color: #5c7a68; font: inherit; font-size: 9px; cursor: pointer; }
 .chart-collapse:hover { border-color: #cddbd1; background: #eff6f0; }
 .chart-collapse:focus-visible { outline: 2px solid #4c9670; outline-offset: 1px; }

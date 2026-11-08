@@ -7,6 +7,7 @@ import {
   InsightOrigin,
   RunStatus,
   InsightKind,
+  Plausibility,
   WorkflowKind,
   type GetProjectResponse,
   type Insight,
@@ -199,6 +200,20 @@ function InsightOriginBadge({ origin }: { origin: InsightOrigin }) {
   }
 }
 
+function PlausibilityBadge({ insight }: { insight: Insight }) {
+  if (insight.plausibility !== Plausibility.DOUBTFUL) return null;
+  // The narrator guarantees the first caveat is the reason for doubt.
+  const reason = insight.caveats[0];
+  return (
+    <span
+      className="insight-origin-badge insight-plausibility-doubtful"
+      title={reason ? `Doubtful: ${reason}` : "Doubtful"}
+    >
+      Doubtful
+    </span>
+  );
+}
+
 function InsightCard({ insight }: { insight: Insight }) {
   const [collapsed, setCollapsed] = useState(false);
   const spec = specFromStruct(insight.chartSpec);
@@ -209,6 +224,7 @@ function InsightCard({ insight }: { insight: Insight }) {
     <article className="project-insight-card">
       <div className="project-insight-heading">
         <InsightOriginBadge origin={insight.origin} />
+        <PlausibilityBadge insight={insight} />
         <strong>{insight.headline}</strong>
         {spec && (
           <button
@@ -224,6 +240,9 @@ function InsightCard({ insight }: { insight: Insight }) {
         )}
       </div>
       <p>{insight.explanation}</p>
+      {insight.plausibility === Plausibility.DOUBTFUL && insight.caveats[0] && (
+        <p className="insight-doubt-reason">{insight.caveats[0]}</p>
+      )}
       {!collapsed && spec && (
         <div id={panelId}>
           <InsightChart spec={spec} />
