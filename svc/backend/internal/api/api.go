@@ -13,6 +13,7 @@ import (
 	v1connect "hacktheburgh/backend/gen/hacktheburgh/v1/hacktheburghv1connect"
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/ingest"
+	"hacktheburgh/backend/internal/investigate"
 	"hacktheburgh/backend/internal/llm"
 	"hacktheburgh/backend/internal/workflows"
 )
@@ -23,6 +24,8 @@ type Server struct {
 	// Author generates statistical workflows; nil when the LLM is not
 	// configured. Project creation asks it to author an initial workflow.
 	Author *workflows.Author
+	// Investigator writes investigation workflows; nil when investigations are disabled.
+	Investigator *investigate.Investigator
 	// Runner executes active statistical workflows and supports manual reruns.
 	Runner *workflows.Runner
 	// DebugLLM enables /api/debug/chat, which spends the API key on any caller.
@@ -75,7 +78,7 @@ func (s *Server) Routes() http.Handler {
 	}
 	connectServer := connect.NewServer()
 	v1connect.RegisterAnduinServiceHandler(connectServer, &ConnectService{
-		Store: s.Store, Bus: s.Bus, Author: s.Author, Runner: s.Runner,
+		Store: s.Store, Bus: s.Bus, Author: s.Author, Investigator: s.Investigator, Runner: s.Runner,
 	})
 	connecthttp.Mount(mux, connectServer, connecthttp.WithReadMaxBytes(ingest.MaxCSVBytes*4/3+(1<<20)))
 

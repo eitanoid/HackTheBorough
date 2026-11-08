@@ -2540,8 +2540,11 @@ type GetProjectResponse struct {
 	ActiveWorkflows []*Workflow            `protobuf:"bytes,2,rep,name=active_workflows,json=activeWorkflows,proto3" json:"active_workflows,omitempty"`
 	LatestRun       *Run                   `protobuf:"bytes,3,opt,name=latest_run,json=latestRun,proto3" json:"latest_run,omitempty"`
 	Funnel          *AnalysisFunnel        `protobuf:"bytes,4,opt,name=funnel,proto3" json:"funnel,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Workflow kinds being generated for this project right now (an LLM is
+	// writing a new version). Empty when idle.
+	Generating    []WorkflowKind `protobuf:"varint,5,rep,packed,name=generating,proto3,enum=hacktheburgh.v1.WorkflowKind" json:"generating,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetProjectResponse) Reset() {
@@ -2598,6 +2601,13 @@ func (x *GetProjectResponse) GetLatestRun() *Run {
 func (x *GetProjectResponse) GetFunnel() *AnalysisFunnel {
 	if x != nil {
 		return x.Funnel
+	}
+	return nil
+}
+
+func (x *GetProjectResponse) GetGenerating() []WorkflowKind {
+	if x != nil {
+		return x.Generating
 	}
 	return nil
 }
@@ -3359,13 +3369,16 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"\x14ListProjectsResponse\x12;\n" +
 	"\bprojects\x18\x01 \x03(\v2\x1f.hacktheburgh.v1.ProjectSummaryR\bprojects\"#\n" +
 	"\x11GetProjectRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xfc\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xbb\x02\n" +
 	"\x12GetProjectResponse\x122\n" +
 	"\aproject\x18\x01 \x01(\v2\x18.hacktheburgh.v1.ProjectR\aproject\x12D\n" +
 	"\x10active_workflows\x18\x02 \x03(\v2\x19.hacktheburgh.v1.WorkflowR\x0factiveWorkflows\x123\n" +
 	"\n" +
 	"latest_run\x18\x03 \x01(\v2\x14.hacktheburgh.v1.RunR\tlatestRun\x127\n" +
-	"\x06funnel\x18\x04 \x01(\v2\x1f.hacktheburgh.v1.AnalysisFunnelR\x06funnel\"f\n" +
+	"\x06funnel\x18\x04 \x01(\v2\x1f.hacktheburgh.v1.AnalysisFunnelR\x06funnel\x12=\n" +
+	"\n" +
+	"generating\x18\x05 \x03(\x0e2\x1d.hacktheburgh.v1.WorkflowKindR\n" +
+	"generating\"f\n" +
 	"\x12RunWorkflowRequest\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x121\n" +
@@ -3595,47 +3608,48 @@ var file_hacktheburgh_v1_service_proto_depIdxs = []int32{
 	30, // 45: hacktheburgh.v1.GetProjectResponse.active_workflows:type_name -> hacktheburgh.v1.Workflow
 	27, // 46: hacktheburgh.v1.GetProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
 	28, // 47: hacktheburgh.v1.GetProjectResponse.funnel:type_name -> hacktheburgh.v1.AnalysisFunnel
-	4,  // 48: hacktheburgh.v1.RunWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
-	31, // 49: hacktheburgh.v1.ListInsightsResponse.insights:type_name -> hacktheburgh.v1.Insight
-	30, // 50: hacktheburgh.v1.ListWorkflowsResponse.workflows:type_name -> hacktheburgh.v1.Workflow
-	32, // 51: hacktheburgh.v1.ListWorkflowStepsResponse.steps:type_name -> hacktheburgh.v1.WorkflowStep
-	4,  // 52: hacktheburgh.v1.RegenerateWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
-	30, // 53: hacktheburgh.v1.RegenerateWorkflowResponse.workflow:type_name -> hacktheburgh.v1.Workflow
-	16, // 54: hacktheburgh.v1.AnduinService.CreateSource:input_type -> hacktheburgh.v1.CreateSourceRequest
-	18, // 55: hacktheburgh.v1.AnduinService.UploadCSVSource:input_type -> hacktheburgh.v1.UploadCSVSourceRequest
-	20, // 56: hacktheburgh.v1.AnduinService.ListSources:input_type -> hacktheburgh.v1.ListSourcesRequest
-	22, // 57: hacktheburgh.v1.AnduinService.GetSource:input_type -> hacktheburgh.v1.GetSourceRequest
-	24, // 58: hacktheburgh.v1.AnduinService.DeleteSource:input_type -> hacktheburgh.v1.DeleteSourceRequest
-	33, // 59: hacktheburgh.v1.AnduinService.CreateProject:input_type -> hacktheburgh.v1.CreateProjectRequest
-	35, // 60: hacktheburgh.v1.AnduinService.DeleteProject:input_type -> hacktheburgh.v1.DeleteProjectRequest
-	37, // 61: hacktheburgh.v1.AnduinService.ListProjects:input_type -> hacktheburgh.v1.ListProjectsRequest
-	39, // 62: hacktheburgh.v1.AnduinService.GetProject:input_type -> hacktheburgh.v1.GetProjectRequest
-	43, // 63: hacktheburgh.v1.AnduinService.ListInsights:input_type -> hacktheburgh.v1.ListInsightsRequest
-	41, // 64: hacktheburgh.v1.AnduinService.RunWorkflow:input_type -> hacktheburgh.v1.RunWorkflowRequest
-	45, // 65: hacktheburgh.v1.AnduinService.ListWorkflows:input_type -> hacktheburgh.v1.ListWorkflowsRequest
-	47, // 66: hacktheburgh.v1.AnduinService.ListWorkflowSteps:input_type -> hacktheburgh.v1.ListWorkflowStepsRequest
-	49, // 67: hacktheburgh.v1.AnduinService.RegenerateWorkflow:input_type -> hacktheburgh.v1.RegenerateWorkflowRequest
-	51, // 68: hacktheburgh.v1.AnduinService.Replay:input_type -> hacktheburgh.v1.ReplayRequest
-	17, // 69: hacktheburgh.v1.AnduinService.CreateSource:output_type -> hacktheburgh.v1.CreateSourceResponse
-	19, // 70: hacktheburgh.v1.AnduinService.UploadCSVSource:output_type -> hacktheburgh.v1.UploadCSVSourceResponse
-	21, // 71: hacktheburgh.v1.AnduinService.ListSources:output_type -> hacktheburgh.v1.ListSourcesResponse
-	23, // 72: hacktheburgh.v1.AnduinService.GetSource:output_type -> hacktheburgh.v1.GetSourceResponse
-	25, // 73: hacktheburgh.v1.AnduinService.DeleteSource:output_type -> hacktheburgh.v1.DeleteSourceResponse
-	34, // 74: hacktheburgh.v1.AnduinService.CreateProject:output_type -> hacktheburgh.v1.CreateProjectResponse
-	36, // 75: hacktheburgh.v1.AnduinService.DeleteProject:output_type -> hacktheburgh.v1.DeleteProjectResponse
-	38, // 76: hacktheburgh.v1.AnduinService.ListProjects:output_type -> hacktheburgh.v1.ListProjectsResponse
-	40, // 77: hacktheburgh.v1.AnduinService.GetProject:output_type -> hacktheburgh.v1.GetProjectResponse
-	44, // 78: hacktheburgh.v1.AnduinService.ListInsights:output_type -> hacktheburgh.v1.ListInsightsResponse
-	42, // 79: hacktheburgh.v1.AnduinService.RunWorkflow:output_type -> hacktheburgh.v1.RunWorkflowResponse
-	46, // 80: hacktheburgh.v1.AnduinService.ListWorkflows:output_type -> hacktheburgh.v1.ListWorkflowsResponse
-	48, // 81: hacktheburgh.v1.AnduinService.ListWorkflowSteps:output_type -> hacktheburgh.v1.ListWorkflowStepsResponse
-	50, // 82: hacktheburgh.v1.AnduinService.RegenerateWorkflow:output_type -> hacktheburgh.v1.RegenerateWorkflowResponse
-	52, // 83: hacktheburgh.v1.AnduinService.Replay:output_type -> hacktheburgh.v1.ReplayResponse
-	69, // [69:84] is the sub-list for method output_type
-	54, // [54:69] is the sub-list for method input_type
-	54, // [54:54] is the sub-list for extension type_name
-	54, // [54:54] is the sub-list for extension extendee
-	0,  // [0:54] is the sub-list for field type_name
+	4,  // 48: hacktheburgh.v1.GetProjectResponse.generating:type_name -> hacktheburgh.v1.WorkflowKind
+	4,  // 49: hacktheburgh.v1.RunWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
+	31, // 50: hacktheburgh.v1.ListInsightsResponse.insights:type_name -> hacktheburgh.v1.Insight
+	30, // 51: hacktheburgh.v1.ListWorkflowsResponse.workflows:type_name -> hacktheburgh.v1.Workflow
+	32, // 52: hacktheburgh.v1.ListWorkflowStepsResponse.steps:type_name -> hacktheburgh.v1.WorkflowStep
+	4,  // 53: hacktheburgh.v1.RegenerateWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
+	30, // 54: hacktheburgh.v1.RegenerateWorkflowResponse.workflow:type_name -> hacktheburgh.v1.Workflow
+	16, // 55: hacktheburgh.v1.AnduinService.CreateSource:input_type -> hacktheburgh.v1.CreateSourceRequest
+	18, // 56: hacktheburgh.v1.AnduinService.UploadCSVSource:input_type -> hacktheburgh.v1.UploadCSVSourceRequest
+	20, // 57: hacktheburgh.v1.AnduinService.ListSources:input_type -> hacktheburgh.v1.ListSourcesRequest
+	22, // 58: hacktheburgh.v1.AnduinService.GetSource:input_type -> hacktheburgh.v1.GetSourceRequest
+	24, // 59: hacktheburgh.v1.AnduinService.DeleteSource:input_type -> hacktheburgh.v1.DeleteSourceRequest
+	33, // 60: hacktheburgh.v1.AnduinService.CreateProject:input_type -> hacktheburgh.v1.CreateProjectRequest
+	35, // 61: hacktheburgh.v1.AnduinService.DeleteProject:input_type -> hacktheburgh.v1.DeleteProjectRequest
+	37, // 62: hacktheburgh.v1.AnduinService.ListProjects:input_type -> hacktheburgh.v1.ListProjectsRequest
+	39, // 63: hacktheburgh.v1.AnduinService.GetProject:input_type -> hacktheburgh.v1.GetProjectRequest
+	43, // 64: hacktheburgh.v1.AnduinService.ListInsights:input_type -> hacktheburgh.v1.ListInsightsRequest
+	41, // 65: hacktheburgh.v1.AnduinService.RunWorkflow:input_type -> hacktheburgh.v1.RunWorkflowRequest
+	45, // 66: hacktheburgh.v1.AnduinService.ListWorkflows:input_type -> hacktheburgh.v1.ListWorkflowsRequest
+	47, // 67: hacktheburgh.v1.AnduinService.ListWorkflowSteps:input_type -> hacktheburgh.v1.ListWorkflowStepsRequest
+	49, // 68: hacktheburgh.v1.AnduinService.RegenerateWorkflow:input_type -> hacktheburgh.v1.RegenerateWorkflowRequest
+	51, // 69: hacktheburgh.v1.AnduinService.Replay:input_type -> hacktheburgh.v1.ReplayRequest
+	17, // 70: hacktheburgh.v1.AnduinService.CreateSource:output_type -> hacktheburgh.v1.CreateSourceResponse
+	19, // 71: hacktheburgh.v1.AnduinService.UploadCSVSource:output_type -> hacktheburgh.v1.UploadCSVSourceResponse
+	21, // 72: hacktheburgh.v1.AnduinService.ListSources:output_type -> hacktheburgh.v1.ListSourcesResponse
+	23, // 73: hacktheburgh.v1.AnduinService.GetSource:output_type -> hacktheburgh.v1.GetSourceResponse
+	25, // 74: hacktheburgh.v1.AnduinService.DeleteSource:output_type -> hacktheburgh.v1.DeleteSourceResponse
+	34, // 75: hacktheburgh.v1.AnduinService.CreateProject:output_type -> hacktheburgh.v1.CreateProjectResponse
+	36, // 76: hacktheburgh.v1.AnduinService.DeleteProject:output_type -> hacktheburgh.v1.DeleteProjectResponse
+	38, // 77: hacktheburgh.v1.AnduinService.ListProjects:output_type -> hacktheburgh.v1.ListProjectsResponse
+	40, // 78: hacktheburgh.v1.AnduinService.GetProject:output_type -> hacktheburgh.v1.GetProjectResponse
+	44, // 79: hacktheburgh.v1.AnduinService.ListInsights:output_type -> hacktheburgh.v1.ListInsightsResponse
+	42, // 80: hacktheburgh.v1.AnduinService.RunWorkflow:output_type -> hacktheburgh.v1.RunWorkflowResponse
+	46, // 81: hacktheburgh.v1.AnduinService.ListWorkflows:output_type -> hacktheburgh.v1.ListWorkflowsResponse
+	48, // 82: hacktheburgh.v1.AnduinService.ListWorkflowSteps:output_type -> hacktheburgh.v1.ListWorkflowStepsResponse
+	50, // 83: hacktheburgh.v1.AnduinService.RegenerateWorkflow:output_type -> hacktheburgh.v1.RegenerateWorkflowResponse
+	52, // 84: hacktheburgh.v1.AnduinService.Replay:output_type -> hacktheburgh.v1.ReplayResponse
+	70, // [70:85] is the sub-list for method output_type
+	55, // [55:70] is the sub-list for method input_type
+	55, // [55:55] is the sub-list for extension type_name
+	55, // [55:55] is the sub-list for extension extendee
+	0,  // [0:55] is the sub-list for field type_name
 }
 
 func init() { file_hacktheburgh_v1_service_proto_init() }

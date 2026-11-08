@@ -316,6 +316,9 @@ message GetProjectResponse {
   repeated Workflow active_workflows = 2;
   Run latest_run = 3;
   AnalysisFunnel funnel = 4;
+  // Workflow kinds being generated for this project right now (an LLM is
+  // writing a new version). Empty when idle.
+  repeated WorkflowKind generating = 5;
 }
 
 message RunWorkflowRequest {

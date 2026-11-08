@@ -21,6 +21,7 @@ import (
 	"hacktheburgh/backend/internal/contracts"
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/ingest"
+	"hacktheburgh/backend/internal/investigate"
 	"hacktheburgh/backend/internal/workflows"
 )
 
@@ -31,7 +32,9 @@ type ConnectService struct {
 	Store  *ingest.Store
 	Bus    *events.Bus
 	Author *workflows.Author
-	Runner *workflows.Runner
+	// Investigator writes investigation workflows; nil when investigations are disabled.
+	Investigator *investigate.Investigator
+	Runner       *workflows.Runner
 }
 
 var _ v1connect.AnduinServiceHandler = (*ConnectService)(nil)
