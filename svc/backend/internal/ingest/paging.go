@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -27,6 +28,10 @@ const (
 	MethodLLM        = "llm"         // next link located by the extraction LLM
 	MethodScroll     = "scroll"      // infinite scroll of the first page
 )
+
+// ErrPageGone wraps HTTP 404/410 responses. On a declared next link it means
+// the archive has ended, not that the backfill failed.
+var ErrPageGone = errors.New("page not found")
 
 // Stop reasons recorded in PagingReport.Stopped.
 const (
@@ -152,10 +157,17 @@ func CollectPages(ctx context.Context, fetcher PageFetcher, start string, limits
 		candidates := orderCandidates(page.Candidates, preferred)
 		advanced := false
 		probes := 0
-		lastErr := "" // last failure of a declared link on this page
+		lastErr := ""          // last failure of a declared link on this page
+		declaredEmpty := false // a declared link led to nothing new
 		for _, candidate := range candidates {
 			guessed := candidate.Probe || candidate.Fallback
 			if candidate.URL == "" || visited[candidate.URL] || (guessed && rejected[candidate.probeKey()]) {
+				continue
+			}
+			// After a declared link reached the end, only other declared links
+			// are worth trying; guesses would just spend requests (and LLM
+			// calls) past the end of the archive.
+			if declaredEmpty && guessed {
 				continue
 			}
 			if candidate.Probe && !candidate.Fallback {
@@ -178,6 +190,11 @@ func CollectPages(ctx context.Context, fetcher PageFetcher, start string, limits
 					report.RejectedProbes++
 					continue
 				}
+				if errors.Is(err, ErrPageGone) {
+					// A next link to a missing page is the end of the archive.
+					declaredEmpty = true
+					continue
+				}
 				// A declared link failed; another candidate may still work.
 				lastErr = err.Error()
 				continue
@@ -196,8 +213,8 @@ func CollectPages(ctx context.Context, fetcher PageFetcher, start string, limits
 					report.RejectedProbes++
 					continue
 				}
-				report.Rows = len(records)
-				return records, finish(StopNoNewRecords), nil
+				declaredEmpty = true
+				continue
 			}
 			report.Pages++
 			report.Methods[candidate.Method]++
@@ -211,6 +228,9 @@ func CollectPages(ctx context.Context, fetcher PageFetcher, start string, limits
 			if lastErr != "" {
 				report.Error = lastErr
 				return records, finish("error: " + lastErr), nil
+			}
+			if declaredEmpty {
+				return records, finish(StopNoNewRecords), nil
 			}
 			return records, finish(StopNoNext), nil
 		}
@@ -314,7 +334,10 @@ var nextPhrases = []string{
 	"next", "older", "earlier", "more", "load more", "show more", "see more", "view more",
 	"more posts", "more results", "more stories", "more articles", "more items",
 }
-var notNextWords = []string{"prev", "newer", "first", "last", "back", "‹", "«", "←"}
+
+// notNextPattern matches labels that point away from older pages. Whole
+// words only, so "Feedback" or "Lastest news" are not excluded.
+var notNextPattern = regexp.MustCompile(`(?i)\b(prev|previous|newer|first|last|back)\b`)
 
 // anchorNext finds a link that looks like "go to the next page" by its label,
 // aria-label or class. With a selector, only matching links are considered.
@@ -352,22 +375,23 @@ const (
 
 var nextWordPattern = regexp.MustCompile(`(?i)\bnext\b`)
 
-func looksLikeNextLink(link pageLink) bool { return nextLinkStrength(link) != notNext }
-
 func nextLinkStrength(link pageLink) int {
+	// A declared rel=next wins whatever the label says ("← Older posts").
+	if hasRelToken(link.Rel, "next") {
+		return strongNext
+	}
 	text := strings.ToLower(strings.TrimSpace(link.Text))
 	aria := strings.ToLower(link.Aria)
 	class := strings.ToLower(link.Class)
-	for _, word := range notNextWords {
-		if strings.Contains(text, word) || strings.Contains(aria, word) {
-			return notNext
-		}
+	// Compare labels without arrow decorations on either side.
+	label := strings.TrimSpace(strings.Trim(text, "›»→⟩≫<>‹«←.… \t"))
+	if notNextPattern.MatchString(label) || notNextPattern.MatchString(aria) {
+		return notNext
 	}
-	if hasRelToken(link.Rel, "next") || nextWordPattern.MatchString(text) || nextWordPattern.MatchString(aria) ||
+	if nextWordPattern.MatchString(label) || nextWordPattern.MatchString(aria) ||
 		containsToken(class, "next") || strings.Contains(class, "pagination-next") || strings.Contains(class, "next-page") {
 		return strongNext
 	}
-	label := strings.TrimSpace(strings.Trim(text, "›»→⟩≫>.… \t"))
 	for _, phrase := range nextPhrases {
 		if label == phrase || strings.HasPrefix(label, phrase+" page") {
 			return weakNext

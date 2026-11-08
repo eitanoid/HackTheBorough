@@ -30,6 +30,8 @@ type Source struct {
 	BackfillPending     bool            `json:"backfill_pending"`
 	LastBackfill        json.RawMessage `json:"last_backfill"`
 	BackfillAttempts    int             `json:"backfill_attempts"`
+	// HasSkipped is only filled by SourceForPoll.
+	HasSkipped bool `json:"-"`
 }
 
 type Store struct {
@@ -78,15 +80,10 @@ func scanSourceInto(row pgx.Row, withCount bool) (Source, error) {
 	return source, nil
 }
 
-// CreateSource creates a source with the default backfill target.
-func (s *Store) CreateSource(ctx context.Context, name, kind string, config json.RawMessage, interval *int) (Source, error) {
-	return s.CreateSourceWithBackfill(ctx, name, kind, config, interval, 0)
-}
-
-// CreateSourceWithBackfill creates a source whose first poll backfills up to
+// CreateSource creates a source whose first poll backfills up to
 // backfillRows rows (DefaultBackfillRows when <= 0). Sources without a poll
 // interval are never polled, so no backfill is requested for them.
-func (s *Store) CreateSourceWithBackfill(ctx context.Context, name, kind string, config json.RawMessage, interval *int, backfillRows int) (Source, error) {
+func (s *Store) CreateSource(ctx context.Context, name, kind string, config json.RawMessage, interval *int, backfillRows int) (Source, error) {
 	if backfillRows <= 0 {
 		backfillRows = DefaultBackfillRows
 	}
@@ -167,7 +164,7 @@ func (s *Store) EnsureSource(ctx context.Context, name, kind string, config json
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return Source{}, err
 	}
-	return s.CreateSourceWithBackfill(ctx, name, kind, config, interval, backfillRows)
+	return s.CreateSource(ctx, name, kind, config, interval, backfillRows)
 }
 
 func (s *Store) SourceByName(ctx context.Context, name string) (Source, error) {
@@ -181,8 +178,8 @@ func (s *Store) Source(ctx context.Context, id string) (Source, error) {
 }
 
 // SetBackfillRows changes a source's backfill target. Raising the target, or
-// keeping it while fewer rows are stored, requests a re-backfill (for polled
-// sources); scheduled reports whether that happened. The stored count alone is
+// saving the same target while fewer rows are stored (to load more), requests
+// a re-backfill (for polled sources); scheduled reports whether that happened. The stored count alone is
 // not used for raises because it includes rows added by normal polls, which
 // are not older history. Lowering the target never deletes rows and never
 // cancels a pending backfill.
@@ -196,7 +193,8 @@ func (s *Store) SetBackfillRows(ctx context.Context, id string, rows int) (Sourc
 			SELECT s.id,
 			       (s.poll_interval_s IS NOT NULL
 			        AND ($2 > s.backfill_rows
-			             OR $2 > (SELECT COUNT(*) FROM data_records r WHERE r.data_source_id = s.id))) AS schedule
+			             OR ($2 = s.backfill_rows
+			                 AND $2 > (SELECT COUNT(*) FROM data_records r WHERE r.data_source_id = s.id)))) AS schedule
 			FROM data_sources s WHERE s.id = $1::uuid
 		)
 		UPDATE data_sources d SET
@@ -212,10 +210,10 @@ func (s *Store) SetBackfillRows(ctx context.Context, id string, rows int) (Sourc
 	return source, scheduled, err
 }
 
-// FinishBackfill clears a pending backfill request, but only if it is still
-// the request the finished poll served (a newer request stays pending). The
-// paging report and the set of ids the cap left out (see SkippedIDs) are
-// stored either way; the skipped set replaces the previous one.
+// FinishBackfill clears a pending backfill request and stores its report and
+// the ids its cap left out (replacing the previous skipped set), but only if
+// it is still the request the finished poll served. A newer pending request is
+// left untouched.
 func (s *Store) FinishBackfill(ctx context.Context, id string, requestedAt time.Time, report json.RawMessage, skipped []string) error {
 	if len(report) == 0 {
 		report = nil
@@ -225,13 +223,20 @@ func (s *Store) FinishBackfill(ctx context.Context, id string, requestedAt time.
 		return err
 	}
 	defer tx.Rollback(context.WithoutCancel(ctx))
-	if _, err := tx.Exec(ctx, `
+	// Only the request this walk served is finished. If a newer request is
+	// pending, its state (attempts, skipped set, report) is left alone; the
+	// newer walk will write its own.
+	tag, err := tx.Exec(ctx, `
 		UPDATE data_sources SET
 			last_backfill = COALESCE($3::jsonb, last_backfill),
 			backfill_attempts = 0,
-			backfill_requested_at = CASE WHEN backfill_requested_at = $2 THEN NULL ELSE backfill_requested_at END
-		WHERE id = $1::uuid`, id, requestedAt, report); err != nil {
+			backfill_requested_at = NULL
+		WHERE id = $1::uuid AND backfill_requested_at = $2`, id, requestedAt, report)
+	if err != nil {
 		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return tx.Commit(ctx)
 	}
 	if _, err := tx.Exec(ctx, `DELETE FROM backfill_skipped WHERE data_source_id = $1::uuid`, id); err != nil {
 		return err
@@ -249,7 +254,8 @@ const MaxBackfillAttempts = 3
 // FailBackfill records a failed or incomplete try of the pending backfill,
 // with its report and any ids its cap left out (added to the skipped set).
 // After MaxBackfillAttempts tries of the same request it is given up and
-// cleared; gaveUp reports that.
+// cleared; gaveUp reports that. A try of a request that has since been
+// replaced is not counted.
 func (s *Store) FailBackfill(ctx context.Context, id string, requestedAt time.Time, report json.RawMessage, skipped []string) (bool, error) {
 	if len(report) == 0 {
 		report = nil
@@ -260,15 +266,20 @@ func (s *Store) FailBackfill(ctx context.Context, id string, requestedAt time.Ti
 	}
 	defer tx.Rollback(context.WithoutCancel(ctx))
 	var gaveUp bool
-	if err := tx.QueryRow(ctx, `
+	err = tx.QueryRow(ctx, `
 		UPDATE data_sources SET
 			backfill_attempts = backfill_attempts + 1,
 			last_backfill = COALESCE($3::jsonb, last_backfill),
 			backfill_requested_at = CASE
-				WHEN backfill_requested_at = $2 AND backfill_attempts + 1 >= $4 THEN NULL
+				WHEN backfill_attempts + 1 >= $4 THEN NULL
 				ELSE backfill_requested_at END
-		WHERE id = $1::uuid
-		RETURNING backfill_requested_at IS NULL`, id, requestedAt, report, MaxBackfillAttempts).Scan(&gaveUp); err != nil {
+		WHERE id = $1::uuid AND backfill_requested_at = $2
+		RETURNING backfill_requested_at IS NULL`, id, requestedAt, report, MaxBackfillAttempts).Scan(&gaveUp)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// A newer request replaced this one; its attempts are its own.
+		return false, tx.Commit(ctx)
+	}
+	if err != nil {
 		return false, err
 	}
 	if err := addSkipped(ctx, tx, id, skipped); err != nil {
@@ -277,9 +288,20 @@ func (s *Store) FailBackfill(ctx context.Context, id string, requestedAt time.Ti
 	return gaveUp, tx.Commit(ctx)
 }
 
+// MaxSkippedIDs bounds the skipped set per source. Beyond it (a huge CSV
+// with a small target) the oldest left-out rows may come back on later polls,
+// which is safe: they are real rows, just older than the target asked for.
+const MaxSkippedIDs = 100_000
+
+// skippedLookupChunk bounds the id array sent per SkippedIDs query.
+const skippedLookupChunk = 5_000
+
 func addSkipped(ctx context.Context, tx pgx.Tx, id string, skipped []string) error {
 	if len(skipped) == 0 {
 		return nil
+	}
+	if len(skipped) > MaxSkippedIDs {
+		skipped = skipped[:MaxSkippedIDs] // newest left-out rows first
 	}
 	_, err := tx.Exec(ctx, `
 		INSERT INTO backfill_skipped (data_source_id, external_id)
@@ -291,30 +313,50 @@ func addSkipped(ctx context.Context, tx pgx.Tx, id string, skipped []string) err
 // SkippedIDs returns which of ids a capped backfill deliberately left out.
 func (s *Store) SkippedIDs(ctx context.Context, sourceID string, ids []string) (map[string]bool, error) {
 	skipped := map[string]bool{}
-	if len(ids) == 0 {
-		return skipped, nil
-	}
-	rows, err := s.Pool.Query(ctx, `
-		SELECT external_id FROM backfill_skipped
-		WHERE data_source_id = $1::uuid AND external_id = ANY($2)`, sourceID, ids)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
+	for start := 0; start < len(ids); start += skippedLookupChunk {
+		end := min(start+skippedLookupChunk, len(ids))
+		rows, err := s.Pool.Query(ctx, `
+			SELECT external_id FROM backfill_skipped
+			WHERE data_source_id = $1::uuid AND external_id = ANY($2)`, sourceID, ids[start:end])
+		if err != nil {
 			return nil, err
 		}
-		skipped[id] = true
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			skipped[id] = true
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
 	}
-	return skipped, rows.Err()
+	return skipped, nil
 }
 
 // SourceForPoll reads a source without counting its records (the poll path
-// never needs the count, and counting scans the source's data_records).
+// never needs the count, and counting scans the source's data_records). It
+// also reports whether the source has any skipped ids, so normal polls can
+// skip the lookup when there are none.
 func (s *Store) SourceForPoll(ctx context.Context, id string) (Source, error) {
-	return scanSource(s.Pool.QueryRow(ctx, `SELECT `+sourceColumns+` FROM data_sources WHERE id = $1::uuid`, id))
+	row := s.Pool.QueryRow(ctx, `
+		SELECT `+sourceColumns+`,
+		       EXISTS (SELECT 1 FROM backfill_skipped k WHERE k.data_source_id = data_sources.id)
+		FROM data_sources WHERE id = $1::uuid`, id)
+	var source Source
+	var config, profile, lastBackfill []byte
+	if err := row.Scan(&source.ID, &source.Name, &source.Kind, &config, &profile, &source.PollIntervalS,
+		&source.LastPolledAt, &source.LastError, &source.CreatedAt,
+		&source.BackfillRows, &source.BackfillRequestedAt, &lastBackfill,
+		&source.BackfillAttempts, &source.HasSkipped); err != nil {
+		return source, err
+	}
+	source.Config, source.Profile, source.LastBackfill = config, profile, lastBackfill
+	source.BackfillPending = source.BackfillRequestedAt != nil
+	return source, nil
 }
 
 // RequeueBackfill makes a pending backfill due on the next ingest tick (for

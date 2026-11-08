@@ -187,7 +187,7 @@ func TestPollSourceIntegration(t *testing.T) {
 	server, store := newIntegrationServer(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSource(ctx, "Poll me", "rss", json.RawMessage(`{}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Poll me", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}

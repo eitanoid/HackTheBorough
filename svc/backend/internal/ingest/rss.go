@@ -91,6 +91,9 @@ func (a *RSSAdapter) fetchPage(ctx context.Context, pageURL string) ([]byte, htt
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
+			return nil, nil, fmt.Errorf("rss HTTP %d: %w", resp.StatusCode, ErrPageGone)
+		}
 		return nil, nil, fmt.Errorf("rss HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxFeedBytes+1))

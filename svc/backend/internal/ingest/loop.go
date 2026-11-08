@@ -127,15 +127,12 @@ func (l *Loop) pollDue(ctx context.Context) {
 		go func() {
 			defer l.running.Done()
 			defer l.release(source.ID)
-			if _, err := l.poll(ctx, source.ID); err != nil {
+			if _, err := l.poll(ctx, source.ID, true); err != nil && !errors.Is(err, errLaneChanged) {
 				slog.Warn("source poll failed", "source_id", source.ID, "err", err)
 			}
 		}()
 	}
 }
-
-// waitIdle blocks until every poll started by pollDue has finished.
-func (l *Loop) waitIdle() { l.running.Wait() }
 
 // PollOnce fetches one source now, regardless of its schedule. It waits for a
 // free slot in the source's lane and returns ErrPollInProgress or
@@ -145,20 +142,56 @@ func (l *Loop) PollOnce(ctx context.Context, sourceID string) (int, error) {
 		return 0, err
 	}
 	defer l.release(sourceID)
-	return l.poll(ctx, sourceID)
+	return l.poll(ctx, sourceID, true)
 }
 
-// WhileIdle runs fn while holding the source's poll claim, so no poll can
-// start (or read the backfill token) until fn returns. It returns
-// ErrPollInProgress or ErrPollQueued without running fn if a poll already
-// holds the source.
-func (l *Loop) WhileIdle(sourceID string, fn func() error) error {
+// PollResult is the outcome of a manual poll (PollNow).
+type PollResult struct {
+	Inserted int
+	// Queued is true when the poll was handed to the ingest loop instead of
+	// running now; Backfill is true when that is because a backfill is
+	// pending (backfills can page for minutes, longer than a request).
+	Queued   bool
+	Backfill bool
+}
+
+// PollNow is the manual "poll now": a normal poll runs immediately, but a
+// pending backfill is never run inside the caller's request. It is re-queued
+// for the backfill lane instead (resetting its attempts), while holding the
+// source's claim so no scheduled poll can read the old request in between.
+// It returns ErrPollQueued or ErrPollInProgress if a poll already holds the
+// source.
+func (l *Loop) PollNow(ctx context.Context, sourceID string) (PollResult, error) {
 	if err := l.claim(sourceID); err != nil {
-		return err
+		return PollResult{}, err
 	}
 	defer l.release(sourceID)
-	return fn()
+	source, err := l.Store.SourceForPoll(ctx, sourceID)
+	if err != nil {
+		return PollResult{}, err
+	}
+	if source.BackfillPending {
+		if _, err := l.Store.RequeueBackfill(ctx, sourceID); err != nil {
+			return PollResult{}, err
+		}
+		return PollResult{Queued: true, Backfill: true}, nil
+	}
+	inserted, err := l.poll(ctx, sourceID, false)
+	if errors.Is(err, errBackfillRequested) || errors.Is(err, errLaneChanged) {
+		// A backfill was requested while this poll waited; the loop runs it.
+		return PollResult{Queued: true, Backfill: errors.Is(err, errBackfillRequested)}, nil
+	}
+	return PollResult{Inserted: inserted}, err
 }
+
+// errLaneChanged means the source's backfill state kept changing while the
+// poll waited for a slot; nothing was fetched or marked, so the next tick
+// polls it again in the right lane.
+var errLaneChanged = errors.New("source backfill state changed while waiting for a slot")
+
+// errBackfillRequested means a manual poll found a backfill pending once it
+// got its slot; nothing was fetched or marked and the loop will run it.
+var errBackfillRequested = errors.New("backfill requested while waiting")
 
 // acquireLane waits for a slot in the lane the source needs and returns the
 // source as read after getting it, so the backfill state, target and token are
@@ -187,10 +220,13 @@ func (l *Loop) acquireLane(ctx context.Context, sourceID string) (Source, func()
 			release()
 			return Source{}, nil, err
 		}
-		if (fresh.BackfillRequestedAt != nil) == backfill || attempt >= 2 {
+		if (fresh.BackfillRequestedAt != nil) == backfill {
 			return fresh, release, nil
 		}
 		release()
+		if attempt >= 2 {
+			return Source{}, nil, errLaneChanged
+		}
 		source = fresh
 	}
 }
@@ -203,12 +239,18 @@ func (l *Loop) acquireLane(ctx context.Context, sourceID string) (Source, func()
 // Normal polls fetch a single page and skip the ids a capped backfill
 // deliberately left out (sources keep re-serving them); everything else,
 // dated or not, is inserted and deduplicated by the database.
-func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
+//
+// With allowBackfill false (manual polls) a pending backfill is not run; the
+// poll returns errBackfillRequested without fetching or marking anything.
+func (l *Loop) poll(ctx context.Context, sourceID string, allowBackfill bool) (int, error) {
 	source, release, err := l.acquireLane(ctx, sourceID)
 	if err != nil {
 		return 0, err
 	}
 	defer release()
+	if source.BackfillPending && !allowBackfill {
+		return 0, errBackfillRequested
+	}
 	l.markRunning(source.ID)
 
 	markCtx := context.WithoutCancel(ctx)
@@ -240,14 +282,14 @@ func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
 		return 0, fetchErr
 	}
 	records := result.Records
-	SortNewestFirst(records)
 	fetched := len(records)
 	var skipped []string
 	if backfill {
+		SortNewestFirst(records)
 		all := records
 		records = CapRecords(records, opts.Limit)
 		skipped = Dropped(all, records)
-	} else if len(records) > 0 {
+	} else if len(records) > 0 && source.HasSkipped {
 		ids := make([]string, len(records))
 		for i, record := range records {
 			ids[i] = record.ExternalID

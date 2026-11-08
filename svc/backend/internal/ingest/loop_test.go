@@ -80,7 +80,7 @@ func TestPollOnceSuccess(t *testing.T) {
 	loop, store, _ := newLoopTest(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSource(ctx, "Fake", "rss", json.RawMessage(`{}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Fake", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestPollOnceFetchError(t *testing.T) {
 	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
 		return nil, errors.New("fetch boom")
 	}
-	source, err := store.CreateSource(ctx, "Failing", "rss", json.RawMessage(`{}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Failing", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestPollOnceUnsupportedKind(t *testing.T) {
 	loop, store, _ := newLoopTest(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSource(ctx, "Unsupported", "web", json.RawMessage(`{"url":"https://example.com"}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Unsupported", "web", json.RawMessage(`{"url":"https://example.com"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestPollOnceUnsupportedKind(t *testing.T) {
 
 func TestPollOnceCanceledContextRecordsError(t *testing.T) {
 	loop, store, adapter := newLoopTest(t)
-	source, err := store.CreateSource(context.Background(), "Canceled", "rss", json.RawMessage(`{}`), intPtr(300))
+	source, err := store.CreateSource(context.Background(), "Canceled", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestPollDueMaxParallel(t *testing.T) {
 
 	ctx := context.Background()
 	for index := 0; index < 3; index++ {
-		if _, err := store.CreateSource(ctx, "Parallel", "rss", json.RawMessage(`{}`), intPtr(300)); err != nil {
+		if _, err := store.CreateSource(ctx, "Parallel", "rss", json.RawMessage(`{}`), intPtr(300), 0); err != nil {
 			t.Fatalf("CreateSource: %v", err)
 		}
 	}

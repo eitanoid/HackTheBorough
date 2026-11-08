@@ -272,8 +272,8 @@ func TestRelNextAndAnchorNext(t *testing.T) {
 		{pageLink{Text: "About"}, false},
 	}
 	for _, tc := range cases {
-		if got := looksLikeNextLink(tc.link); got != tc.want {
-			t.Errorf("looksLikeNextLink(%+v) = %v, want %v", tc.link, got, tc.want)
+		if got := nextLinkStrength(tc.link) != notNext; got != tc.want {
+			t.Errorf("nextLinkStrength(%+v) != notNext = %v, want %v", tc.link, got, tc.want)
 		}
 	}
 }

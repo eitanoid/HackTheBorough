@@ -96,6 +96,9 @@ func (a *CSVAdapter) fetchPage(ctx context.Context, pageURL string) ([]byte, htt
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
+			return nil, nil, fmt.Errorf("csv HTTP %d: %w", resp.StatusCode, ErrPageGone)
+		}
 		return nil, nil, fmt.Errorf("csv HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxCSVBytes+1))
@@ -108,10 +111,15 @@ func (a *CSVAdapter) fetchPage(ctx context.Context, pageURL string) ([]byte, htt
 	return body, resp.Header, nil
 }
 
+// maxCSVBackfillBytes bounds how much a paged CSV backfill downloads in
+// total; each page is still capped at MaxCSVBytes.
+const maxCSVBackfillBytes = 3 * MaxCSVBytes
+
 type csvPager struct {
 	adapter *CSVAdapter
 	cfg     CSVConfig
 	now     time.Time
+	bytes   int // downloaded so far
 }
 
 func (p *csvPager) FetchPage(ctx context.Context, pageURL string, _ int) (Page, error) {
@@ -119,6 +127,7 @@ func (p *csvPager) FetchPage(ctx context.Context, pageURL string, _ int) (Page, 
 	if err != nil {
 		return Page{}, err
 	}
+	p.bytes += len(body)
 	records, err := ParseCSV(body, p.cfg.TimeField, p.now)
 	if err != nil {
 		return Page{}, err
@@ -129,8 +138,10 @@ func (p *csvPager) FetchPage(ctx context.Context, pageURL string, _ int) (Page, 
 		reverseRecords(records)
 	}
 	var candidates candidateList
-	candidates.add(linkHeaderNext(header, pageURL), MethodLinkHeader, false)
-	candidates.urlCandidates(pageURL, records, false, nil, false)
+	if p.bytes < maxCSVBackfillBytes {
+		candidates.add(linkHeaderNext(header, pageURL), MethodLinkHeader, false)
+		candidates.urlCandidates(pageURL, records, false, nil, false)
+	}
 	return Page{URL: pageURL, Records: records, Candidates: candidates}, nil
 }
 

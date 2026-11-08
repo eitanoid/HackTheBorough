@@ -15,18 +15,18 @@ func TestStoreBackfillDefaults(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	polled, err := store.CreateSource(ctx, "Polled", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300))
+	polled, err := store.CreateSource(ctx, "Polled", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
 	if polled.BackfillRows != DefaultBackfillRows || !polled.BackfillPending {
 		t.Fatalf("polled source: rows = %d, pending = %v", polled.BackfillRows, polled.BackfillPending)
 	}
-	custom, err := store.CreateSourceWithBackfill(ctx, "Custom", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300), 42)
+	custom, err := store.CreateSource(ctx, "Custom", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300), 42)
 	if err != nil || custom.BackfillRows != 42 {
 		t.Fatalf("custom rows = %d, err = %v", custom.BackfillRows, err)
 	}
-	oneOff, err := store.CreateSource(ctx, "One-off", "csv", json.RawMessage(`{}`), nil)
+	oneOff, err := store.CreateSource(ctx, "One-off", "csv", json.RawMessage(`{}`), nil, 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestStoreSetBackfillRows(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSourceWithBackfill(ctx, "Target", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300), 5)
+	source, err := store.CreateSource(ctx, "Target", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300), 5)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestStoreDueSourcesIncludesPendingBackfillOnce(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSource(ctx, "Due", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(3600))
+	source, err := store.CreateSource(ctx, "Due", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(3600), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestStoreFinishBackfillKeepsNewerRequest(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	source, err := store.CreateSource(ctx, "Race", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Race", "rss", json.RawMessage(`{"url":"https://example.com/feed"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -155,8 +155,8 @@ func TestStoreFinishBackfillKeepsNewerRequest(t *testing.T) {
 	if !got.BackfillPending {
 		t.Fatal("a newer backfill request must stay pending")
 	}
-	if len(got.LastBackfill) == 0 {
-		t.Fatal("the finished backfill's report must still be stored")
+	if len(got.LastBackfill) != 0 {
+		t.Fatalf("a stale walk must not overwrite the pending request's report: %s", got.LastBackfill)
 	}
 }
 
@@ -210,7 +210,7 @@ func TestStoreSetBackfillRowsSameTargetBelowCountReschedules(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 	// Like a pre-existing source: target 500 but only one page (3 rows) stored.
-	source, err := store.CreateSourceWithBackfill(ctx, "Shallow", "web", json.RawMessage(`{}`), intPtr(300), 500)
+	source, err := store.CreateSource(ctx, "Shallow", "web", json.RawMessage(`{}`), intPtr(300), 500)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestStoreCreateUploadedCSVWithoutTargetKeepsAll(t *testing.T) {
 func TestStoreSetBackfillRowsRaiseSchedulesEvenWithManyRows(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
-	source, err := store.CreateSourceWithBackfill(ctx, "Grown", "rss", json.RawMessage(`{}`), intPtr(300), 2)
+	source, err := store.CreateSource(ctx, "Grown", "rss", json.RawMessage(`{}`), intPtr(300), 2)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}

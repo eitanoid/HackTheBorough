@@ -156,7 +156,7 @@ func TestRESTBackfillRowsIntegration(t *testing.T) {
 func TestPollSourceInProgressConflict(t *testing.T) {
 	server, store := newIntegrationServer(t)
 	ctx := context.Background()
-	source, err := store.CreateSource(ctx, "Busy", "rss", json.RawMessage(`{}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Busy", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -196,7 +196,7 @@ func int32Ptr(value int32) *int32 { return &value }
 func TestPollSourceHandsPendingBackfillToLoop(t *testing.T) {
 	server, store := newIntegrationServer(t)
 	ctx := context.Background()
-	source, err := store.CreateSource(ctx, "Pending", "rss", json.RawMessage(`{}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Pending", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestUploadCSVWithoutBackfillRowsKeepsEveryRow(t *testing.T) {
 func TestPollSourceDoesNotRequeueBusyBackfill(t *testing.T) {
 	server, store := newIntegrationServer(t)
 	ctx := context.Background()
-	source, err := store.CreateSource(ctx, "Running", "rss", json.RawMessage(`{}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Running", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -260,7 +260,8 @@ func TestPollSourceDoesNotRequeueBusyBackfill(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/sources/"+source.ID+"/poll", nil)
 	rec := httptest.NewRecorder()
 	server.Routes().ServeHTTP(rec, req)
-	if rec.Code != http.StatusAccepted {
+	// The running backfill serves the request; the manual poll must not queue another.
+	if rec.Code != http.StatusConflict && rec.Code != http.StatusAccepted {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	close(adapter.block)

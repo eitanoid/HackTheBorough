@@ -75,7 +75,7 @@ func (s *ConnectService) CreateSource(ctx context.Context, req *v1.CreateSourceR
 		return nil, err
 	}
 	intervalValue := int(interval)
-	source, err := s.Store.CreateSourceWithBackfill(ctx, name, kind, config, &intervalValue, backfillRows)
+	source, err := s.Store.CreateSource(ctx, name, kind, config, &intervalValue, backfillRows)
 	if err != nil {
 		return nil, internalError(err)
 	}

@@ -182,7 +182,7 @@ func TestConnectProjectReadRPCsIntegration(t *testing.T) {
 	pool := testdb.Open(t)
 	store := ingest.NewStore(pool)
 	ctx := context.Background()
-	source, err := store.CreateSource(ctx, "Project source", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Project source", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func TestConnectProjectReadRPCsIntegration(t *testing.T) {
 func TestConnectCreateProjectIntegration(t *testing.T) {
 	pool := testdb.Open(t)
 	store := ingest.NewStore(pool)
-	source, err := store.CreateSource(context.Background(), "Source for project", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300))
+	source, err := store.CreateSource(context.Background(), "Source for project", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +363,7 @@ func (s *emptyAnalysisStore) MaxObservedAt(context.Context, uuid.UUID) (*time.Ti
 func TestConnectCreateProjectStartsStatisticalAuthor(t *testing.T) {
 	pool := testdb.Open(t)
 	store := ingest.NewStore(pool)
-	source, err := store.CreateSource(context.Background(), "Source for author", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300))
+	source, err := store.CreateSource(context.Background(), "Source for author", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -471,7 +471,7 @@ func TestConnectDeleteSourceAndProjectRPCs(t *testing.T) {
 	pool := testdb.Open(t)
 	ctx := context.Background()
 	store := ingest.NewStore(pool)
-	source, err := store.CreateSource(ctx, "Delete source", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Delete source", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatal(err)
 	}

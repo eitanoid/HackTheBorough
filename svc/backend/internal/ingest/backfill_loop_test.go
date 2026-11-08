@@ -33,7 +33,7 @@ func TestPollOnceInitialBackfillKeepsNewestN(t *testing.T) {
 	}
 	adapter.report = &PagingReport{Pages: 3, Methods: map[string]int{MethodRelNext: 2}, Stopped: StopLimit}
 
-	source, err := store.CreateSourceWithBackfill(ctx, "Backfill", "rss", json.RawMessage(`{}`), intPtr(300), 3)
+	source, err := store.CreateSource(ctx, "Backfill", "rss", json.RawMessage(`{}`), intPtr(300), 3)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestPollOnceFailedBackfillStaysPending(t *testing.T) {
 	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
 		return nil, errors.New("site down")
 	}
-	source, err := store.CreateSource(ctx, "Down", "rss", json.RawMessage(`{}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Down", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestPollOnceRejectsConcurrentPoll(t *testing.T) {
 		<-release
 		return timedRecords("r", 1), nil
 	}
-	source, err := store.CreateSource(ctx, "Slow", "rss", json.RawMessage(`{}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Slow", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestPollOnceRaisedTargetRebackfills(t *testing.T) {
 	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
 		return timedRecords("r", 10), nil
 	}
-	source, err := store.CreateSourceWithBackfill(ctx, "Grow", "rss", json.RawMessage(`{}`), intPtr(300), 2)
+	source, err := store.CreateSource(ctx, "Grow", "rss", json.RawMessage(`{}`), intPtr(300), 2)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -167,11 +167,11 @@ func TestPollDueBackfillDoesNotBlockNormalPolls(t *testing.T) {
 	loop, store, adapter := newLoopTest(t) // MaxParallel = 1
 	ctx := context.Background()
 
-	slow, err := store.CreateSource(ctx, "Slow backfill", "rss", json.RawMessage(`{"slow":true}`), intPtr(300))
+	slow, err := store.CreateSource(ctx, "Slow backfill", "rss", json.RawMessage(`{"slow":true}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
-	normal, err := store.CreateSource(ctx, "Normal", "rss", json.RawMessage(`{}`), intPtr(300))
+	normal, err := store.CreateSource(ctx, "Normal", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -221,7 +221,7 @@ func TestNormalPollOnlyAddsRowsNewerThanStored(t *testing.T) {
 	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
 		return append([]RawRecord(nil), page...), nil
 	}
-	source, err := store.CreateSourceWithBackfill(ctx, "Capped", "rss", json.RawMessage(`{}`), intPtr(300), 3)
+	source, err := store.CreateSource(ctx, "Capped", "rss", json.RawMessage(`{}`), intPtr(300), 3)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestPartialBackfillKeepsRowsAndStaysPending(t *testing.T) {
 		return timedRecords("r", 4), nil
 	}
 	adapter.report = &PagingReport{Pages: 2, Methods: map[string]int{MethodRelNext: 1}, Stopped: "error: HTTP 500", Error: "HTTP 500"}
-	source, err := store.CreateSourceWithBackfill(ctx, "Flaky", "rss", json.RawMessage(`{}`), intPtr(300), 100)
+	source, err := store.CreateSource(ctx, "Flaky", "rss", json.RawMessage(`{}`), intPtr(300), 100)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -295,11 +295,11 @@ func TestPollOnceReportsQueuedSeparatelyFromRunning(t *testing.T) {
 		<-release
 		return timedRecords("r", 1), nil
 	}
-	busy, err := store.CreateSource(ctx, "Busy", "rss", json.RawMessage(`{}`), intPtr(300))
+	busy, err := store.CreateSource(ctx, "Busy", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
-	waiting, err := store.CreateSource(ctx, "Waiting", "rss", json.RawMessage(`{}`), intPtr(300))
+	waiting, err := store.CreateSource(ctx, "Waiting", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -333,7 +333,7 @@ func TestPollOnceReportsQueuedSeparatelyFromRunning(t *testing.T) {
 
 func TestCancelledBackfillStaysDue(t *testing.T) {
 	loop, store, adapter := newLoopTest(t)
-	source, err := store.CreateSource(context.Background(), "Cancelled", "rss", json.RawMessage(`{}`), intPtr(3600))
+	source, err := store.CreateSource(context.Background(), "Cancelled", "rss", json.RawMessage(`{}`), intPtr(3600), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -372,7 +372,7 @@ func TestNormalPollKeepsRowsWithoutTimestamps(t *testing.T) {
 	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
 		return untimed("a", "b"), nil
 	}
-	source, err := store.CreateSourceWithBackfill(ctx, "Ranked", "rss", json.RawMessage(`{}`), intPtr(300), 2)
+	source, err := store.CreateSource(ctx, "Ranked", "rss", json.RawMessage(`{}`), intPtr(300), 2)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -394,7 +394,7 @@ func TestFailingBackfillGivesUpAfterMaxAttempts(t *testing.T) {
 		return timedRecords("r", 2), nil
 	}
 	adapter.report = &PagingReport{Pages: 1, Methods: map[string]int{}, Stopped: "error: HTTP 404", Error: "HTTP 404"}
-	source, err := store.CreateSourceWithBackfill(ctx, "Always broken", "rss", json.RawMessage(`{}`), intPtr(300), 100)
+	source, err := store.CreateSource(ctx, "Always broken", "rss", json.RawMessage(`{}`), intPtr(300), 100)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -437,7 +437,7 @@ func TestQueuedPollPicksUpBackfillRequestedWhileWaiting(t *testing.T) {
 		return timedRecords(string(cfg), 1), nil
 	}
 	newNormal := func(name, cfg string) Source {
-		source, err := store.CreateSourceWithBackfill(ctx, name, "rss", json.RawMessage(cfg), intPtr(300), 5)
+		source, err := store.CreateSource(ctx, name, "rss", json.RawMessage(cfg), intPtr(300), 5)
 		if err != nil {
 			t.Fatalf("CreateSource: %v", err)
 		}
@@ -491,7 +491,7 @@ func TestNormalPollSkipsExactlyTheRowsTheCapLeftOut(t *testing.T) {
 	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
 		return append([]RawRecord(nil), page...), nil
 	}
-	source, err := store.CreateSourceWithBackfill(ctx, "Boundary", "rss", json.RawMessage(`{}`), intPtr(300), 2)
+	source, err := store.CreateSource(ctx, "Boundary", "rss", json.RawMessage(`{}`), intPtr(300), 2)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -527,7 +527,7 @@ func TestBackfillInsertFailureCountsAsAttempt(t *testing.T) {
 		// A payload that cannot be encoded makes InsertRecords fail.
 		return []RawRecord{{ExternalID: "bad", ObservedAt: time.Now().UTC(), Payload: map[string]any{"ch": make(chan int)}}}, nil
 	}
-	source, err := store.CreateSource(ctx, "Unstorable", "rss", json.RawMessage(`{}`), intPtr(300))
+	source, err := store.CreateSource(ctx, "Unstorable", "rss", json.RawMessage(`{}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("CreateSource: %v", err)
 	}
@@ -541,3 +541,6 @@ func TestBackfillInsertFailureCountsAsAttempt(t *testing.T) {
 		t.Fatalf("insert failures must count toward giving up: pending = %v, err = %v", got.BackfillPending, err)
 	}
 }
+
+// waitIdle blocks until every poll started by pollDue has finished.
+func (l *Loop) waitIdle() { l.running.Wait() }
