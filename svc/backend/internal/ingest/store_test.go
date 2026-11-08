@@ -197,11 +197,11 @@ func TestStoreEnsureSourceDoesNotUpdate(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	first, err := store.EnsureSource(ctx, "Stable", "rss", json.RawMessage(`{"url":"https://example.com/one"}`), intPtr(300))
+	first, err := store.EnsureSource(ctx, "Stable", "rss", json.RawMessage(`{"url":"https://example.com/one"}`), intPtr(300), 0)
 	if err != nil {
 		t.Fatalf("EnsureSource: %v", err)
 	}
-	second, err := store.EnsureSource(ctx, "Stable", "rss", json.RawMessage(`{"url":"https://example.com/two"}`), intPtr(60))
+	second, err := store.EnsureSource(ctx, "Stable", "rss", json.RawMessage(`{"url":"https://example.com/two"}`), intPtr(60), 0)
 	if err != nil {
 		t.Fatalf("EnsureSource second: %v", err)
 	}

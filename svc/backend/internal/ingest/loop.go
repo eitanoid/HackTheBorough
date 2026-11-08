@@ -148,12 +148,16 @@ func (l *Loop) PollOnce(ctx context.Context, sourceID string) (int, error) {
 	return l.poll(ctx, sourceID)
 }
 
-// Busy reports whether a poll for the source is queued or running.
-func (l *Loop) Busy(sourceID string) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	_, busy := l.inflight[sourceID]
-	return busy
+// WhileIdle runs fn while holding the source's poll claim, so no poll can
+// start (or read the backfill token) until fn returns. It returns
+// ErrPollInProgress or ErrPollQueued without running fn if a poll already
+// holds the source.
+func (l *Loop) WhileIdle(sourceID string, fn func() error) error {
+	if err := l.claim(sourceID); err != nil {
+		return err
+	}
+	defer l.release(sourceID)
+	return fn()
 }
 
 // acquireLane waits for a slot in the lane the source needs and returns the
@@ -162,7 +166,7 @@ func (l *Loop) Busy(sourceID string) bool {
 // state changed while waiting, the slot is swapped for the right lane.
 func (l *Loop) acquireLane(ctx context.Context, sourceID string) (Source, func(), error) {
 	normalLane, backfillLane := l.lanes()
-	source, err := l.Store.Source(ctx, sourceID)
+	source, err := l.Store.SourceForPoll(ctx, sourceID)
 	if err != nil {
 		return Source{}, nil, err
 	}
@@ -178,7 +182,7 @@ func (l *Loop) acquireLane(ctx context.Context, sourceID string) (Source, func()
 			return Source{}, nil, ctx.Err()
 		}
 		release := func() { <-lane }
-		fresh, err := l.Store.Source(ctx, sourceID)
+		fresh, err := l.Store.SourceForPoll(ctx, sourceID)
 		if err != nil {
 			release()
 			return Source{}, nil, err
@@ -196,8 +200,9 @@ func (l *Loop) acquireLane(ctx context.Context, sourceID string) (Source, func()
 // Backfills page through the source until BackfillRows records are found and
 // keep the newest BackfillRows of them. A failed or incomplete backfill stays
 // pending and is retried on later scheduled polls, up to MaxBackfillAttempts.
-// Normal polls fetch a single page; timestamped rows older than the backfill
-// floor are skipped (they are the rows a capped backfill left out).
+// Normal polls fetch a single page and skip the ids a capped backfill
+// deliberately left out (sources keep re-serving them); everything else,
+// dated or not, is inserted and deduplicated by the database.
 func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
 	source, release, err := l.acquireLane(ctx, sourceID)
 	if err != nil {
@@ -237,17 +242,33 @@ func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
 	records := result.Records
 	SortNewestFirst(records)
 	fetched := len(records)
-	var floor *time.Time
+	var skipped []string
 	if backfill {
-		available := len(CapRecords(records, 0))
+		all := records
 		records = CapRecords(records, opts.Limit)
-		floor = BackfillFloor(records, available)
-	} else {
-		records = TrimBelowFloor(records, source.BackfillFloor)
+		skipped = Dropped(all, records)
+	} else if len(records) > 0 {
+		ids := make([]string, len(records))
+		for i, record := range records {
+			ids[i] = record.ExternalID
+		}
+		skip, err := l.Store.SkippedIDs(ctx, source.ID, ids)
+		if err != nil {
+			_ = l.Store.MarkPolled(markCtx, source.ID, polledAt, err)
+			return 0, err
+		}
+		records = WithoutIDs(records, skip)
 	}
 	inserted, insertErr := l.Store.InsertRecords(ctx, source.ID, records)
 	if insertErr != nil {
+		if backfill && ctx.Err() != nil {
+			_ = l.Store.MarkError(markCtx, source.ID, insertErr)
+			return 0, insertErr
+		}
 		_ = l.Store.MarkPolled(markCtx, source.ID, polledAt, insertErr)
+		if backfill {
+			l.failBackfill(markCtx, source, nil, nil, insertErr)
+		}
 		return 0, insertErr
 	}
 
@@ -267,8 +288,8 @@ func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
 		encoded, _ := json.Marshal(report)
 		if partialErr != nil {
 			// Keep the rows, but retry the rest of the walk later.
-			l.failBackfill(markCtx, source, encoded, floor, partialErr)
-		} else if err := l.Store.FinishBackfill(markCtx, source.ID, *source.BackfillRequestedAt, encoded, floor); err != nil {
+			l.failBackfill(markCtx, source, encoded, skipped, partialErr)
+		} else if err := l.Store.FinishBackfill(markCtx, source.ID, *source.BackfillRequestedAt, encoded, skipped); err != nil {
 			return inserted, err
 		}
 	}
@@ -293,8 +314,8 @@ func (l *Loop) poll(ctx context.Context, sourceID string) (int, error) {
 // failBackfill counts a failed or incomplete backfill try. After
 // MaxBackfillAttempts it gives up so the source returns to normal polling;
 // the error stays on the source so the user can see why.
-func (l *Loop) failBackfill(ctx context.Context, source Source, report json.RawMessage, floor *time.Time, cause error) {
-	gaveUp, err := l.Store.FailBackfill(ctx, source.ID, *source.BackfillRequestedAt, report, floor)
+func (l *Loop) failBackfill(ctx context.Context, source Source, report json.RawMessage, skipped []string, cause error) {
+	gaveUp, err := l.Store.FailBackfill(ctx, source.ID, *source.BackfillRequestedAt, report, skipped)
 	if err != nil {
 		slog.Warn("record backfill failure", "source_id", source.ID, "err", err)
 		return

@@ -135,14 +135,15 @@ func (s *Server) pollSource(w http.ResponseWriter, r *http.Request) {
 	// to the ingest loop instead, which runs it in the backfill lane.
 	if s.Store != nil {
 		if source, err := s.Store.Source(r.Context(), id); err == nil && source.BackfillPending {
-			// Already queued or running: re-queuing would replace the request
-			// token and make the running walk's finish a no-op, starting a
-			// duplicate backfill.
-			if s.Ingest.Busy(id) {
-				writeJSON(w, http.StatusAccepted, map[string]any{"inserted": 0, "queued": true, "backfill": true})
-				return
-			}
-			if _, err := s.Store.RequeueBackfill(r.Context(), id); err != nil {
+			// Re-queue only while holding the loop's claim on the source, so a
+			// poll cannot read the old token and then have it replaced (which
+			// would make its finish a no-op and start a duplicate walk). A
+			// queued or running poll already serves the request.
+			err := s.Ingest.WhileIdle(id, func() error {
+				_, err := s.Store.RequeueBackfill(r.Context(), id)
+				return err
+			})
+			if err != nil && !errors.Is(err, ingest.ErrPollInProgress) && !errors.Is(err, ingest.ErrPollQueued) {
 				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 				return
 			}

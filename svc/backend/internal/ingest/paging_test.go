@@ -403,32 +403,48 @@ func TestRSSFetchRetriesRateLimit(t *testing.T) {
 	}
 }
 
-func TestBackfillFloorAndTrim(t *testing.T) {
+func TestDroppedAndWithoutIDs(t *testing.T) {
+	all := recs("a", "b", "b", "c", "d")
+	kept := recs("a", "b")
+	if got := Dropped(all, kept); !reflect.DeepEqual(got, []string{"c", "d"}) {
+		t.Fatalf("Dropped = %v", got)
+	}
+	page := recs("new", "a", "c", "d")
+	if got := ids(WithoutIDs(page, map[string]bool{"c": true, "d": true})); !reflect.DeepEqual(got, []string{"new", "a"}) {
+		t.Fatalf("WithoutIDs = %v", got)
+	}
+	if got := len(WithoutIDs(page, nil)); got != 4 {
+		t.Fatalf("no skip set must keep everything, got %d", got)
+	}
+}
+
+func TestSortNewestFirstPutsUndatedAfterDated(t *testing.T) {
 	base := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	timed := func(id string, h int) RawRecord {
-		return RawRecord{ExternalID: id, ObservedAt: base.Add(time.Duration(h) * time.Hour), Payload: map[string]any{}}
+	undated := func(id string) RawRecord {
+		return RawRecord{ExternalID: id, ObservedAt: time.Now(), Payload: map[string]any{"_time_estimated": true}}
 	}
-	kept := []RawRecord{timed("c", 3), timed("b", 2)}
-	if floor := BackfillFloor(kept, 2); floor != nil {
-		t.Fatalf("uncapped backfill must not set a floor, got %v", floor)
+	records := []RawRecord{
+		undated("u1"),
+		{ExternalID: "old", ObservedAt: base, Payload: map[string]any{}},
+		undated("u2"),
+		{ExternalID: "new", ObservedAt: base.Add(time.Hour), Payload: map[string]any{}},
 	}
-	floor := BackfillFloor(kept, 5)
-	if floor == nil || !floor.Equal(base.Add(2*time.Hour)) {
-		t.Fatalf("floor = %v, want the oldest kept time", floor)
+	SortNewestFirst(records)
+	if got := ids(records); !reflect.DeepEqual(got, []string{"new", "old", "u1", "u2"}) {
+		t.Fatalf("sorted = %v", got)
 	}
-	timeless := []RawRecord{{ExternalID: "x", Payload: map[string]any{"_time_estimated": true}}}
-	if BackfillFloor(timeless, 9) != nil {
-		t.Fatal("rows without real timestamps cannot set a floor")
+}
+
+func TestAnchorNextPrefersStrongSignals(t *testing.T) {
+	links := []pageLink{
+		{Href: "https://e.com/menu", Text: "More"},
+		{Href: "https://e.com/list?page=2", Text: "Show next 20"},
 	}
-	page := []RawRecord{
-		timed("new", 9), timed("c", 3), timed("left-out", 1),
-		{ExternalID: "timeless", ObservedAt: base, Payload: map[string]any{"_time_estimated": true}},
+	if got := anchorNext(links, ""); got != "https://e.com/list?page=2" {
+		t.Fatalf("anchorNext = %q, want the 'next' pager over the 'More' menu", got)
 	}
-	if got := ids(TrimBelowFloor(page, floor)); !reflect.DeepEqual(got, []string{"new", "c", "timeless"}) {
-		t.Fatalf("trimmed = %v", got)
-	}
-	if got := len(TrimBelowFloor(page, nil)); got != 4 {
-		t.Fatalf("no floor must keep everything, got %d", got)
+	if got := anchorNext(links[:1], ""); got != "https://e.com/menu" {
+		t.Fatalf("a weak match is used when nothing stronger exists, got %q", got)
 	}
 }
 
@@ -444,6 +460,9 @@ func TestResolveBackfillRows(t *testing.T) {
 	}
 	if _, err := ResolveBackfillRows(-1, 900); err == nil {
 		t.Error("negative must be rejected")
+	}
+	if _, err := ResolveBackfillRows(MaxBackfillRows+1, 900); err == nil {
+		t.Error("a target above the column's range must be rejected")
 	}
 }
 

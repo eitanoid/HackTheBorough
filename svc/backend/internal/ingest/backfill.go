@@ -2,12 +2,20 @@ package ingest
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"sort"
-	"time"
 )
 
 // ErrInvalidBackfillRows is returned for a negative backfill target.
 var ErrInvalidBackfillRows = errors.New("backfill_rows must not be negative (0 selects the default)")
+
+// MaxBackfillRows is the largest storable target (the column is an integer).
+// Paging caps, not this number, bound how much work a backfill does.
+const MaxBackfillRows = math.MaxInt32
+
+// ErrBackfillRowsTooLarge is returned for a target above MaxBackfillRows.
+var ErrBackfillRowsTooLarge = fmt.Errorf("backfill_rows must be at most %d", MaxBackfillRows)
 
 // ResolveBackfillRows turns a requested backfill target into the one to
 // store: 0 selects serverDefault (DefaultBackfillRows when that is unset),
@@ -16,6 +24,9 @@ var ErrInvalidBackfillRows = errors.New("backfill_rows must not be negative (0 s
 func ResolveBackfillRows(requested, serverDefault int) (int, error) {
 	if requested < 0 {
 		return 0, ErrInvalidBackfillRows
+	}
+	if requested > MaxBackfillRows {
+		return 0, ErrBackfillRowsTooLarge
 	}
 	if requested > 0 {
 		return requested, nil
@@ -26,11 +37,17 @@ func ResolveBackfillRows(requested, serverDefault int) (int, error) {
 	return DefaultBackfillRows, nil
 }
 
-// SortNewestFirst orders records by ObservedAt descending, keeping the
-// adapter's order for ties.
+// SortNewestFirst orders records with a real timestamp newest first, followed
+// by records whose time was only estimated (they would otherwise all sort as
+// "now" and crowd out genuinely recent rows), keeping the adapter's order for
+// ties and among undated records.
 func SortNewestFirst(records []RawRecord) {
 	sort.SliceStable(records, func(i, j int) bool {
-		return records[i].ObservedAt.After(records[j].ObservedAt)
+		ri, rj := hasRealTime(records[i]), hasRealTime(records[j])
+		if ri != rj {
+			return ri
+		}
+		return ri && records[i].ObservedAt.After(records[j].ObservedAt)
 	})
 }
 
@@ -53,10 +70,10 @@ func CapRecords(records []RawRecord, n int) []RawRecord {
 }
 
 // recordsHaveTimes reports whether at least one record carries a real
-// timestamp (adapters mark guessed times with payload["_time_estimated"]).
+// timestamp.
 func recordsHaveTimes(records []RawRecord) bool {
 	for _, record := range records {
-		if estimated, _ := record.Payload["_time_estimated"].(bool); !estimated {
+		if hasRealTime(record) {
 			return true
 		}
 	}
@@ -76,36 +93,32 @@ func hasRealTime(record RawRecord) bool {
 	return !estimated
 }
 
-// BackfillFloor returns the timestamp below which a capped backfill dropped
-// rows: the oldest kept row's time, when the cap actually dropped something
-// and that row has a real timestamp. kept must be newest first. Otherwise nil.
-func BackfillFloor(kept []RawRecord, available int) *time.Time {
-	if len(kept) == 0 || available <= len(kept) {
-		return nil
+// Dropped returns the ids of records that a backfill cap left out: every
+// unique id in all that is not in kept.
+func Dropped(all, kept []RawRecord) []string {
+	keep := make(map[string]bool, len(kept))
+	for _, record := range kept {
+		keep[record.ExternalID] = true
 	}
-	oldest := kept[len(kept)-1]
-	if !hasRealTime(oldest) {
-		return nil
+	var dropped []string
+	for _, record := range CapRecords(all, 0) {
+		if !keep[record.ExternalID] {
+			dropped = append(dropped, record.ExternalID)
+		}
 	}
-	floor := oldest.ObservedAt
-	return &floor
+	return dropped
 }
 
-// TrimBelowFloor drops timestamped records older than the backfill floor:
-// sources keep re-serving rows a capped backfill deliberately left out (a long
-// RSS page, a whole CSV file), and those must not leak back in. Records
-// without a real timestamp, and everything when there is no floor, are kept;
-// the database deduplicates them.
-func TrimBelowFloor(records []RawRecord, floor *time.Time) []RawRecord {
-	if floor == nil {
+// WithoutIDs returns records whose ids are not in skip.
+func WithoutIDs(records []RawRecord, skip map[string]bool) []RawRecord {
+	if len(skip) == 0 {
 		return records
 	}
 	kept := records[:0:0]
 	for _, record := range records {
-		if hasRealTime(record) && record.ObservedAt.Before(*floor) {
-			continue
+		if !skip[record.ExternalID] {
+			kept = append(kept, record)
 		}
-		kept = append(kept, record)
 	}
 	return kept
 }

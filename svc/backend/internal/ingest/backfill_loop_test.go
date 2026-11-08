@@ -470,3 +470,74 @@ func TestQueuedPollPicksUpBackfillRequestedWhileWaiting(t *testing.T) {
 		t.Fatalf("opts = %+v, want the backfill requested while waiting", opts)
 	}
 }
+
+func TestNormalPollSkipsExactlyTheRowsTheCapLeftOut(t *testing.T) {
+	loop, store, adapter := newLoopTest(t)
+	ctx := context.Background()
+	day := time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC)
+	row := func(id string, at time.Time, dated bool) RawRecord {
+		payload := map[string]any{}
+		if !dated {
+			payload["_time_estimated"] = true
+		}
+		return RawRecord{ExternalID: id, ObservedAt: at, Payload: payload}
+	}
+	// Two dated rows share the cap's boundary date, plus undated rows.
+	page := []RawRecord{
+		row("d1", day.Add(time.Hour), true),
+		row("d2", day, true), row("d3", day, true),
+		row("u1", time.Now(), false), row("u2", time.Now(), false),
+	}
+	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
+		return append([]RawRecord(nil), page...), nil
+	}
+	source, err := store.CreateSourceWithBackfill(ctx, "Boundary", "rss", json.RawMessage(`{}`), intPtr(300), 2)
+	if err != nil {
+		t.Fatalf("CreateSource: %v", err)
+	}
+	if inserted, err := loop.PollOnce(ctx, source.ID); err != nil || inserted != 2 {
+		t.Fatalf("backfill inserted = %d, err = %v", inserted, err)
+	}
+	// Same page again: nothing the cap left out (same-date or undated) leaks.
+	if inserted, err := loop.PollOnce(ctx, source.ID); err != nil || inserted != 0 {
+		t.Fatalf("repeat poll inserted = %d, err = %v", inserted, err)
+	}
+	// Genuinely new rows are kept, even undated or backdated ones.
+	page = append(page, row("late-correction", day.AddDate(0, -1, 0), true), row("u-new", time.Now(), false))
+	if inserted, err := loop.PollOnce(ctx, source.ID); err != nil || inserted != 2 {
+		t.Fatalf("new rows inserted = %d, err = %v", inserted, err)
+	}
+	// Raising the target brings in the rows that were left out.
+	if _, scheduled, err := store.SetBackfillRows(ctx, source.ID, 10); err != nil || !scheduled {
+		t.Fatalf("SetBackfillRows: scheduled = %v, err = %v", scheduled, err)
+	}
+	if _, err := loop.PollOnce(ctx, source.ID); err != nil {
+		t.Fatalf("re-backfill: %v", err)
+	}
+	got, err := store.Source(ctx, source.ID)
+	if err != nil || got.RecordCount != 7 {
+		t.Fatalf("count = %d, err = %v", got.RecordCount, err)
+	}
+}
+
+func TestBackfillInsertFailureCountsAsAttempt(t *testing.T) {
+	loop, store, adapter := newLoopTest(t)
+	ctx := context.Background()
+	adapter.fetch = func(context.Context, json.RawMessage, FetchOptions) ([]RawRecord, error) {
+		// A payload that cannot be encoded makes InsertRecords fail.
+		return []RawRecord{{ExternalID: "bad", ObservedAt: time.Now().UTC(), Payload: map[string]any{"ch": make(chan int)}}}, nil
+	}
+	source, err := store.CreateSource(ctx, "Unstorable", "rss", json.RawMessage(`{}`), intPtr(300))
+	if err != nil {
+		t.Fatalf("CreateSource: %v", err)
+	}
+	for attempt := 1; attempt <= MaxBackfillAttempts; attempt++ {
+		if _, err := loop.PollOnce(ctx, source.ID); err == nil {
+			t.Fatalf("attempt %d: expected an insert error", attempt)
+		}
+	}
+	got, err := store.Source(ctx, source.ID)
+	if err != nil || got.BackfillPending {
+		t.Fatalf("insert failures must count toward giving up: pending = %v, err = %v", got.BackfillPending, err)
+	}
+}

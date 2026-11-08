@@ -284,3 +284,14 @@ func TestRESTZeroBackfillRowsUsesDefault(t *testing.T) {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestBackfillRowsAboveIntegerRangeIsBadRequest(t *testing.T) {
+	server, _ := newIntegrationServer(t)
+	req := httptest.NewRequest(http.MethodPost, "/api/sources", strings.NewReader(
+		`{"name":"Huge","kind":"rss","config":{"url":"https://example.com/feed.xml"},"backfill_rows":3000000000}`))
+	rec := httptest.NewRecorder()
+	server.Routes().ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "at most") {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+}

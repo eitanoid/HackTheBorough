@@ -318,55 +318,74 @@ var notNextWords = []string{"prev", "newer", "first", "last", "back", "‹", "«
 
 // anchorNext finds a link that looks like "go to the next page" by its label,
 // aria-label or class. With a selector, only matching links are considered.
+// Strong signals (rel=next, the word "next") win over weak ones ("more",
+// "older", › and similar) anywhere on the page, so a "More" menu link never
+// beats a "Show next 20" pager.
 func anchorNext(links []pageLink, selector string) string {
-	for _, link := range links {
-		if selector != "" {
+	if selector != "" {
+		for _, link := range links {
 			if matchesPageSelector(link, selector) {
 				return link.Href
 			}
-			continue
 		}
-		if looksLikeNextLink(link) {
+		return ""
+	}
+	weak := ""
+	for _, link := range links {
+		switch nextLinkStrength(link) {
+		case strongNext:
 			return link.Href
+		case weakNext:
+			if weak == "" {
+				weak = link.Href
+			}
 		}
 	}
-	return ""
+	return weak
 }
 
-func looksLikeNextLink(link pageLink) bool {
+const (
+	notNext = iota
+	weakNext
+	strongNext
+)
+
+var nextWordPattern = regexp.MustCompile(`(?i)\bnext\b`)
+
+func looksLikeNextLink(link pageLink) bool { return nextLinkStrength(link) != notNext }
+
+func nextLinkStrength(link pageLink) int {
 	text := strings.ToLower(strings.TrimSpace(link.Text))
 	aria := strings.ToLower(link.Aria)
 	class := strings.ToLower(link.Class)
 	for _, word := range notNextWords {
 		if strings.Contains(text, word) || strings.Contains(aria, word) {
-			return false
+			return notNext
 		}
 	}
-	if hasRelToken(link.Rel, "next") {
-		return true
+	if hasRelToken(link.Rel, "next") || nextWordPattern.MatchString(text) || nextWordPattern.MatchString(aria) ||
+		containsToken(class, "next") || strings.Contains(class, "pagination-next") || strings.Contains(class, "next-page") {
+		return strongNext
 	}
 	label := strings.TrimSpace(strings.Trim(text, "›»→⟩≫>.… \t"))
 	for _, phrase := range nextPhrases {
 		if label == phrase || strings.HasPrefix(label, phrase+" page") {
-			return true
+			return weakNext
 		}
 	}
-	if strings.HasPrefix(label, "next") || strings.HasPrefix(label, "older") {
-		return true
+	if strings.HasPrefix(label, "older") || strings.Contains(aria, "older") {
+		return weakNext
 	}
 	if label == "" {
 		for _, symbol := range nextSymbols {
 			if strings.TrimSpace(text) == symbol {
-				return true
+				return weakNext
 			}
 		}
 	}
-	return strings.Contains(aria, "next") || strings.Contains(aria, "older") ||
-		containsToken(class, "next") || strings.Contains(class, "pagination-next") ||
-		strings.Contains(class, "next-page")
+	return notNext
 }
 
-// Unambiguous page-number and offset parameters, followed as declared links.
 var pageQueryKeys = []string{"page", "paged", "pg", "pagenum", "pageNumber", "page_number"}
 var offsetQueryKeys = []string{"offset", "skip"}
 var pathPagePattern = regexp.MustCompile(`(?i)/page/(\d+)(/|$)`)
@@ -514,7 +533,7 @@ func cursorProbes(rawURL string, last RawRecord) []probe {
 			add("max_id", id)
 		}
 	}
-	if estimated, _ := last.Payload["_time_estimated"].(bool); !estimated && !last.ObservedAt.IsZero() {
+	if hasRealTime(last) && !last.ObservedAt.IsZero() {
 		add("until", strconv.FormatInt(last.ObservedAt.Unix(), 10))
 	}
 	return probes
