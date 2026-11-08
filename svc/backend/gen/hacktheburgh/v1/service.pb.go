@@ -2417,6 +2417,110 @@ func (x *GetProjectResponse) GetFunnel() *AnalysisFunnel {
 	return nil
 }
 
+type RunWorkflowRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Kind          WorkflowKind           `protobuf:"varint,2,opt,name=kind,proto3,enum=hacktheburgh.v1.WorkflowKind" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunWorkflowRequest) Reset() {
+	*x = RunWorkflowRequest{}
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunWorkflowRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunWorkflowRequest) ProtoMessage() {}
+
+func (x *RunWorkflowRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunWorkflowRequest.ProtoReflect.Descriptor instead.
+func (*RunWorkflowRequest) Descriptor() ([]byte, []int) {
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *RunWorkflowRequest) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *RunWorkflowRequest) GetKind() WorkflowKind {
+	if x != nil {
+		return x.Kind
+	}
+	return WorkflowKind_WORKFLOW_KIND_UNSPECIFIED
+}
+
+type RunWorkflowResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Accepted      bool                   `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunWorkflowResponse) Reset() {
+	*x = RunWorkflowResponse{}
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunWorkflowResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunWorkflowResponse) ProtoMessage() {}
+
+func (x *RunWorkflowResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunWorkflowResponse.ProtoReflect.Descriptor instead.
+func (*RunWorkflowResponse) Descriptor() ([]byte, []int) {
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *RunWorkflowResponse) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
+func (x *RunWorkflowResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 type ListInsightsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
@@ -2426,7 +2530,7 @@ type ListInsightsRequest struct {
 
 func (x *ListInsightsRequest) Reset() {
 	*x = ListInsightsRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[27]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2438,7 +2542,7 @@ func (x *ListInsightsRequest) String() string {
 func (*ListInsightsRequest) ProtoMessage() {}
 
 func (x *ListInsightsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[27]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2451,7 +2555,7 @@ func (x *ListInsightsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInsightsRequest.ProtoReflect.Descriptor instead.
 func (*ListInsightsRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{27}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListInsightsRequest) GetProjectId() string {
@@ -2470,7 +2574,7 @@ type ListInsightsResponse struct {
 
 func (x *ListInsightsResponse) Reset() {
 	*x = ListInsightsResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[28]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2482,7 +2586,7 @@ func (x *ListInsightsResponse) String() string {
 func (*ListInsightsResponse) ProtoMessage() {}
 
 func (x *ListInsightsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[28]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2495,7 +2599,7 @@ func (x *ListInsightsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListInsightsResponse.ProtoReflect.Descriptor instead.
 func (*ListInsightsResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{28}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ListInsightsResponse) GetInsights() []*Insight {
@@ -2514,7 +2618,7 @@ type ListWorkflowsRequest struct {
 
 func (x *ListWorkflowsRequest) Reset() {
 	*x = ListWorkflowsRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[29]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2526,7 +2630,7 @@ func (x *ListWorkflowsRequest) String() string {
 func (*ListWorkflowsRequest) ProtoMessage() {}
 
 func (x *ListWorkflowsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[29]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2539,7 +2643,7 @@ func (x *ListWorkflowsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkflowsRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkflowsRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{29}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ListWorkflowsRequest) GetProjectId() string {
@@ -2558,7 +2662,7 @@ type ListWorkflowsResponse struct {
 
 func (x *ListWorkflowsResponse) Reset() {
 	*x = ListWorkflowsResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[30]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2570,7 +2674,7 @@ func (x *ListWorkflowsResponse) String() string {
 func (*ListWorkflowsResponse) ProtoMessage() {}
 
 func (x *ListWorkflowsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[30]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2583,7 +2687,7 @@ func (x *ListWorkflowsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkflowsResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkflowsResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{30}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ListWorkflowsResponse) GetWorkflows() []*Workflow {
@@ -2602,7 +2706,7 @@ type ListWorkflowStepsRequest struct {
 
 func (x *ListWorkflowStepsRequest) Reset() {
 	*x = ListWorkflowStepsRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[31]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2614,7 +2718,7 @@ func (x *ListWorkflowStepsRequest) String() string {
 func (*ListWorkflowStepsRequest) ProtoMessage() {}
 
 func (x *ListWorkflowStepsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[31]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2627,7 +2731,7 @@ func (x *ListWorkflowStepsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkflowStepsRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkflowStepsRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{31}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ListWorkflowStepsRequest) GetWorkflowId() string {
@@ -2646,7 +2750,7 @@ type ListWorkflowStepsResponse struct {
 
 func (x *ListWorkflowStepsResponse) Reset() {
 	*x = ListWorkflowStepsResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[32]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2658,7 +2762,7 @@ func (x *ListWorkflowStepsResponse) String() string {
 func (*ListWorkflowStepsResponse) ProtoMessage() {}
 
 func (x *ListWorkflowStepsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[32]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2671,7 +2775,7 @@ func (x *ListWorkflowStepsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkflowStepsResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkflowStepsResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{32}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListWorkflowStepsResponse) GetSteps() []*WorkflowStep {
@@ -2691,7 +2795,7 @@ type RegenerateWorkflowRequest struct {
 
 func (x *RegenerateWorkflowRequest) Reset() {
 	*x = RegenerateWorkflowRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[33]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2703,7 +2807,7 @@ func (x *RegenerateWorkflowRequest) String() string {
 func (*RegenerateWorkflowRequest) ProtoMessage() {}
 
 func (x *RegenerateWorkflowRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[33]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2716,7 +2820,7 @@ func (x *RegenerateWorkflowRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegenerateWorkflowRequest.ProtoReflect.Descriptor instead.
 func (*RegenerateWorkflowRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{33}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *RegenerateWorkflowRequest) GetProjectId() string {
@@ -2742,7 +2846,7 @@ type RegenerateWorkflowResponse struct {
 
 func (x *RegenerateWorkflowResponse) Reset() {
 	*x = RegenerateWorkflowResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[34]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2754,7 +2858,7 @@ func (x *RegenerateWorkflowResponse) String() string {
 func (*RegenerateWorkflowResponse) ProtoMessage() {}
 
 func (x *RegenerateWorkflowResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[34]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2767,7 +2871,7 @@ func (x *RegenerateWorkflowResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegenerateWorkflowResponse.ProtoReflect.Descriptor instead.
 func (*RegenerateWorkflowResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{34}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *RegenerateWorkflowResponse) GetWorkflow() *Workflow {
@@ -2789,7 +2893,7 @@ type ReplayRequest struct {
 
 func (x *ReplayRequest) Reset() {
 	*x = ReplayRequest{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[35]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2801,7 +2905,7 @@ func (x *ReplayRequest) String() string {
 func (*ReplayRequest) ProtoMessage() {}
 
 func (x *ReplayRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[35]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2814,7 +2918,7 @@ func (x *ReplayRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayRequest.ProtoReflect.Descriptor instead.
 func (*ReplayRequest) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{35}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ReplayRequest) GetSourceIds() []string {
@@ -2849,7 +2953,7 @@ type ReplayResponse struct {
 
 func (x *ReplayResponse) Reset() {
 	*x = ReplayResponse{}
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[36]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2861,7 +2965,7 @@ func (x *ReplayResponse) String() string {
 func (*ReplayResponse) ProtoMessage() {}
 
 func (x *ReplayResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hacktheburgh_v1_service_proto_msgTypes[36]
+	mi := &file_hacktheburgh_v1_service_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2874,7 +2978,7 @@ func (x *ReplayResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayResponse.ProtoReflect.Descriptor instead.
 func (*ReplayResponse) Descriptor() ([]byte, []int) {
-	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{36}
+	return file_hacktheburgh_v1_service_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ReplayResponse) GetAccepted() bool {
@@ -3067,7 +3171,14 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"\x10active_workflows\x18\x02 \x03(\v2\x19.hacktheburgh.v1.WorkflowR\x0factiveWorkflows\x123\n" +
 	"\n" +
 	"latest_run\x18\x03 \x01(\v2\x14.hacktheburgh.v1.RunR\tlatestRun\x127\n" +
-	"\x06funnel\x18\x04 \x01(\v2\x1f.hacktheburgh.v1.AnalysisFunnelR\x06funnel\"4\n" +
+	"\x06funnel\x18\x04 \x01(\v2\x1f.hacktheburgh.v1.AnalysisFunnelR\x06funnel\"f\n" +
+	"\x12RunWorkflowRequest\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x01 \x01(\tR\tprojectId\x121\n" +
+	"\x04kind\x18\x02 \x01(\x0e2\x1d.hacktheburgh.v1.WorkflowKindR\x04kind\"K\n" +
+	"\x13RunWorkflowResponse\x12\x1a\n" +
+	"\baccepted\x18\x01 \x01(\bR\baccepted\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"4\n" +
 	"\x13ListInsightsRequest\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\"L\n" +
@@ -3149,7 +3260,7 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"\fPlausibility\x12\x1c\n" +
 	"\x18PLAUSIBILITY_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16PLAUSIBILITY_PLAUSIBLE\x10\x01\x12\x19\n" +
-	"\x15PLAUSIBILITY_DOUBTFUL\x10\x022\xf7\b\n" +
+	"\x15PLAUSIBILITY_DOUBTFUL\x10\x022\xd1\t\n" +
 	"\rAnduinService\x12[\n" +
 	"\fCreateSource\x12$.hacktheburgh.v1.CreateSourceRequest\x1a%.hacktheburgh.v1.CreateSourceResponse\x12d\n" +
 	"\x0fUploadCSVSource\x12'.hacktheburgh.v1.UploadCSVSourceRequest\x1a(.hacktheburgh.v1.UploadCSVSourceResponse\x12X\n" +
@@ -3159,7 +3270,8 @@ const file_hacktheburgh_v1_service_proto_rawDesc = "" +
 	"\fListProjects\x12$.hacktheburgh.v1.ListProjectsRequest\x1a%.hacktheburgh.v1.ListProjectsResponse\x12U\n" +
 	"\n" +
 	"GetProject\x12\".hacktheburgh.v1.GetProjectRequest\x1a#.hacktheburgh.v1.GetProjectResponse\x12[\n" +
-	"\fListInsights\x12$.hacktheburgh.v1.ListInsightsRequest\x1a%.hacktheburgh.v1.ListInsightsResponse\x12^\n" +
+	"\fListInsights\x12$.hacktheburgh.v1.ListInsightsRequest\x1a%.hacktheburgh.v1.ListInsightsResponse\x12X\n" +
+	"\vRunWorkflow\x12#.hacktheburgh.v1.RunWorkflowRequest\x1a$.hacktheburgh.v1.RunWorkflowResponse\x12^\n" +
 	"\rListWorkflows\x12%.hacktheburgh.v1.ListWorkflowsRequest\x1a&.hacktheburgh.v1.ListWorkflowsResponse\x12j\n" +
 	"\x11ListWorkflowSteps\x12).hacktheburgh.v1.ListWorkflowStepsRequest\x1a*.hacktheburgh.v1.ListWorkflowStepsResponse\x12m\n" +
 	"\x12RegenerateWorkflow\x12*.hacktheburgh.v1.RegenerateWorkflowRequest\x1a+.hacktheburgh.v1.RegenerateWorkflowResponse\x12I\n" +
@@ -3179,7 +3291,7 @@ func file_hacktheburgh_v1_service_proto_rawDescGZIP() []byte {
 }
 
 var file_hacktheburgh_v1_service_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
-var file_hacktheburgh_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
+var file_hacktheburgh_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_hacktheburgh_v1_service_proto_goTypes = []any{
 	(SourceKind)(0),                    // 0: hacktheburgh.v1.SourceKind
 	(PaginationStrategy)(0),            // 1: hacktheburgh.v1.PaginationStrategy
@@ -3218,33 +3330,35 @@ var file_hacktheburgh_v1_service_proto_goTypes = []any{
 	(*ListProjectsResponse)(nil),       // 34: hacktheburgh.v1.ListProjectsResponse
 	(*GetProjectRequest)(nil),          // 35: hacktheburgh.v1.GetProjectRequest
 	(*GetProjectResponse)(nil),         // 36: hacktheburgh.v1.GetProjectResponse
-	(*ListInsightsRequest)(nil),        // 37: hacktheburgh.v1.ListInsightsRequest
-	(*ListInsightsResponse)(nil),       // 38: hacktheburgh.v1.ListInsightsResponse
-	(*ListWorkflowsRequest)(nil),       // 39: hacktheburgh.v1.ListWorkflowsRequest
-	(*ListWorkflowsResponse)(nil),      // 40: hacktheburgh.v1.ListWorkflowsResponse
-	(*ListWorkflowStepsRequest)(nil),   // 41: hacktheburgh.v1.ListWorkflowStepsRequest
-	(*ListWorkflowStepsResponse)(nil),  // 42: hacktheburgh.v1.ListWorkflowStepsResponse
-	(*RegenerateWorkflowRequest)(nil),  // 43: hacktheburgh.v1.RegenerateWorkflowRequest
-	(*RegenerateWorkflowResponse)(nil), // 44: hacktheburgh.v1.RegenerateWorkflowResponse
-	(*ReplayRequest)(nil),              // 45: hacktheburgh.v1.ReplayRequest
-	(*ReplayResponse)(nil),             // 46: hacktheburgh.v1.ReplayResponse
-	(*structpb.Struct)(nil),            // 47: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),      // 48: google.protobuf.Timestamp
-	(*structpb.Value)(nil),             // 49: google.protobuf.Value
+	(*RunWorkflowRequest)(nil),         // 37: hacktheburgh.v1.RunWorkflowRequest
+	(*RunWorkflowResponse)(nil),        // 38: hacktheburgh.v1.RunWorkflowResponse
+	(*ListInsightsRequest)(nil),        // 39: hacktheburgh.v1.ListInsightsRequest
+	(*ListInsightsResponse)(nil),       // 40: hacktheburgh.v1.ListInsightsResponse
+	(*ListWorkflowsRequest)(nil),       // 41: hacktheburgh.v1.ListWorkflowsRequest
+	(*ListWorkflowsResponse)(nil),      // 42: hacktheburgh.v1.ListWorkflowsResponse
+	(*ListWorkflowStepsRequest)(nil),   // 43: hacktheburgh.v1.ListWorkflowStepsRequest
+	(*ListWorkflowStepsResponse)(nil),  // 44: hacktheburgh.v1.ListWorkflowStepsResponse
+	(*RegenerateWorkflowRequest)(nil),  // 45: hacktheburgh.v1.RegenerateWorkflowRequest
+	(*RegenerateWorkflowResponse)(nil), // 46: hacktheburgh.v1.RegenerateWorkflowResponse
+	(*ReplayRequest)(nil),              // 47: hacktheburgh.v1.ReplayRequest
+	(*ReplayResponse)(nil),             // 48: hacktheburgh.v1.ReplayResponse
+	(*structpb.Struct)(nil),            // 49: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),      // 50: google.protobuf.Timestamp
+	(*structpb.Value)(nil),             // 51: google.protobuf.Value
 }
 var file_hacktheburgh_v1_service_proto_depIdxs = []int32{
-	47, // 0: hacktheburgh.v1.SourceConfig.schema:type_name -> google.protobuf.Struct
+	49, // 0: hacktheburgh.v1.SourceConfig.schema:type_name -> google.protobuf.Struct
 	11, // 1: hacktheburgh.v1.SourceConfig.pagination:type_name -> hacktheburgh.v1.WebPagination
 	1,  // 2: hacktheburgh.v1.WebPagination.strategy:type_name -> hacktheburgh.v1.PaginationStrategy
 	2,  // 3: hacktheburgh.v1.FieldProfile.role:type_name -> hacktheburgh.v1.FieldRole
 	3,  // 4: hacktheburgh.v1.FieldProfile.aggregation:type_name -> hacktheburgh.v1.Aggregation
 	12, // 5: hacktheburgh.v1.SourceProfile.fields:type_name -> hacktheburgh.v1.FieldProfile
 	0,  // 6: hacktheburgh.v1.Source.kind:type_name -> hacktheburgh.v1.SourceKind
-	48, // 7: hacktheburgh.v1.Source.last_polled_at:type_name -> google.protobuf.Timestamp
+	50, // 7: hacktheburgh.v1.Source.last_polled_at:type_name -> google.protobuf.Timestamp
 	13, // 8: hacktheburgh.v1.Source.profile:type_name -> hacktheburgh.v1.SourceProfile
-	48, // 9: hacktheburgh.v1.Source.created_at:type_name -> google.protobuf.Timestamp
-	48, // 10: hacktheburgh.v1.DataRecord.observed_at:type_name -> google.protobuf.Timestamp
-	47, // 11: hacktheburgh.v1.DataRecord.payload:type_name -> google.protobuf.Struct
+	50, // 9: hacktheburgh.v1.Source.created_at:type_name -> google.protobuf.Timestamp
+	50, // 10: hacktheburgh.v1.DataRecord.observed_at:type_name -> google.protobuf.Timestamp
+	49, // 11: hacktheburgh.v1.DataRecord.payload:type_name -> google.protobuf.Struct
 	0,  // 12: hacktheburgh.v1.CreateSourceRequest.kind:type_name -> hacktheburgh.v1.SourceKind
 	10, // 13: hacktheburgh.v1.CreateSourceRequest.config:type_name -> hacktheburgh.v1.SourceConfig
 	14, // 14: hacktheburgh.v1.CreateSourceResponse.source:type_name -> hacktheburgh.v1.Source
@@ -3252,27 +3366,27 @@ var file_hacktheburgh_v1_service_proto_depIdxs = []int32{
 	14, // 16: hacktheburgh.v1.ListSourcesResponse.sources:type_name -> hacktheburgh.v1.Source
 	14, // 17: hacktheburgh.v1.GetSourceResponse.source:type_name -> hacktheburgh.v1.Source
 	15, // 18: hacktheburgh.v1.GetSourceResponse.recent_records:type_name -> hacktheburgh.v1.DataRecord
-	48, // 19: hacktheburgh.v1.Project.created_at:type_name -> google.protobuf.Timestamp
-	48, // 20: hacktheburgh.v1.Run.data_up_to:type_name -> google.protobuf.Timestamp
+	50, // 19: hacktheburgh.v1.Project.created_at:type_name -> google.protobuf.Timestamp
+	50, // 20: hacktheburgh.v1.Run.data_up_to:type_name -> google.protobuf.Timestamp
 	5,  // 21: hacktheburgh.v1.Run.status:type_name -> hacktheburgh.v1.RunStatus
-	47, // 22: hacktheburgh.v1.Run.result:type_name -> google.protobuf.Struct
-	48, // 23: hacktheburgh.v1.Run.started_at:type_name -> google.protobuf.Timestamp
-	48, // 24: hacktheburgh.v1.Run.finished_at:type_name -> google.protobuf.Timestamp
+	49, // 22: hacktheburgh.v1.Run.result:type_name -> google.protobuf.Struct
+	50, // 23: hacktheburgh.v1.Run.started_at:type_name -> google.protobuf.Timestamp
+	50, // 24: hacktheburgh.v1.Run.finished_at:type_name -> google.protobuf.Timestamp
 	24, // 25: hacktheburgh.v1.ProjectSummary.project:type_name -> hacktheburgh.v1.Project
 	5,  // 26: hacktheburgh.v1.ProjectSummary.latest_run_status:type_name -> hacktheburgh.v1.RunStatus
 	4,  // 27: hacktheburgh.v1.Workflow.kind:type_name -> hacktheburgh.v1.WorkflowKind
-	48, // 28: hacktheburgh.v1.Workflow.created_at:type_name -> google.protobuf.Timestamp
-	47, // 29: hacktheburgh.v1.Workflow.report:type_name -> google.protobuf.Struct
+	50, // 28: hacktheburgh.v1.Workflow.created_at:type_name -> google.protobuf.Timestamp
+	49, // 29: hacktheburgh.v1.Workflow.report:type_name -> google.protobuf.Struct
 	7,  // 30: hacktheburgh.v1.Insight.origin:type_name -> hacktheburgh.v1.InsightOrigin
 	6,  // 31: hacktheburgh.v1.Insight.kind:type_name -> hacktheburgh.v1.InsightKind
-	47, // 32: hacktheburgh.v1.Insight.stats:type_name -> google.protobuf.Struct
-	49, // 33: hacktheburgh.v1.Insight.evidence:type_name -> google.protobuf.Value
-	47, // 34: hacktheburgh.v1.Insight.chart_spec:type_name -> google.protobuf.Struct
+	49, // 32: hacktheburgh.v1.Insight.stats:type_name -> google.protobuf.Struct
+	51, // 33: hacktheburgh.v1.Insight.evidence:type_name -> google.protobuf.Value
+	49, // 34: hacktheburgh.v1.Insight.chart_spec:type_name -> google.protobuf.Struct
 	8,  // 35: hacktheburgh.v1.Insight.narrated_by:type_name -> hacktheburgh.v1.NarratedBy
-	48, // 36: hacktheburgh.v1.Insight.created_at:type_name -> google.protobuf.Timestamp
+	50, // 36: hacktheburgh.v1.Insight.created_at:type_name -> google.protobuf.Timestamp
 	9,  // 37: hacktheburgh.v1.Insight.plausibility:type_name -> hacktheburgh.v1.Plausibility
-	47, // 38: hacktheburgh.v1.WorkflowStep.input:type_name -> google.protobuf.Struct
-	47, // 39: hacktheburgh.v1.WorkflowStep.output:type_name -> google.protobuf.Struct
+	49, // 38: hacktheburgh.v1.WorkflowStep.input:type_name -> google.protobuf.Struct
+	49, // 39: hacktheburgh.v1.WorkflowStep.output:type_name -> google.protobuf.Struct
 	24, // 40: hacktheburgh.v1.CreateProjectResponse.project:type_name -> hacktheburgh.v1.Project
 	28, // 41: hacktheburgh.v1.CreateProjectResponse.active_workflow:type_name -> hacktheburgh.v1.Workflow
 	25, // 42: hacktheburgh.v1.CreateProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
@@ -3281,40 +3395,43 @@ var file_hacktheburgh_v1_service_proto_depIdxs = []int32{
 	28, // 45: hacktheburgh.v1.GetProjectResponse.active_workflows:type_name -> hacktheburgh.v1.Workflow
 	25, // 46: hacktheburgh.v1.GetProjectResponse.latest_run:type_name -> hacktheburgh.v1.Run
 	26, // 47: hacktheburgh.v1.GetProjectResponse.funnel:type_name -> hacktheburgh.v1.AnalysisFunnel
-	29, // 48: hacktheburgh.v1.ListInsightsResponse.insights:type_name -> hacktheburgh.v1.Insight
-	28, // 49: hacktheburgh.v1.ListWorkflowsResponse.workflows:type_name -> hacktheburgh.v1.Workflow
-	30, // 50: hacktheburgh.v1.ListWorkflowStepsResponse.steps:type_name -> hacktheburgh.v1.WorkflowStep
-	4,  // 51: hacktheburgh.v1.RegenerateWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
-	28, // 52: hacktheburgh.v1.RegenerateWorkflowResponse.workflow:type_name -> hacktheburgh.v1.Workflow
-	16, // 53: hacktheburgh.v1.AnduinService.CreateSource:input_type -> hacktheburgh.v1.CreateSourceRequest
-	18, // 54: hacktheburgh.v1.AnduinService.UploadCSVSource:input_type -> hacktheburgh.v1.UploadCSVSourceRequest
-	20, // 55: hacktheburgh.v1.AnduinService.ListSources:input_type -> hacktheburgh.v1.ListSourcesRequest
-	22, // 56: hacktheburgh.v1.AnduinService.GetSource:input_type -> hacktheburgh.v1.GetSourceRequest
-	31, // 57: hacktheburgh.v1.AnduinService.CreateProject:input_type -> hacktheburgh.v1.CreateProjectRequest
-	33, // 58: hacktheburgh.v1.AnduinService.ListProjects:input_type -> hacktheburgh.v1.ListProjectsRequest
-	35, // 59: hacktheburgh.v1.AnduinService.GetProject:input_type -> hacktheburgh.v1.GetProjectRequest
-	37, // 60: hacktheburgh.v1.AnduinService.ListInsights:input_type -> hacktheburgh.v1.ListInsightsRequest
-	39, // 61: hacktheburgh.v1.AnduinService.ListWorkflows:input_type -> hacktheburgh.v1.ListWorkflowsRequest
-	41, // 62: hacktheburgh.v1.AnduinService.ListWorkflowSteps:input_type -> hacktheburgh.v1.ListWorkflowStepsRequest
-	43, // 63: hacktheburgh.v1.AnduinService.RegenerateWorkflow:input_type -> hacktheburgh.v1.RegenerateWorkflowRequest
-	45, // 64: hacktheburgh.v1.AnduinService.Replay:input_type -> hacktheburgh.v1.ReplayRequest
-	17, // 65: hacktheburgh.v1.AnduinService.CreateSource:output_type -> hacktheburgh.v1.CreateSourceResponse
-	19, // 66: hacktheburgh.v1.AnduinService.UploadCSVSource:output_type -> hacktheburgh.v1.UploadCSVSourceResponse
-	21, // 67: hacktheburgh.v1.AnduinService.ListSources:output_type -> hacktheburgh.v1.ListSourcesResponse
-	23, // 68: hacktheburgh.v1.AnduinService.GetSource:output_type -> hacktheburgh.v1.GetSourceResponse
-	32, // 69: hacktheburgh.v1.AnduinService.CreateProject:output_type -> hacktheburgh.v1.CreateProjectResponse
-	34, // 70: hacktheburgh.v1.AnduinService.ListProjects:output_type -> hacktheburgh.v1.ListProjectsResponse
-	36, // 71: hacktheburgh.v1.AnduinService.GetProject:output_type -> hacktheburgh.v1.GetProjectResponse
-	38, // 72: hacktheburgh.v1.AnduinService.ListInsights:output_type -> hacktheburgh.v1.ListInsightsResponse
-	40, // 73: hacktheburgh.v1.AnduinService.ListWorkflows:output_type -> hacktheburgh.v1.ListWorkflowsResponse
-	42, // 74: hacktheburgh.v1.AnduinService.ListWorkflowSteps:output_type -> hacktheburgh.v1.ListWorkflowStepsResponse
-	44, // 75: hacktheburgh.v1.AnduinService.RegenerateWorkflow:output_type -> hacktheburgh.v1.RegenerateWorkflowResponse
-	46, // 76: hacktheburgh.v1.AnduinService.Replay:output_type -> hacktheburgh.v1.ReplayResponse
-	65, // [65:77] is the sub-list for method output_type
-	53, // [53:65] is the sub-list for method input_type
-	53, // [53:53] is the sub-list for extension type_name
-	53, // [53:53] is the sub-list for extension extendee
-	0,  // [0:53] is the sub-list for field type_name
+	4,  // 48: hacktheburgh.v1.RunWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
+	29, // 49: hacktheburgh.v1.ListInsightsResponse.insights:type_name -> hacktheburgh.v1.Insight
+	28, // 50: hacktheburgh.v1.ListWorkflowsResponse.workflows:type_name -> hacktheburgh.v1.Workflow
+	30, // 51: hacktheburgh.v1.ListWorkflowStepsResponse.steps:type_name -> hacktheburgh.v1.WorkflowStep
+	4,  // 52: hacktheburgh.v1.RegenerateWorkflowRequest.kind:type_name -> hacktheburgh.v1.WorkflowKind
+	28, // 53: hacktheburgh.v1.RegenerateWorkflowResponse.workflow:type_name -> hacktheburgh.v1.Workflow
+	16, // 54: hacktheburgh.v1.AnduinService.CreateSource:input_type -> hacktheburgh.v1.CreateSourceRequest
+	18, // 55: hacktheburgh.v1.AnduinService.UploadCSVSource:input_type -> hacktheburgh.v1.UploadCSVSourceRequest
+	20, // 56: hacktheburgh.v1.AnduinService.ListSources:input_type -> hacktheburgh.v1.ListSourcesRequest
+	22, // 57: hacktheburgh.v1.AnduinService.GetSource:input_type -> hacktheburgh.v1.GetSourceRequest
+	31, // 58: hacktheburgh.v1.AnduinService.CreateProject:input_type -> hacktheburgh.v1.CreateProjectRequest
+	33, // 59: hacktheburgh.v1.AnduinService.ListProjects:input_type -> hacktheburgh.v1.ListProjectsRequest
+	35, // 60: hacktheburgh.v1.AnduinService.GetProject:input_type -> hacktheburgh.v1.GetProjectRequest
+	39, // 61: hacktheburgh.v1.AnduinService.ListInsights:input_type -> hacktheburgh.v1.ListInsightsRequest
+	37, // 62: hacktheburgh.v1.AnduinService.RunWorkflow:input_type -> hacktheburgh.v1.RunWorkflowRequest
+	41, // 63: hacktheburgh.v1.AnduinService.ListWorkflows:input_type -> hacktheburgh.v1.ListWorkflowsRequest
+	43, // 64: hacktheburgh.v1.AnduinService.ListWorkflowSteps:input_type -> hacktheburgh.v1.ListWorkflowStepsRequest
+	45, // 65: hacktheburgh.v1.AnduinService.RegenerateWorkflow:input_type -> hacktheburgh.v1.RegenerateWorkflowRequest
+	47, // 66: hacktheburgh.v1.AnduinService.Replay:input_type -> hacktheburgh.v1.ReplayRequest
+	17, // 67: hacktheburgh.v1.AnduinService.CreateSource:output_type -> hacktheburgh.v1.CreateSourceResponse
+	19, // 68: hacktheburgh.v1.AnduinService.UploadCSVSource:output_type -> hacktheburgh.v1.UploadCSVSourceResponse
+	21, // 69: hacktheburgh.v1.AnduinService.ListSources:output_type -> hacktheburgh.v1.ListSourcesResponse
+	23, // 70: hacktheburgh.v1.AnduinService.GetSource:output_type -> hacktheburgh.v1.GetSourceResponse
+	32, // 71: hacktheburgh.v1.AnduinService.CreateProject:output_type -> hacktheburgh.v1.CreateProjectResponse
+	34, // 72: hacktheburgh.v1.AnduinService.ListProjects:output_type -> hacktheburgh.v1.ListProjectsResponse
+	36, // 73: hacktheburgh.v1.AnduinService.GetProject:output_type -> hacktheburgh.v1.GetProjectResponse
+	40, // 74: hacktheburgh.v1.AnduinService.ListInsights:output_type -> hacktheburgh.v1.ListInsightsResponse
+	38, // 75: hacktheburgh.v1.AnduinService.RunWorkflow:output_type -> hacktheburgh.v1.RunWorkflowResponse
+	42, // 76: hacktheburgh.v1.AnduinService.ListWorkflows:output_type -> hacktheburgh.v1.ListWorkflowsResponse
+	44, // 77: hacktheburgh.v1.AnduinService.ListWorkflowSteps:output_type -> hacktheburgh.v1.ListWorkflowStepsResponse
+	46, // 78: hacktheburgh.v1.AnduinService.RegenerateWorkflow:output_type -> hacktheburgh.v1.RegenerateWorkflowResponse
+	48, // 79: hacktheburgh.v1.AnduinService.Replay:output_type -> hacktheburgh.v1.ReplayResponse
+	67, // [67:80] is the sub-list for method output_type
+	54, // [54:67] is the sub-list for method input_type
+	54, // [54:54] is the sub-list for extension type_name
+	54, // [54:54] is the sub-list for extension extendee
+	0,  // [0:54] is the sub-list for field type_name
 }
 
 func init() { file_hacktheburgh_v1_service_proto_init() }
@@ -3332,7 +3449,7 @@ func file_hacktheburgh_v1_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hacktheburgh_v1_service_proto_rawDesc), len(file_hacktheburgh_v1_service_proto_rawDesc)),
 			NumEnums:      10,
-			NumMessages:   37,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

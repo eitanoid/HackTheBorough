@@ -198,6 +198,12 @@ h1, h2, h3, p { margin-top: 0; }
 .project-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 13px; }
 .project-detail-heading h3 { margin: 6px 0 5px; color: #1e4035; font-size: 24px; font-weight: 610; letter-spacing: -.65px; }
 .project-detail-heading p { margin: 0; color: #71857b; font-size: 12px; line-height: 1.6; }
+.project-detail-actions { display: grid; flex: 0 0 auto; justify-items: end; gap: 7px; }
+.project-force-run { min-height: 30px; padding: 0 10px; font-size: 10px; cursor: pointer; }
+.project-force-run:focus-visible { outline: 3px solid rgba(61, 152, 118, .24); outline-offset: 2px; }
+.project-force-run-notice, .project-force-run-error { margin: 8px 0 0; font-size: 10px; line-height: 1.5; }
+.project-force-run-notice { color: #4f8763; }
+.project-force-run-error { color: #a65e51; }
 .project-run-badge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid #e6ede7; border-radius: 14px; background: #f9fbf9; color: #839389; font-size: 9px; font-weight: 620; white-space: nowrap; }
 .project-run-badge i { width: 6px; height: 6px; border-radius: 50%; background: #b7c4bc; }
 .project-run-2 { border-color: #d8ecdd; background: #f2f9f3; color: #4f8763; }

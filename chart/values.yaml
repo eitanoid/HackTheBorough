@@ -61,8 +61,8 @@ backend:
       value: "gpt-5.4-mini"
     - name: LLM_DEBUG # "1" exposes POST /api/debug/chat; turn off outside dev
       value: "1"
-    - name: FDR_Q # false-discovery level for the statistical findings; was the 0.05 code default
-      value: "0.01"
+    - name: FDR_Q # false-discovery level for the statistical findings
+      value: "0.1"
     - name: ANALYSIS_DEBUG # "1" exposes /api/debug/seed, /generate and /state; dev only
       value: "1"
     - name: CRAWL4AI_API

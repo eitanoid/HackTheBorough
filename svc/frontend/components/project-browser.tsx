@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { create } from "@bufbuild/protobuf";
 import {
   RunStatus,
@@ -61,11 +61,37 @@ export default function ProjectBrowser() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [detailLoading, setDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState("");
+  const [forceRunPending, setForceRunPending] = useState(false);
+  const [forceRunBaseId, setForceRunBaseId] = useState("");
+  const [forceRunNotice, setForceRunNotice] = useState("");
+  const [forceRunError, setForceRunError] = useState("");
 
   const sourceNames = useMemo(
     () => new Map(sources.map((source) => [source.id, source.name])),
     [sources],
   );
+
+  const updateProjectData = useCallback((
+    projectResponse: GetProjectResponse,
+    currentInsights: Insight[],
+    currentWorkflows: Workflow[],
+  ) => {
+    setDetail(projectResponse);
+    setInsights(currentInsights);
+    setWorkflows(currentWorkflows);
+    const projectId = projectResponse.project?.id;
+    if (projectId) {
+      setProjects((current) => current.map((summary) => (
+        summary.project?.id === projectId
+          ? {
+              ...summary,
+              latestRunStatus: projectResponse.latestRun?.status ?? RunStatus.UNSPECIFIED,
+              findingCount: currentInsights.length,
+            }
+          : summary
+      )));
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,12 +130,10 @@ export default function ProjectBrowser() {
       getAnduinClient().getProject({ id: selectedId }),
       getAnduinClient().listInsights({ projectId: selectedId }),
       getAnduinClient().listWorkflows({ projectId: selectedId }),
-    ])
+      ])
       .then(([projectResponse, insightResponse, workflowResponse]) => {
         if (cancelled) return;
-        setDetail(projectResponse);
-        setInsights(insightResponse.insights);
-        setWorkflows(workflowResponse.workflows);
+        updateProjectData(projectResponse, insightResponse.insights, workflowResponse.workflows);
         setDetailError("");
       })
       .catch((error: unknown) => {
@@ -121,16 +145,85 @@ export default function ProjectBrowser() {
     return () => {
       cancelled = true;
     };
-  }, [selectedId]);
+  }, [selectedId, updateProjectData]);
+
+  useEffect(() => {
+    if (!forceRunPending || !selectedId) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    const refresh = async () => {
+      try {
+        const [projectResponse, insightResponse, workflowResponse] = await Promise.all([
+          getAnduinClient().getProject({ id: selectedId }),
+          getAnduinClient().listInsights({ projectId: selectedId }),
+          getAnduinClient().listWorkflows({ projectId: selectedId }),
+        ]);
+        if (cancelled) return;
+        updateProjectData(projectResponse, insightResponse.insights, workflowResponse.workflows);
+        const latestRun = projectResponse.latestRun;
+        if (latestRun && latestRun.id !== forceRunBaseId && latestRun.status !== RunStatus.RUNNING) {
+          setForceRunPending(false);
+          setForceRunNotice(latestRun.status === RunStatus.SUCCEEDED
+            ? "Run complete; insights refreshed."
+            : "The forced run failed. See the latest run status above.");
+          return;
+        }
+        attempts += 1;
+        if (attempts >= 180) {
+          setForceRunPending(false);
+          setForceRunNotice("The run was accepted but is taking longer than expected. Refresh the project to check its status.");
+          return;
+        }
+      } catch {
+        // Keep polling through brief transport errors; the accepted run continues server-side.
+      }
+      if (!cancelled) timer = setTimeout(() => void refresh(), 1000);
+    };
+
+    timer = setTimeout(() => void refresh(), 300);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [forceRunBaseId, forceRunPending, selectedId, updateProjectData]);
 
   function selectProject(id: string) {
     if (id === selectedId) return;
+    setForceRunPending(false);
+    setForceRunNotice("");
+    setForceRunError("");
     setDetailLoading(true);
     setDetailError("");
     setSelectedId(id);
   }
 
+  async function forceRerun() {
+    if (!selectedId) return;
+    setForceRunPending(true);
+    setForceRunBaseId(detail?.latestRun?.id ?? "");
+    setForceRunNotice("Queueing run…");
+    setForceRunError("");
+    try {
+      const response = await getAnduinClient().runWorkflow({
+        projectId: selectedId,
+        kind: WorkflowKind.STATISTICAL,
+      });
+      if (!response.accepted) {
+        setForceRunPending(false);
+        setForceRunError(response.message || "The workflow run was not accepted.");
+      }
+    } catch (error: unknown) {
+      setForceRunPending(false);
+      setForceRunError(error instanceof Error ? error.message : "Could not queue a workflow run.");
+    }
+  }
+
   function projectCreated(project: Project) {
+    setForceRunPending(false);
+    setForceRunNotice("");
+    setForceRunError("");
     const summary = create(ProjectSummarySchema, {
       project,
       latestRunStatus: RunStatus.UNSPECIFIED,
@@ -146,6 +239,9 @@ export default function ProjectBrowser() {
   const selectedSummary = projects.find((summary) => summary.project?.id === selectedId);
   const latestRun = detail?.latestRun;
   const runStatus = latestRun?.status ?? selectedSummary?.latestRunStatus ?? RunStatus.UNSPECIFIED;
+  const hasStatisticalWorkflow = detail?.activeWorkflows.some(
+    (workflow) => workflow.kind === WorkflowKind.STATISTICAL,
+  ) ?? false;
 
   return (
     <section className="projects-panel" id="projects" aria-labelledby="projects-panel-heading">
@@ -211,10 +307,28 @@ export default function ProjectBrowser() {
                     <h3>{selectedProject.name}</h3>
                     <p>{selectedProject.goal}</p>
                   </div>
-                  <span className={`project-run-badge project-run-${runStatus}`}>
-                    <i aria-hidden="true" /> {runStatusLabel(runStatus)}
-                  </span>
+                  <div className="project-detail-actions">
+                    <span className={`project-run-badge project-run-${runStatus}`}>
+                      <i aria-hidden="true" /> {runStatusLabel(runStatus)}
+                    </span>
+                    {hasStatisticalWorkflow && (
+                      <button
+                        type="button"
+                        className="button button-outline project-force-run"
+                        onClick={() => void forceRerun()}
+                        disabled={forceRunPending || runStatus === RunStatus.RUNNING}
+                      >
+                        {forceRunPending ? "Running again…" : "Run again"}
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {(forceRunNotice || forceRunError) && (
+                  <p className={forceRunError ? "project-force-run-error" : "project-force-run-notice"} role="status" aria-live="polite">
+                    {forceRunError || forceRunNotice}
+                  </p>
+                )}
 
                 <div className="project-detail-stats">
                   <div><strong>{selectedProject.sourceIds.length}</strong><span>Sources</span></div>
