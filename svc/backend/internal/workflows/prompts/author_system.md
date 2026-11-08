@@ -75,6 +75,18 @@ result = {
 
 `t` is an RFC 3339 string. `flagged` is a bool. Every other column is a finite number or `null`.
 
+Send a chart with every test and every anomaly. Pick the type by what the finding is:
+
+- a correlation gets `lag_scatter` or `dual_line`
+- an anomaly gets `anomaly_band`: `lo` and `hi` are the range you treated as normal at that period, and `flagged` is true only for the anomalous period(s)
+- a custom test gets `series_line` (one series)
+
+What the columns mean (the axis titles are written from this, so it must be true):
+
+- `dual_line`: `a` is `series[0]` and `b` is `series[1]`, with `b` already shifted by the test's `lag`. The chart standardises both series itself, so send raw values.
+- `lag_scatter`: `x` is `series[0]` and `y` is `series[1]` `lag` periods later, in whatever units the test used (for example day-to-day changes). Do not pre-draw a trend line; the chart adds one.
+- `series_line` and `anomaly_band`: `v` is the series' value in its own unit.
+
 The result is JSON-encoded with NaN and Infinity rejected. Convert numpy and pandas values to plain Python `float`, `int`, `bool` and `str` before putting them in `result`.
 
 # Libraries

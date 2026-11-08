@@ -3,7 +3,9 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"html/template"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,6 +25,7 @@ func (s *Server) registerAnalysisDebug(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/debug/projects/{id}/generate", s.debugGenerate)
 	mux.HandleFunc("GET /api/debug/projects/{id}/state", s.debugState)
 	mux.HandleFunc("POST /api/debug/projects/{id}/narrate", s.debugNarrate)
+	mux.HandleFunc("GET /api/debug/insights/{id}/chart", s.debugChart)
 }
 
 func (s *Server) debugSeed(w http.ResponseWriter, r *http.Request) {
@@ -143,10 +146,11 @@ func (s *Server) loadDebugState(r *http.Request, id uuid.UUID) (map[string]any, 
 }
 
 // loadDebugInsights returns the cards stored with a run, as the narrator left
-// them: text, verdict, and whether it came from the LLM or the template.
+// them: text, verdict, whether it came from the LLM or the template, and the
+// chart: the stored Vega-Lite spec, and the URL of a page that renders it.
 func (s *Server) loadDebugInsights(r *http.Request, runID uuid.UUID) ([]map[string]any, error) {
 	rows, err := s.Pool.Query(r.Context(), `
-		SELECT finding_key, kind, headline, explanation, caveats, stats, narrated_by, plausibility, chart_spec IS NOT NULL
+		SELECT id, finding_key, kind, headline, explanation, caveats, stats, narrated_by, plausibility, chart_spec
 		FROM insights WHERE run_id = $1 AND origin = 'statistical' ORDER BY finding_key`, runID)
 	if err != nil {
 		return nil, err
@@ -154,17 +158,19 @@ func (s *Server) loadDebugInsights(r *http.Request, runID uuid.UUID) ([]map[stri
 	defer rows.Close()
 	out := []map[string]any{}
 	for rows.Next() {
+		var insightID uuid.UUID
 		var key, kind, headline, explanation, narratedBy string
 		var caveats, stats []byte
 		var plausibility *string
-		var hasChart bool
-		if err := rows.Scan(&key, &kind, &headline, &explanation, &caveats, &stats, &narratedBy, &plausibility, &hasChart); err != nil {
+		var chart []byte
+		if err := rows.Scan(&insightID, &key, &kind, &headline, &explanation, &caveats, &stats, &narratedBy, &plausibility, &chart); err != nil {
 			return nil, err
 		}
 		out = append(out, map[string]any{
-			"finding_key": key, "kind": kind, "headline": headline, "explanation": explanation,
+			"id": insightID, "finding_key": key, "kind": kind, "headline": headline, "explanation": explanation,
 			"caveats": json.RawMessage(caveats), "stats": json.RawMessage(stats),
-			"narrated_by": narratedBy, "plausibility": plausibility, "has_chart": hasChart,
+			"narrated_by": narratedBy, "plausibility": plausibility, "has_chart": len(chart) > 0,
+			"chart_spec": chartJSON(chart), "chart_url": chartURL(insightID, chart),
 		})
 	}
 	return out, rows.Err()
@@ -217,4 +223,98 @@ func (s *Server) debugNarrate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"duration_ms": time.Since(start).Milliseconds(), "model": model, "findings": len(res.Findings), "preview": preview,
 	})
+}
+
+// debugChart renders an insight's stored chart_spec in a minimal page, so a
+// chart can be checked before the frontend card exists.
+func (s *Server) debugChart(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad insight id"})
+		return
+	}
+	var headline string
+	var spec []byte
+	err = s.Pool.QueryRow(r.Context(), `SELECT headline, chart_spec FROM insights WHERE id = $1`, id).Scan(&headline, &spec)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such insight"})
+		return
+	}
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if len(spec) == 0 {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "this insight has no chart"})
+		return
+	}
+	page, err := chartPage(headline, spec)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "stored chart is unreadable: " + err.Error()})
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(page)
+}
+
+var chartPageTmpl = template.Must(template.New("chart").Parse(`<!doctype html>
+<meta charset="utf-8">
+<title>{{.Headline}}</title>
+<style>body{font:14px system-ui,sans-serif;margin:24px;max-width:760px}#chart{width:100%}</style>
+<h3>{{.Headline}}</h3>
+<div id="chart"></div>
+<script src="https://cdn.jsdelivr.net/npm/vega@6.4.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@6.5.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@7.3.0"></script>
+<script>
+// Specs are theme-free: the named styles (band, flagged, trend) only get their
+// look from a config like this one. The frontend has its own; this is a stand-in.
+var config = {
+  view: {stroke: null},
+  axis: {gridColor: "#e5e7eb", domainColor: "#9ca3af", labelColor: "#4b5563", titleColor: "#374151"},
+  range: {category: ["#2f6fed", "#e8833a"]},
+  line: {strokeWidth: 1.6, color: "#2f6fed"},
+  point: {filled: true, opacity: 0.35, size: 35},
+  style: {
+    band: {fill: "#2f6fed", fillOpacity: 0.14},
+    flagged: {fill: "#d93025", stroke: "#d93025", filled: true, opacity: 1, size: 110},
+    trend: {stroke: "#d93025", strokeWidth: 1.5, strokeDash: [5, 4]}
+  }
+};
+vegaEmbed("#chart", {{.Spec}}, {actions: false, renderer: "svg", config: config}).catch(function (e) { document.body.append(String(e)); });
+</script>
+`))
+
+// chartPage fills the viewer page. The spec goes through html/template's
+// JavaScript escaping, so text inside it (labels come from the database) can't
+// close the script element.
+func chartPage(headline string, spec []byte) ([]byte, error) {
+	var v any
+	if err := json.Unmarshal(spec, &v); err != nil {
+		return nil, err
+	}
+	var b strings.Builder
+	if err := chartPageTmpl.Execute(&b, struct {
+		Headline string
+		Spec     any
+	}{headline, v}); err != nil {
+		return nil, err
+	}
+	return []byte(b.String()), nil
+}
+
+// chartJSON is the stored spec for a JSON response, or null when there is none.
+func chartJSON(spec []byte) json.RawMessage {
+	if len(spec) == 0 {
+		return nil
+	}
+	return spec
+}
+
+func chartURL(id uuid.UUID, spec []byte) *string {
+	if len(spec) == 0 {
+		return nil
+	}
+	u := "/api/debug/insights/" + id.String() + "/chart"
+	return &u
 }

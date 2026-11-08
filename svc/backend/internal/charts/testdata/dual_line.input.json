@@ -1,0 +1,7 @@
+{"chart": {"type": "dual_line", "points": [
+  {"t": "2026-10-01T00:00:00Z", "a": 10, "b": 100},
+  {"t": "2026-10-02T00:00:00Z", "a": 12, "b": 90},
+  {"t": "2026-10-03T00:00:00Z", "a": 15, "b": 85},
+  {"t": "2026-10-04T00:00:00Z", "a": 11, "b": 95}
+]},
+"meta": {"series": [{"id": "strike_news", "label": "Strike headlines", "unit": "articles"}, {"id": "trips", "label": "Bus trips", "unit": "trips"}], "lag": 2, "grain": "day"}}

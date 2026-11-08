@@ -1,0 +1,6 @@
+{"chart": {"type": "series_line", "points": [
+  {"t": "2026-10-01T00:00:00Z", "v": 4.123456},
+  {"t": "2026-10-02T00:00:00Z", "v": null},
+  {"t": "2026-10-03T00:00:00Z", "v": 5}
+]},
+"meta": {"series": [{"id": "trips", "label": "Bus trips", "unit": "trips"}], "grain": "day"}}

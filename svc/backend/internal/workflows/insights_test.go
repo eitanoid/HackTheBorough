@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"hacktheburgh/backend/internal/charts"
 	"hacktheburgh/backend/internal/contracts"
 	"hacktheburgh/backend/internal/llm"
 	"hacktheburgh/backend/internal/narration"
@@ -302,7 +303,7 @@ func TestBuildSortsByKeyAndBuildsCharts(t *testing.T) {
 	h := newBuilder(5)
 	f1, f2 := test("z", 0.5), test("m", 0.4)
 	f1.Chart = &contracts.Chart{Type: "dual_line"}
-	h.b.Chart = func(c contracts.Chart) (json.RawMessage, error) {
+	h.b.Chart = func(c contracts.Chart, _ charts.Meta) (json.RawMessage, error) {
 		return json.RawMessage(`{"mark":"` + c.Type + `"}`), nil
 	}
 	rows := h.build(f1, f2)
@@ -312,7 +313,7 @@ func TestBuildSortsByKeyAndBuildsCharts(t *testing.T) {
 	if rows[0].ChartSpec != nil || string(rows[1].ChartSpec) != `{"mark":"dual_line"}` {
 		t.Errorf("charts = %s / %s", rows[0].ChartSpec, rows[1].ChartSpec)
 	}
-	h.b.Chart = func(contracts.Chart) (json.RawMessage, error) { return nil, errors.New("bad chart") }
+	h.b.Chart = func(contracts.Chart, charts.Meta) (json.RawMessage, error) { return nil, errors.New("bad chart") }
 	rows = h.build(f1)
 	if len(rows) != 1 || rows[0].ChartSpec != nil {
 		t.Errorf("a chart error must leave the chart empty: %+v", rows)

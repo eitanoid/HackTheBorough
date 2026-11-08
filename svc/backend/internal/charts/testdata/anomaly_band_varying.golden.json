@@ -1,0 +1,217 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v6.json",
+  "width": "container",
+  "height": 200,
+  "autosize": {
+    "type": "fit",
+    "contains": "padding"
+  },
+  "data": {
+    "values": [
+      {
+        "t": "2026-10-01T00:00:00Z",
+        "v": 10,
+        "lo": 6,
+        "hi": 14,
+        "flagged": false
+      },
+      {
+        "t": "2026-10-02T00:00:00Z",
+        "v": 20,
+        "lo": 8,
+        "hi": 18,
+        "flagged": false
+      },
+      {
+        "t": "2026-10-03T00:00:00Z",
+        "v": null,
+        "lo": null,
+        "hi": null,
+        "flagged": false
+      },
+      {
+        "t": "2026-10-04T00:00:00Z",
+        "v": 3,
+        "lo": 9,
+        "hi": 20,
+        "flagged": true
+      }
+    ]
+  },
+  "layer": [
+    {
+      "mark": {
+        "invalid": "break-paths-filter-domains",
+        "style": "band",
+        "type": "area"
+      },
+      "encoding": {
+        "x": {
+          "axis": {
+            "title": null
+          },
+          "field": "t",
+          "scale": {
+            "nice": false
+          },
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": "v"
+          },
+          "field": "lo",
+          "scale": {
+            "zero": false
+          },
+          "type": "quantitative"
+        },
+        "y2": {
+          "field": "hi"
+        }
+      }
+    },
+    {
+      "mark": {
+        "invalid": "break-paths-filter-domains",
+        "type": "line"
+      },
+      "encoding": {
+        "x": {
+          "axis": {
+            "title": null
+          },
+          "field": "t",
+          "scale": {
+            "nice": false
+          },
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": "v"
+          },
+          "field": "v",
+          "scale": {
+            "zero": false
+          },
+          "type": "quantitative"
+        }
+      }
+    },
+    {
+      "mark": {
+        "opacity": 0,
+        "size": 80,
+        "type": "point"
+      },
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "t",
+            "format": "%d %b %Y",
+            "title": "Date",
+            "type": "temporal"
+          },
+          {
+            "field": "v",
+            "format": ".3~g",
+            "title": "v",
+            "type": "quantitative"
+          },
+          {
+            "field": "lo",
+            "format": ".3~g",
+            "title": "Expected low",
+            "type": "quantitative"
+          },
+          {
+            "field": "hi",
+            "format": ".3~g",
+            "title": "Expected high",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": null
+          },
+          "field": "t",
+          "scale": {
+            "nice": false
+          },
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": "v"
+          },
+          "field": "v",
+          "scale": {
+            "zero": false
+          },
+          "type": "quantitative"
+        }
+      }
+    },
+    {
+      "mark": {
+        "style": "flagged",
+        "type": "point"
+      },
+      "transform": [
+        {
+          "filter": "datum.flagged === true"
+        }
+      ],
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "t",
+            "format": "%d %b %Y",
+            "title": "Date",
+            "type": "temporal"
+          },
+          {
+            "field": "v",
+            "format": ".3~g",
+            "title": "v",
+            "type": "quantitative"
+          },
+          {
+            "field": "lo",
+            "format": ".3~g",
+            "title": "Expected low",
+            "type": "quantitative"
+          },
+          {
+            "field": "hi",
+            "format": ".3~g",
+            "title": "Expected high",
+            "type": "quantitative"
+          }
+        ],
+        "x": {
+          "axis": {
+            "title": null
+          },
+          "field": "t",
+          "scale": {
+            "nice": false
+          },
+          "type": "temporal"
+        },
+        "y": {
+          "axis": {
+            "title": "v"
+          },
+          "field": "v",
+          "scale": {
+            "zero": false
+          },
+          "type": "quantitative"
+        }
+      }
+    }
+  ]
+}

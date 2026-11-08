@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"math"
 	"slices"
 
 	"github.com/google/uuid"
 
+	"hacktheburgh/backend/internal/charts"
 	"hacktheburgh/backend/internal/contracts"
 	"hacktheburgh/backend/internal/narration"
 )
@@ -33,9 +35,9 @@ type InsightBuilder struct {
 	Store         InsightStore
 	Narrator      *narration.Narrator
 	MaxNarrations int
-	// Chart turns a finding's chart into Vega-Lite. Owned by workstream A
-	// (internal/charts); nil until then, and the card has no chart.
-	Chart func(contracts.Chart) (json.RawMessage, error)
+	// Chart turns a finding's chart into Vega-Lite (charts.Build in
+	// production). Nil means no card has a chart.
+	Chart func(contracts.Chart, charts.Meta) (json.RawMessage, error)
 }
 
 type reuseKey struct{ findingKey, direction string }
@@ -78,7 +80,7 @@ func (b *InsightBuilder) Build(ctx context.Context, projectID uuid.UUID, c narra
 		t := texts[f.FindingKey]
 		rows = append(rows, InsightRow{
 			FindingKey: f.FindingKey, Kind: f.Kind, Headline: t.Headline, Explanation: t.Explanation,
-			Caveats: t.Caveats, Stats: f.Stats, ChartSpec: b.chart(f),
+			Caveats: t.Caveats, Stats: f.Stats, ChartSpec: b.chart(c, f),
 			NarratedBy: t.NarratedBy, Plausibility: t.Plausibility,
 		})
 	}
@@ -111,16 +113,50 @@ func (b *InsightBuilder) previous(ctx context.Context, projectID uuid.UUID, fs [
 	return out
 }
 
-func (b *InsightBuilder) chart(f contracts.Finding) json.RawMessage {
+// chart never fails: a chart that can't be built leaves the card without one.
+func (b *InsightBuilder) chart(c narration.Context, f contracts.Finding) json.RawMessage {
 	if b.Chart == nil || f.Chart == nil {
 		return nil
 	}
-	spec, err := b.Chart(*f.Chart)
+	spec, err := b.Chart(*f.Chart, chartMeta(c, f))
 	if err != nil {
 		slog.Warn("could not build chart", "finding", f.FindingKey, "err", err)
 		return nil
 	}
 	return spec
+}
+
+// chartMeta gives the chart builder what the points don't carry: series labels
+// and units from the narration context, the grain of the first series, the lag
+// (correlations) and the effect (tests; anomalies have none).
+func chartMeta(c narration.Context, f contracts.Finding) charts.Meta {
+	m := charts.Meta{}
+	for _, id := range f.Series {
+		a := charts.Axis{ID: id}
+		if s, ok := c.Series[id]; ok {
+			a.Label = s.Label
+			if s.Unit != nil {
+				a.Unit = *s.Unit
+			}
+		}
+		m.Series = append(m.Series, a)
+	}
+	if len(f.Series) > 0 {
+		m.Grain = c.Series[f.Series[0]].Grain
+	}
+	if f.Kind == "anomaly" {
+		return m
+	}
+	if v, ok := narration.Number(f.Stats["effect"]); ok {
+		m.Effect = &v
+	}
+	if f.Kind == "correlation" {
+		if v, ok := narration.Number(f.Stats["lag"]); ok {
+			lag := int(math.Round(v))
+			m.Lag = &lag
+		}
+	}
+	return m
 }
 
 // rank orders findings by importance: tests first by |effect|, then anomalies
@@ -171,12 +207,13 @@ func NarrationContext(goal, insightPrompt string, sources []AuthorSource, res co
 
 // PreviewCard is one finding as the narrator would see it and answer it.
 type PreviewCard struct {
-	FindingKey string         `json:"finding_key"`
-	Kind       string         `json:"kind"`
-	Direction  string         `json:"direction"`
-	Leader     *string        `json:"leader"`
-	Stats      map[string]any `json:"stats"`
-	Narrated   bool           `json:"narrated"` // went to the narrator (the rest got template text)
+	FindingKey string          `json:"finding_key"`
+	Kind       string          `json:"kind"`
+	Direction  string          `json:"direction"`
+	Leader     *string         `json:"leader"`
+	Stats      map[string]any  `json:"stats"`
+	Narrated   bool            `json:"narrated"` // went to the narrator (the rest got template text)
+	Chart      json.RawMessage `json:"chart"`    // the Vega-Lite spec the card would get; null when none
 	narration.Text
 }
 
@@ -189,7 +226,7 @@ type NarrationPreview struct {
 
 // Preview narrates the findings like Build would for new findings (ranked,
 // capped at MaxNarrations, the rest templated) but ignores earlier texts and
-// stores nothing. `model` overrides the narrator model when not empty.
+// stores nothing. Each card carries the chart it would be given. `model` overrides the narrator model when not empty.
 func (b *InsightBuilder) Preview(ctx context.Context, c narration.Context, fs []contracts.Finding, model string) NarrationPreview {
 	fs = slices.Clone(fs)
 	rank(fs)
@@ -203,7 +240,7 @@ func (b *InsightBuilder) Preview(ctx context.Context, c narration.Context, fs []
 	p := NarrationPreview{Cards: make([]PreviewCard, 0, len(fs))}
 	p.System, p.User = narration.Prompts(c, toNarrate)
 	for i, f := range fs {
-		card := PreviewCard{FindingKey: f.FindingKey, Kind: f.Kind, Direction: narration.Direction(f), Stats: f.Stats, Narrated: i < len(toNarrate)}
+		card := PreviewCard{FindingKey: f.FindingKey, Kind: f.Kind, Direction: narration.Direction(f), Stats: f.Stats, Narrated: i < len(toNarrate), Chart: b.chart(c, f)}
 		if l := narration.Leader(f); l != nil {
 			card.Leader = l
 		}

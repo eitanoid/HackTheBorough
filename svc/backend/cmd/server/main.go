@@ -12,6 +12,7 @@ import (
 
 	"hacktheburgh/backend/internal/analysis"
 	"hacktheburgh/backend/internal/api"
+	"hacktheburgh/backend/internal/charts"
 	"hacktheburgh/backend/internal/config"
 	"hacktheburgh/backend/internal/db"
 	"hacktheburgh/backend/internal/events"
@@ -102,6 +103,7 @@ func main() {
 	if llmClient != nil {
 		insightBuilder.Narrator = &narration.Narrator{LLM: llmClient}
 		insightBuilder.MaxNarrations = cfg.MaxNarrations
+		insightBuilder.Chart = charts.Build
 		author = &workflows.Author{
 			LLM:      llmClient,
 			Analyser: analyser,
