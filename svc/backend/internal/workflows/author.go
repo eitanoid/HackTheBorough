@@ -52,23 +52,11 @@ type Author struct {
 // Start runs Generate in a goroutine with panic recovery and returns at once.
 // It returns ErrBusy if this project already has a generation in flight.
 func (a *Author) Start(projectID uuid.UUID, t *Trigger) error {
-	a.mu.Lock()
-	if a.inFlight[projectID] {
-		a.mu.Unlock()
-		return ErrBusy
+	if err := a.acquire(projectID); err != nil {
+		return err
 	}
-	if a.inFlight == nil {
-		a.inFlight = map[uuid.UUID]bool{}
-	}
-	a.inFlight[projectID] = true
-	a.mu.Unlock()
-
 	go func() {
-		defer func() {
-			a.mu.Lock()
-			delete(a.inFlight, projectID)
-			a.mu.Unlock()
-		}()
+		defer a.release(projectID)
 		defer func() {
 			if r := recover(); r != nil {
 				slog.Error("author panicked", "project", projectID, "panic", r)
@@ -80,6 +68,50 @@ func (a *Author) Start(projectID uuid.UUID, t *Trigger) error {
 		}
 	}()
 	return nil
+}
+
+// GenerateNow is Start's synchronous twin, for callers that want the result
+// (the debug endpoint). It takes the same one-at-a-time slot, so it returns
+// ErrBusy while a Start or another GenerateNow is running for the project.
+func (a *Author) GenerateNow(ctx context.Context, projectID uuid.UUID, t *Trigger) error {
+	if err := a.acquire(projectID); err != nil {
+		return err
+	}
+	defer a.release(projectID)
+	return a.Generate(ctx, projectID, t)
+}
+
+// WithModel returns an Author that shares this one's dependencies but asks the
+// LLM for `model` when authoring. It is for experiments (the debug endpoint's
+// ?model=). It keeps its own in-flight tracking, so it does not exclude runs on
+// the original Author.
+func (a *Author) WithModel(model string) *Author {
+	c := *a.LLM
+	c.Models = make(map[llm.Purpose]string, len(a.LLM.Models))
+	for p, m := range a.LLM.Models {
+		c.Models[p] = m
+	}
+	c.Models[llm.Author] = model
+	return &Author{LLM: &c, Analyser: a.Analyser, Store: a.Store, Bus: a.Bus, Budget: a.Budget, OnFirstRun: a.OnFirstRun}
+}
+
+func (a *Author) acquire(projectID uuid.UUID) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.inFlight[projectID] {
+		return ErrBusy
+	}
+	if a.inFlight == nil {
+		a.inFlight = map[uuid.UUID]bool{}
+	}
+	a.inFlight[projectID] = true
+	return nil
+}
+
+func (a *Author) release(projectID uuid.UUID) {
+	a.mu.Lock()
+	delete(a.inFlight, projectID)
+	a.mu.Unlock()
 }
 
 // Generate writes and saves a new statistical version for the project. On

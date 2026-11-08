@@ -46,8 +46,8 @@ backend:
       value: "https://api.openai.com/v1"
     - name: LLM_MODEL_PROFILER
       value: "gpt-4.1-mini"
-    - name: LLM_MODEL_AUTHOR
-      value: "gpt-4.1"
+    - name: LLM_MODEL_AUTHOR # gpt-4.1 shuts down 2027-01-14; gpt-5.4-mini matched it on quality at ~1/3 the cost and was faster
+      value: "gpt-5.4-mini"
     - name: LLM_MODEL_INVESTIGATOR
       value: "gpt-4.1"
     - name: LLM_MODEL_REVIEWER
@@ -55,6 +55,10 @@ backend:
     - name: LLM_MODEL_NARRATOR
       value: "gpt-4.1-mini"
     - name: LLM_DEBUG # "1" exposes POST /api/debug/chat; turn off outside dev
+      value: "1"
+    - name: FDR_Q # false-discovery level for the statistical findings; was the 0.05 code default
+      value: "0.01"
+    - name: ANALYSIS_DEBUG # "1" exposes /api/debug/seed, /generate and /state and runs scripts with the local Python stand-in; dev only
       value: "1"
 
 postgres:

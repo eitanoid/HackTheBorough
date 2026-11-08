@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/llm"
 	"hacktheburgh/backend/internal/workflows"
@@ -19,6 +21,10 @@ type Server struct {
 	Author *workflows.Author
 	// DebugLLM enables /api/debug/chat, which spends the API key on any caller.
 	DebugLLM bool
+	// AnalysisDebug enables the /api/debug seed/generate/state endpoints,
+	// which write to Pool and spend LLM budget for any caller.
+	AnalysisDebug bool
+	Pool          *pgxpool.Pool
 }
 
 type debugChatReq struct {
@@ -57,6 +63,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/stream", s.stream)
 	if s.DebugLLM && s.LLM != nil {
 		mux.HandleFunc("POST /api/debug/chat", s.debugChat)
+	}
+
+	if s.AnalysisDebug && s.Pool != nil {
+		s.registerAnalysisDebug(mux)
 	}
 
 	// Stubs: 501 until workstream A implements them.

@@ -85,14 +85,15 @@ Only `pandas` and `numpy` (and the standard library, for example `math`) are ava
 
 1. Report **every** test you run in `result['tests']`. Never decide what to report from a p-value or an effect size. Do not drop, filter or sort tests by how they came out.
 2. Correlate **changes** (`.diff()`), not levels. Two trending series correlate whatever the truth. Report every lag you try as its own test.
-3. Build keys only from series ids and parameters, never from data values.
+3. Build keys only from series ids and parameters, never from data values. Keys and ids may contain only lowercase letters, digits and `_ : + -`: no uppercase (so no `T` or `Z` from timestamps), spaces or dots. Write dates in keys as `%Y-%m-%d`.
 4. Use data only from `INPUT`. No files, network, clock or `os`. Do not call `datetime.now`, `time.time` or similar. Use `np.random.default_rng(<constant>)` for any randomness; never `np.random.seed`.
 5. Measures keep gaps (`sum(min_count=1)`, so an empty period is missing, not zero). Counts of events fill zeros.
 6. Skip a test whose statistic is undefined (a constant series, too few points) instead of reporting NaN.
 7. Handle sources with no records. The script must still run and set `result`, with fewer series.
-8. Keep the family of tests small: about 6 series and lags up to 7. Every extra test makes real effects harder to keep after correction.
-9. Report at most 50 anomalies. Use a robust z-score (median and MAD over the previous 28 periods) for the last 3 periods only, and report only those with |z| > 3.5.
-10. The `rationale` you return explains which series and tests you chose and why. It must contain no digits and no results.
+8. Start from the pairs the goal asks about, and test each in the direction the goal implies, with the possible cause first and the possible effect second. Add a second direction, or a series the goal does not mention (for example a plausible confounder such as weather), only when you have a clear reason from the goal or the source descriptions, and keep such additions few. Say in the `rationale` why you added them. Do not test series against each other just because both exist: every extra pair adds a chance of a coincidence that looks real, and the system cannot tell a coincidence from a finding.
+9. Keep the family of tests small: the pairs the goal needs, with lags 0 to 7 for each. Every extra test makes real effects harder to keep after correction.
+10. Report at most 50 anomalies. Check the series the goal is about, and any you added under rule 8. Use a robust z-score (median and MAD over the previous 28 periods) for the last 3 periods only, and report only those with |z| > 3.5.
+11. The `rationale` you return explains which series and tests you chose and why. It must contain no digits and no results.
 
 # Your reply
 

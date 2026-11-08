@@ -19,6 +19,7 @@ type Config struct {
 	LLMBaseURL        string // OpenAI-compatible endpoint
 	LLMLogPrompts     bool   // include prompt text in the JSONL call log
 	LLMDebug          bool   // expose POST /api/debug/chat (off by default)
+	AnalysisDebug     bool   // expose /api/debug seed/generate/state and run scripts with the local Python stand-in
 	ModelProfiler     string
 	ModelAuthor       string
 	ModelInvestigator string
@@ -56,6 +57,7 @@ func Load() Config {
 		LLMBaseURL:        env("LLM_BASE_URL", ""),
 		LLMLogPrompts:     env("LLM_LOG_PROMPTS", "1") == "1",
 		LLMDebug:          env("LLM_DEBUG", "") == "1",
+		AnalysisDebug:     env("ANALYSIS_DEBUG", "") == "1",
 		ModelProfiler:     env("LLM_MODEL_PROFILER", ""),
 		ModelAuthor:       env("LLM_MODEL_AUTHOR", ""),
 		ModelInvestigator: env("LLM_MODEL_INVESTIGATOR", ""),

@@ -16,6 +16,8 @@ import (
 	"hacktheburgh/backend/internal/db"
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/llm"
+	"hacktheburgh/backend/internal/pyrunner"
+	"hacktheburgh/backend/internal/pyrunner/localpy"
 	"hacktheburgh/backend/internal/workflows"
 )
 
@@ -46,9 +48,15 @@ func main() {
 		slog.Warn("llm disabled", "err", err)
 	}
 
-	// The statistical author. Analyser.Runner stays nil until the Python
-	// runner's implementation exists; generation then fails with "analysis
-	// unavailable" on the project and the rest of the app keeps working.
+	// The statistical author. Without the real Python runner (not built yet)
+	// Analyser.Runner is nil, so generation fails with "analysis unavailable"
+	// on the project and the rest of the app keeps working. ANALYSIS_DEBUG=1
+	// substitutes a local-subprocess stand-in for development.
+	var runner pyrunner.Runner // stays a nil interface unless a runner is chosen below
+	if cfg.AnalysisDebug {
+		slog.Warn("ANALYSIS_DEBUG is on: debug endpoints are exposed and scripts run in the local Python stand-in")
+		runner = &localpy.Runner{}
+	}
 	var author *workflows.Author
 	if llmClient != nil {
 		analysisStore := &analysis.PgStore{Pool: pool}
@@ -56,6 +64,7 @@ func main() {
 			LLM: llmClient,
 			Analyser: &analysis.Analyser{
 				Store:    analysisStore,
+				Runner:   runner,
 				Th:       analysis.Thresholds{FDRQ: cfg.FDRQ, MinN: cfg.MinN},
 				Timeout:  cfg.ScriptTimeout,
 				History:  cfg.AnalysisHistory,
@@ -67,7 +76,7 @@ func main() {
 		}
 	}
 
-	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{Bus: bus, LLM: llmClient, Author: author, DebugLLM: cfg.LLMDebug}).Routes()}
+	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{Bus: bus, LLM: llmClient, Author: author, DebugLLM: cfg.LLMDebug, AnalysisDebug: cfg.AnalysisDebug, Pool: pool}).Routes()}
 	go func() {
 		slog.Info("backend listening", "addr", cfg.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

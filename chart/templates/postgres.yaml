@@ -49,6 +49,8 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   replicas: 1
+  strategy:
+    type: Recreate # one local volume: a rolling update would run two Postgres servers on the same data directory
   selector:
     matchLabels:
       app.kubernetes.io/name: postgres

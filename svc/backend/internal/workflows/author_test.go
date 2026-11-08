@@ -286,8 +286,28 @@ func TestPromptDescribesGoalSourcesAndExample(t *testing.T) {
 	if !strings.Contains(sys, strings.TrimSpace(strings.Split(exampleScript, "\n")[0])) || !strings.Contains(sys, "def spearman") {
 		t.Error("system prompt should embed the example script verbatim")
 	}
+	for _, want := range []string{"Start from the pairs the goal asks about", "possible cause first", "few"} {
+		if !strings.Contains(sys, want) {
+			t.Errorf("system prompt lost the rule %q", want)
+		}
+	}
 	if strings.Contains(sys, "scipy.stats import") {
 		t.Error("the prompt must not tell the author to use scipy")
+	}
+}
+
+func TestWithModelOverridesOnlyTheAuthorModel(t *testing.T) {
+	h := newHarness(t, pyrunnertest.Returns(goodResult()), draftJSON(validScript))
+	h.author.LLM.Models[llm.Narrator] = "narrator-model"
+	other := h.author.WithModel("experimental-model")
+	if err := other.Generate(context.Background(), h.pid, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := h.prov.reqs[0].Model; got != "experimental-model" {
+		t.Errorf("request used model %q", got)
+	}
+	if h.author.LLM.Models[llm.Author] != "test-model" || other.LLM.Models[llm.Narrator] != "narrator-model" {
+		t.Errorf("the original author's models changed, or other purposes were lost: %v / %v", h.author.LLM.Models, other.LLM.Models)
 	}
 }
 
