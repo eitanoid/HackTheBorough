@@ -5,6 +5,14 @@ integrates heterogeneous data flows with real-time AI synthesis, dynamically
 generating statistical analyses to expose unseen correlations and deliver
 actionable intelligence.
 
+## Description
+
+Anduin is a general-purpose, autonomous data-flow platform that gathers
+information from configured sources, including websites and live data feeds. It
+analyzes data across sources to uncover correlations and hidden connections
+between events, then turns its findings into clear, human-readable
+insights—helping users spot important developments as they emerge.
+
 ## Local Kubernetes development
 
 Requirements:
@@ -37,6 +45,7 @@ By default the following endpoints are exposed:
 - Frontend: <http://localhost:8080>
 - Backend health check: <http://localhost:8081/healthz>
 - Backend API: <http://localhost:8081/api/hello>
+- Postgres Database: <localhost:8082>
 
 The Helm install does not seed sources. Register them through the REST
 examples in [Local ingestion backend](#local-ingestion-backend).
