@@ -58,7 +58,7 @@ backend:
     - name: LLM_API_INVESTIGATOR # gpt-5.6-terra rejects function tools together with reasoning on chat completions; the Responses API allows it
       value: "responses"
     - name: LLM_REASONING_EFFORT_INVESTIGATOR
-      value: "medium"
+      value: "high"
     - name: LLM_TIMEOUT_INVESTIGATOR_S # per model call; reasoning calls outlast the default 60 s
       value: "180"
     - name: LLM_MODEL_REVIEWER
