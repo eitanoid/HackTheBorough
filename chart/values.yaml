@@ -58,7 +58,7 @@ backend:
       value: "1"
     - name: FDR_Q # false-discovery level for the statistical findings; was the 0.05 code default
       value: "0.01"
-    - name: ANALYSIS_DEBUG # "1" exposes /api/debug/seed, /generate and /state and runs scripts with the local Python stand-in; dev only
+    - name: ANALYSIS_DEBUG # "1" exposes /api/debug/seed, /generate and /state; dev only
       value: "1"
 
 postgres:

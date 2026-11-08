@@ -19,12 +19,18 @@ type Config struct {
 	LLMBaseURL        string // OpenAI-compatible endpoint
 	LLMLogPrompts     bool   // include prompt text in the JSONL call log
 	LLMDebug          bool   // expose POST /api/debug/chat (off by default)
-	AnalysisDebug     bool   // expose /api/debug seed/generate/state and run scripts with the local Python stand-in
+	AnalysisDebug     bool   // expose /api/debug seed/generate/state
 	ModelProfiler     string
 	ModelAuthor       string
 	ModelInvestigator string
 	ModelReviewer     string
 	ModelNarrator     string
+
+	// Python runner (restricted child processes of the backend).
+	PythonBin           string
+	RunnerMaxConcurrent int
+	RunnerMemMB         int
+	RunnerMaxResultMB   int
 
 	IngestTick       time.Duration
 	IngestMaxPar     int
@@ -63,6 +69,11 @@ func Load() Config {
 		ModelInvestigator: env("LLM_MODEL_INVESTIGATOR", ""),
 		ModelReviewer:     env("LLM_MODEL_REVIEWER", ""),
 		ModelNarrator:     env("LLM_MODEL_NARRATOR", ""),
+
+		PythonBin:           env("PYTHON_BIN", "python3"),
+		RunnerMaxConcurrent: envInt("RUNNER_MAX_CONCURRENT", 2),
+		RunnerMemMB:         envInt("RUNNER_MEM_MB", 1024),
+		RunnerMaxResultMB:   envInt("RUNNER_MAX_RESULT_MB", 16),
 
 		IngestTick:       10 * time.Second,
 		IngestMaxPar:     envInt("INGEST_MAX_PAR", 4),

@@ -17,7 +17,7 @@ import (
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/llm"
 	"hacktheburgh/backend/internal/pyrunner"
-	"hacktheburgh/backend/internal/pyrunner/localpy"
+	"hacktheburgh/backend/internal/pyrunner/subproc"
 	"hacktheburgh/backend/internal/workflows"
 )
 
@@ -48,14 +48,30 @@ func main() {
 		slog.Warn("llm disabled", "err", err)
 	}
 
-	// The statistical author. Without the real Python runner (not built yet)
-	// Analyser.Runner is nil, so generation fails with "analysis unavailable"
-	// on the project and the rest of the app keeps working. ANALYSIS_DEBUG=1
-	// substitutes a local-subprocess stand-in for development.
-	var runner pyrunner.Runner // stays a nil interface unless a runner is chosen below
+	// The statistical author needs the Python runner. If it can't start, the
+	// runner stays nil, generation fails with "analysis unavailable" on the
+	// project, and the rest of the app keeps working.
+	var runner pyrunner.Runner // stays a nil interface unless the self-check passes
+	if err := subproc.Harden(); err != nil {
+		slog.Warn("could not mark the backend non-dumpable", "err", err)
+	}
+	sp := subproc.New(subproc.Config{
+		Python:        cfg.PythonBin,
+		MaxConcurrent: cfg.RunnerMaxConcurrent,
+		MemMB:         cfg.RunnerMemMB,
+		MaxResultMB:   cfg.RunnerMaxResultMB,
+	})
+	checkCtx, cancelCheck := context.WithTimeout(ctx, 45*time.Second)
+	versions, err := sp.SelfCheck(checkCtx)
+	cancelCheck()
+	if err != nil {
+		slog.Error("python runner unavailable; analysis is disabled", "err", err)
+	} else {
+		slog.Info("python runner ready", "python", versions["python"], "pandas", versions["pandas"], "numpy", versions["numpy"])
+		runner = sp
+	}
 	if cfg.AnalysisDebug {
-		slog.Warn("ANALYSIS_DEBUG is on: debug endpoints are exposed and scripts run in the local Python stand-in")
-		runner = &localpy.Runner{}
+		slog.Warn("ANALYSIS_DEBUG is on: debug endpoints are exposed")
 	}
 	var author *workflows.Author
 	if llmClient != nil {
