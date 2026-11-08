@@ -83,6 +83,7 @@ postgres:
     size: 1Gi
   service:
     port: 5432
+    nodePort: 30082
 
 crawl4ai:
   replicaCount: 1
