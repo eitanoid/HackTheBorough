@@ -29,7 +29,14 @@ enum SourceKind {
   SOURCE_KIND_UNSPECIFIED = 0;
   SOURCE_KIND_CSV = 1;
   SOURCE_KIND_RSS = 2;
-  SOURCE_KIND_HTTP_JSON = 3;
+  SOURCE_KIND_WEB = 3;
+}
+
+enum PaginationStrategy {
+  PAGINATION_STRATEGY_UNSPECIFIED = 0;
+  PAGINATION_STRATEGY_NEXT = 1;
+  PAGINATION_STRATEGY_PAGE_LINKS = 2;
+  PAGINATION_STRATEGY_SCROLL = 3;
 }
 
 enum FieldRole {
@@ -84,12 +91,26 @@ enum NarratedBy {
 }
 
 message SourceConfig {
-  // URL is used by RSS and HTTP JSON sources.
+  // URL is used by RSS and web sources.
   string url = 1;
-  // HTTP JSON adapter settings. These are ignored for RSS sources.
+  // Web adapter settings. These are ignored for RSS sources.
   string records_path = 2;
   string id_field = 3;
   string time_field = 4;
+  // Extraction settings are used by web sources and ignored for RSS sources.
+  string query = 5;
+  google.protobuf.Struct schema = 6;
+  string provider = 7;
+  WebPagination pagination = 8;
+}
+
+message WebPagination {
+  PaginationStrategy strategy = 1;
+  int32 max_pages = 2;
+  int32 max_scrolls = 3;
+  double scroll_delay_seconds = 4;
+  string selector = 5;
+  optional bool newest_first = 6;
 }
 
 message FieldProfile {
@@ -115,6 +136,8 @@ message Source {
   string last_error = 6;
   SourceProfile profile = 7;
   google.protobuf.Timestamp created_at = 8;
+  // Absent for one-off sources such as CSV uploads.
+  optional int32 poll_interval_seconds = 9;
 }
 
 message DataRecord {

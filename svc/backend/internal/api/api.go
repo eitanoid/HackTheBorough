@@ -1,4 +1,4 @@
-// Package api holds HTTP handlers, SSE and replay.
+// Package api holds the Connect service and the remaining HTTP handlers, including SSE.
 package api
 
 import (
@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	v1connect "hacktheburgh/backend/gen/hacktheburgh/v1/hacktheburghv1connect"
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/ingest"
 	"hacktheburgh/backend/internal/llm"
@@ -58,12 +61,17 @@ func (s *Server) Routes() http.Handler {
 	if s.DebugLLM && s.LLM != nil {
 		mux.HandleFunc("POST /api/debug/chat", s.debugChat)
 	}
+	connectServer := connect.NewServer()
+	v1connect.RegisterAnduinServiceHandler(connectServer, &ConnectService{Store: s.Store})
+	connecthttp.Mount(mux, connectServer, connecthttp.WithReadMaxBytes(ingest.MaxCSVBytes*4/3+(1<<20)))
+
+	// Legacy source REST routes remain temporarily available for existing clients.
 	mux.HandleFunc("POST /api/sources", s.createSource)
 	mux.HandleFunc("GET /api/sources", s.listSources)
 	mux.HandleFunc("GET /api/sources/{id}", s.getSource)
 	mux.HandleFunc("POST /api/sources/{id}/poll", s.pollSource)
 
-	// Stubs: 501 until workstream A implements them.
+	// Legacy REST project and replay stubs remain during the Connect migration.
 	for _, route := range []string{
 		"POST /api/sources/csv",
 		"POST /api/projects",

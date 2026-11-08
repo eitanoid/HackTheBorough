@@ -41,6 +41,11 @@ By default the following endpoints are exposed:
 The Helm install does not seed sources. Register them through the REST
 examples in [Local ingestion backend](#local-ingestion-backend).
 
+For manual Connect RPC checks, open [`tests/http/anduin.http`](tests/http/anduin.http)
+with httpyac while the backend and database are running (`cd tests/http && httpyac send anduin.http`).
+The file includes source CRUD, CSV upload, web source configuration, and expected
+errors for project operations that are not wired yet.
+
 
 ## Local ingestion backend
 

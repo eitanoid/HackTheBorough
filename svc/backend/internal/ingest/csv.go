@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-const maxCSVBytes = 20 * 1024 * 1024
+const MaxCSVBytes = 20 * 1024 * 1024
 
 type CSVConfig struct {
 	URL       string `json:"url"`
@@ -64,12 +64,12 @@ func (a *CSVAdapter) Fetch(ctx context.Context, raw json.RawMessage, _ *time.Tim
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return nil, fmt.Errorf("csv HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxCSVBytes+1))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, MaxCSVBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("read csv: %w", err)
 	}
-	if len(body) > maxCSVBytes {
-		return nil, fmt.Errorf("csv exceeds %d bytes", maxCSVBytes)
+	if len(body) > MaxCSVBytes {
+		return nil, fmt.Errorf("csv exceeds %d bytes", MaxCSVBytes)
 	}
 	return ParseCSV(body, cfg.TimeField, time.Now().UTC())
 }
