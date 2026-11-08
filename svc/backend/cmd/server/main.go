@@ -10,12 +10,16 @@ import (
 	"syscall"
 	"time"
 
+	"hacktheburgh/backend/internal/analysis"
 	"hacktheburgh/backend/internal/api"
 	"hacktheburgh/backend/internal/config"
 	"hacktheburgh/backend/internal/db"
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/ingest"
 	"hacktheburgh/backend/internal/llm"
+	"hacktheburgh/backend/internal/pyrunner"
+	"hacktheburgh/backend/internal/pyrunner/subproc"
+	"hacktheburgh/backend/internal/workflows"
 )
 
 func main() {
@@ -58,8 +62,53 @@ func main() {
 		slog.Warn("llm disabled", "err", err)
 	}
 
+	// The statistical author needs the Python runner. If it can't start, the
+	// runner stays nil, generation fails with "analysis unavailable" on the
+	// project, and the rest of the app keeps working.
+	var runner pyrunner.Runner // stays a nil interface unless the self-check passes
+	if err := subproc.Harden(); err != nil {
+		slog.Warn("could not mark the backend non-dumpable", "err", err)
+	}
+	sp := subproc.New(subproc.Config{
+		Python:        cfg.PythonBin,
+		MaxConcurrent: cfg.RunnerMaxConcurrent,
+		MemMB:         cfg.RunnerMemMB,
+		MaxResultMB:   cfg.RunnerMaxResultMB,
+	})
+	checkCtx, cancelCheck := context.WithTimeout(ctx, 45*time.Second)
+	versions, err := sp.SelfCheck(checkCtx)
+	cancelCheck()
+	if err != nil {
+		slog.Error("python runner unavailable; analysis is disabled", "err", err)
+	} else {
+		slog.Info("python runner ready", "python", versions["python"], "pandas", versions["pandas"], "numpy", versions["numpy"])
+		runner = sp
+	}
+	if cfg.AnalysisDebug {
+		slog.Warn("ANALYSIS_DEBUG is on: debug endpoints are exposed")
+	}
+	var author *workflows.Author
+	if llmClient != nil {
+		analysisStore := &analysis.PgStore{Pool: pool}
+		author = &workflows.Author{
+			LLM: llmClient,
+			Analyser: &analysis.Analyser{
+				Store:    analysisStore,
+				Runner:   runner,
+				Th:       analysis.Thresholds{FDRQ: cfg.FDRQ, MinN: cfg.MinN},
+				Timeout:  cfg.ScriptTimeout,
+				History:  cfg.AnalysisHistory,
+				MaxTests: cfg.MaxTests,
+			},
+			Store:  &workflows.PgAuthorStore{Pool: pool, Sources: analysisStore},
+			Bus:    bus,
+			Budget: cfg.AuthorBudget,
+		}
+	}
+
 	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{
-		Bus: bus, LLM: llmClient, DebugLLM: cfg.LLMDebug, Store: store, Ingest: loop,
+		Bus: bus, LLM: llmClient, Author: author, DebugLLM: cfg.LLMDebug,
+		AnalysisDebug: cfg.AnalysisDebug, Pool: pool, Store: store, Ingest: loop,
 	}).Routes()}
 	go func() {
 		slog.Info("backend listening", "addr", cfg.Addr)

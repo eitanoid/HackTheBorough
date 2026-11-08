@@ -1,0 +1,74 @@
+{
+  "series": [
+    {
+      "id": "strike_news",
+      "label": "Strike news",
+      "source": "news",
+      "unit": "articles",
+      "grain": "day",
+      "periods": 90,
+      "points": 90
+    },
+    {
+      "id": "trips",
+      "label": "Trips",
+      "source": "trips",
+      "unit": null,
+      "grain": "day",
+      "periods": 90,
+      "points": 88
+    }
+  ],
+  "tests": [
+    {
+      "key": "corr:strike_news:trips:lag+2",
+      "kind": "correlation",
+      "series": [
+        "strike_news",
+        "trips"
+      ],
+      "p": 0.0004,
+      "effect": -0.42,
+      "n": 88,
+      "stats": {
+        "lag": 2,
+        "rho": -0.42
+      },
+      "chart": {
+        "type": "lag_scatter",
+        "points": [
+          {
+            "x": 1.5,
+            "y": null
+          },
+          {
+            "x": 2,
+            "y": 3.25
+          }
+        ]
+      }
+    }
+  ],
+  "anomalies": [
+    {
+      "key": "anom:trips:2026-11-01",
+      "series": "trips",
+      "period": "2026-11-01T00:00:00Z",
+      "value": 120,
+      "expected": 300,
+      "score": -4.1,
+      "chart": {
+        "type": "anomaly_band",
+        "points": [
+          {
+            "flagged": true,
+            "hi": 330,
+            "lo": 270,
+            "t": "2026-11-01T00:00:00Z",
+            "v": 120
+          }
+        ]
+      }
+    }
+  ]
+}
