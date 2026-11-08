@@ -11,21 +11,12 @@ build:
       context: svc/frontend
       docker:
         dockerfile: Dockerfile
-      sync:
-        infer:
-          - app/**/*
-          - src/**/*
-          - components/**/*
-          - lib/**/*
-          - styles/**/*
-          - public/**/*
+        buildArgs:
+          BACKEND_API_URL: http://hacktheburgh-backend:8080
     - image: hacktheburgh/backend
       context: svc/backend
       docker:
         dockerfile: Dockerfile
-      sync:
-        infer:
-          - "**/*.go"
 
 manifests:
   helm:

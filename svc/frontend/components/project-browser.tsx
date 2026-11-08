@@ -41,6 +41,34 @@ function runStatusLabel(status: RunStatus) {
   }
 }
 
+function noInsightsMessage(project: GetProjectResponse | null) {
+  if (project?.project?.lastError) return project.project.lastError;
+  const hasActiveStatisticalWorkflow = project?.activeWorkflows.some(
+    (workflow) => workflow.kind === WorkflowKind.STATISTICAL,
+  ) ?? false;
+  if (!hasActiveStatisticalWorkflow) {
+    return "No active statistical workflow is available. Add data or create a new project to begin analysis.";
+  }
+  switch (project?.latestRun?.status) {
+    case RunStatus.RUNNING:
+      return "Analysis is running. Insights will appear when the run finishes.";
+    case RunStatus.FAILED:
+      return "The latest analysis run failed. Check its run status for details.";
+    case RunStatus.SUCCEEDED: {
+      const testsRun = project.funnel?.testsRun ?? 0;
+      if (testsRun === 0) {
+        return "No statistical tests could run. Check that the linked sources have enough overlapping, timestamped data.";
+      }
+      if ((project.funnel?.passedFdr ?? 0) === 0) {
+        return `${testsRun} tests ran, but no findings passed false-discovery correction.`;
+      }
+      return "The analysis completed, but no findings remained after validation and correction.";
+    }
+    default:
+      return "The workflow is ready and will run when project data is available.";
+  }
+}
+
 function timestampLabel(timestamp?: { seconds: bigint; nanos: number }) {
   if (!timestamp) return "—";
   const date = new Date(Number(timestamp.seconds) * 1000 + timestamp.nanos / 1_000_000);
@@ -727,7 +755,7 @@ export default function ProjectBrowser() {
                   <InsightsSection key={selectedId} insights={insights} />
                 ) : (
                   <p className="project-no-insights" id="findings">
-                    {workflows.length ? "No insights have been published for this project yet." : "This project is saved; workflow generation has not been started."}
+                    {noInsightsMessage(detail)}
                   </p>
                 )}
               </>
