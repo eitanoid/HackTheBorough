@@ -10,7 +10,6 @@ import (
 type Config struct {
 	Addr        string
 	DatabaseURL string
-	StatsURL    string
 	LLMStub     bool
 	LLMLogPath  string
 
@@ -26,14 +25,19 @@ type Config struct {
 	ModelReviewer     string
 	ModelNarrator     string
 
-	IngestTick    time.Duration
-	IngestMaxPar  int
-	RunDebounce   time.Duration
-	RunSweep      time.Duration
-	LLMTimeout    time.Duration
-	StatsTimeout  time.Duration
-	ToolTimeout   time.Duration
-	MaxNarrations int
+	IngestTick       time.Duration
+	IngestMaxPar     int
+	RunDebounce      time.Duration
+	RunSweep         time.Duration
+	LLMTimeout       time.Duration
+	ScriptTimeout    time.Duration // analysis script, passed to the runner
+	RunPythonTimeout time.Duration // investigator run_python tool
+	AuthorBudget     time.Duration // overall context for one generation
+	FDRQ             float64
+	MinN             int
+	MaxTests         int
+	AnalysisHistory  time.Duration
+	MaxNarrations    int
 
 	// Regeneration limits live in config, not in prompts.
 	ReviewMinInterval time.Duration // at most one review per workflow per interval
@@ -45,7 +49,6 @@ func Load() Config {
 	return Config{
 		Addr:        env("ADDR", ":8080"),
 		DatabaseURL: env("DATABASE_URL", ""),
-		StatsURL:    env("STATS_URL", "http://stats:8001"),
 		LLMStub:     env("LLM_STUB", "") == "1",
 		LLMLogPath:  env("LLM_LOG_PATH", "llm_calls.jsonl"),
 
@@ -59,14 +62,19 @@ func Load() Config {
 		ModelReviewer:     env("LLM_MODEL_REVIEWER", ""),
 		ModelNarrator:     env("LLM_MODEL_NARRATOR", ""),
 
-		IngestTick:    10 * time.Second,
-		IngestMaxPar:  envInt("INGEST_MAX_PAR", 4),
-		RunDebounce:   30 * time.Second,
-		RunSweep:      5 * time.Minute,
-		LLMTimeout:    60 * time.Second,
-		StatsTimeout:  60 * time.Second,
-		ToolTimeout:   5 * time.Second,
-		MaxNarrations: 5,
+		IngestTick:       10 * time.Second,
+		IngestMaxPar:     envInt("INGEST_MAX_PAR", 4),
+		RunDebounce:      30 * time.Second,
+		RunSweep:         5 * time.Minute,
+		LLMTimeout:       60 * time.Second,
+		ScriptTimeout:    envSeconds("SCRIPT_TIMEOUT_S", 60),
+		RunPythonTimeout: envSeconds("RUN_PYTHON_TIMEOUT_S", 30),
+		AuthorBudget:     5 * time.Minute,
+		FDRQ:             envFloat("FDR_Q", 0.05),
+		MinN:             envInt("MIN_N", 30),
+		MaxTests:         envInt("MAX_TESTS", 2000),
+		AnalysisHistory:  time.Duration(envInt("ANALYSIS_HISTORY_DAYS", 365)) * 24 * time.Hour,
+		MaxNarrations:    5,
 
 		ReviewMinInterval: time.Duration(envInt("REVIEW_MIN_INTERVAL", 60)) * time.Second,
 		MaxRegenerations:  envInt("MAX_REGENERATIONS", 3),
@@ -86,4 +94,15 @@ func envInt(k string, def int) int {
 		return v
 	}
 	return def
+}
+
+func envFloat(k string, def float64) float64 {
+	if v, err := strconv.ParseFloat(os.Getenv(k), 64); err == nil {
+		return v
+	}
+	return def
+}
+
+func envSeconds(k string, def int) time.Duration {
+	return time.Duration(envInt(k, def)) * time.Second
 }

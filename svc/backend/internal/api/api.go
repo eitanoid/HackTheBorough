@@ -8,11 +8,15 @@ import (
 
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/llm"
+	"hacktheburgh/backend/internal/workflows"
 )
 
 type Server struct {
 	Bus *events.Bus
 	LLM *llm.Client // nil disables /api/debug/chat
+	// Author generates statistical workflows; nil when the LLM is not
+	// configured. The project-create and regenerate handlers call Author.Start.
+	Author *workflows.Author
 	// DebugLLM enables /api/debug/chat, which spends the API key on any caller.
 	DebugLLM bool
 }

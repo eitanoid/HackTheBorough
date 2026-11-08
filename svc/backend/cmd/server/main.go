@@ -10,11 +10,13 @@ import (
 	"syscall"
 	"time"
 
+	"hacktheburgh/backend/internal/analysis"
 	"hacktheburgh/backend/internal/api"
 	"hacktheburgh/backend/internal/config"
 	"hacktheburgh/backend/internal/db"
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/llm"
+	"hacktheburgh/backend/internal/workflows"
 )
 
 func main() {
@@ -44,7 +46,28 @@ func main() {
 		slog.Warn("llm disabled", "err", err)
 	}
 
-	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{Bus: bus, LLM: llmClient, DebugLLM: cfg.LLMDebug}).Routes()}
+	// The statistical author. Analyser.Runner stays nil until the Python
+	// runner's implementation exists; generation then fails with "analysis
+	// unavailable" on the project and the rest of the app keeps working.
+	var author *workflows.Author
+	if llmClient != nil {
+		analysisStore := &analysis.PgStore{Pool: pool}
+		author = &workflows.Author{
+			LLM: llmClient,
+			Analyser: &analysis.Analyser{
+				Store:    analysisStore,
+				Th:       analysis.Thresholds{FDRQ: cfg.FDRQ, MinN: cfg.MinN},
+				Timeout:  cfg.ScriptTimeout,
+				History:  cfg.AnalysisHistory,
+				MaxTests: cfg.MaxTests,
+			},
+			Store:  &workflows.PgAuthorStore{Pool: pool, Sources: analysisStore},
+			Bus:    bus,
+			Budget: cfg.AuthorBudget,
+		}
+	}
+
+	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{Bus: bus, LLM: llmClient, Author: author, DebugLLM: cfg.LLMDebug}).Routes()}
 	go func() {
 		slog.Info("backend listening", "addr", cfg.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
