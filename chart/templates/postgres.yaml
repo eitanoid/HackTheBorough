@@ -100,7 +100,7 @@ metadata:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app.kubernetes.io/name: postgres
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -108,3 +108,4 @@ spec:
     - name: postgres
       port: {{ .Values.postgres.service.port }}
       targetPort: postgres
+      nodePort: {{ .Values.postgres.service.nodePort }}
