@@ -17,7 +17,11 @@ function sourceKindLabel(kind: SourceKind) {
   }
 }
 
-export default function NewProjectLauncher() {
+export default function NewProjectLauncher({
+  onCreated,
+}: {
+  onCreated?: (project: Project) => void;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -25,12 +29,18 @@ export default function NewProjectLauncher() {
       <button className="button button-primary new-project-button" type="button" onClick={() => setOpen(true)}>
         <span aria-hidden="true">＋</span> New project
       </button>
-      {open && <NewProjectDialog onClose={() => setOpen(false)} />}
+      {open && <NewProjectDialog onClose={() => setOpen(false)} onCreated={onCreated} />}
     </>
   );
 }
 
-function NewProjectDialog({ onClose }: { onClose: () => void }) {
+function NewProjectDialog({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated?: (project: Project) => void;
+}) {
   const [sources, setSources] = useState<Source[]>([]);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const [loadingSources, setLoadingSources] = useState(true);
@@ -84,6 +94,7 @@ function NewProjectDialog({ onClose }: { onClose: () => void }) {
       });
       if (!response.project) throw new Error("The API created no project response.");
       setCreatedProject(response.project);
+      onCreated?.(response.project);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Could not create this project.");
     } finally {

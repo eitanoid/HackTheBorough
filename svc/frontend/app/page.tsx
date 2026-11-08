@@ -1,4 +1,4 @@
-import NewProjectLauncher from "@/components/new-project-launcher";
+import ProjectBrowser from "@/components/project-browser";
 import SourceManager from "@/components/source-manager";
 
 function NavigationIcon({ kind }: { kind: "overview" | "sources" | "findings" | "plan" }) {
@@ -156,26 +156,15 @@ export default function Home() {
 
       <main className="main-content" id="project">
         <header className="topbar">
-          <div className="breadcrumbs"><span>Projects</span><span className="crumb-divider">/</span><strong>City mobility &amp; weather</strong></div>
+          <div className="breadcrumbs"><span>Projects</span><span className="crumb-divider">/</span><strong>Workspace overview</strong></div>
           <div className="topbar-actions">
             <span className="preview-badge"><span className="preview-dot" /> UI PREVIEW</span>
-            <NewProjectLauncher />
             <a className="button button-outline" href="#analysis-plan">Review analysis plan <span aria-hidden="true">↗</span></a>
           </div>
         </header>
 
         <div className="page-content">
-          <section className="project-heading">
-            <div className="project-title-block">
-              <div className="eyebrow project-eyebrow">PROJECT OVERVIEW <span className="eyebrow-divider">/</span> DEMO DATASET</div>
-              <h1>City mobility <span>&amp;</span> weather</h1>
-              <p className="project-goal">Understand how local weather patterns relate to daily bike-hire demand.</p>
-            </div>
-            <div className="last-run">
-              <span className="last-run-icon" aria-hidden="true">✓</span>
-              <div><strong>Example run complete</strong><span>Updated moments ago</span></div>
-            </div>
-          </section>
+          <ProjectBrowser />
 
           <SourceManager />
 
