@@ -50,7 +50,6 @@ Connect-Protocol-Version: 1
 
 ?? status == 200
 ?? body source.id exists
-?? body recentRecords isArray
 
 ### Upload a CSV source (csvData is base64-encoded UTF-8)
 # @name uploadCsv
@@ -66,7 +65,7 @@ Connect-Protocol-Version: 1
 
 ?? status == 200
 ?? body source.kind == SOURCE_KIND_CSV
-?? body source.recordCount == "2"
+?? body source.recordCount == 2
 
 ### Verify uploaded CSV records
 # @ref uploadCsv
@@ -128,8 +127,9 @@ Connect-Protocol-Version: 1
 # @ref createRssSource
 POST {{baseUrl}}/api/sources/{{createRssSource.source.id}}/poll
 
-### Project creation currently returns FailedPrecondition until workflow generation is wired
+### Create a project from the uploaded source
 # @ref uploadCsv
+# @name createProject
 POST {{baseUrl}}/hacktheburgh.v1.AnduinService/CreateProject
 Content-Type: application/json
 Connect-Protocol-Version: 1
@@ -140,8 +140,20 @@ Connect-Protocol-Version: 1
   "sourceIds": [ "{{uploadCsv.source.id}}" ]
 }
 
-?? status == 412
-?? body code == failed_precondition
+?? status == 200
+?? body project.id exists
+?? body project.name == Manual project
+?? body project.sourceIds isArray
+
+### Invalid project input should return Connect InvalidArgument (HTTP 400)
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/CreateProject
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "name": "Invalid project", "sourceIds": [] }
+
+?? status == 400
+?? body code == invalid_argument
 
 ### Project list is available; read RPCs need an existing project/workflow id
 POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListProjects
@@ -150,26 +162,29 @@ Connect-Protocol-Version: 1
 
 {}
 
-### Get an existing project (set @projectId above first)
+### Get the project created above
+# @ref createProject
 POST {{baseUrl}}/hacktheburgh.v1.AnduinService/GetProject
 Content-Type: application/json
 Connect-Protocol-Version: 1
 
-{ "id": "{{projectId}}" }
+{ "id": "{{createProject.project.id}}" }
 
 ### List insights for an existing project
+# @ref createProject
 POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListInsights
 Content-Type: application/json
 Connect-Protocol-Version: 1
 
-{ "projectId": "{{projectId}}" }
+{ "projectId": "{{createProject.project.id}}" }
 
 ### List workflow versions for an existing project
+# @ref createProject
 POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListWorkflows
 Content-Type: application/json
 Connect-Protocol-Version: 1
 
-{ "projectId": "{{projectId}}" }
+{ "projectId": "{{createProject.project.id}}" }
 
 ### List recorded steps for an existing workflow
 POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListWorkflowSteps

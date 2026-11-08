@@ -14,10 +14,89 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	v1 "hacktheburgh/backend/gen/hacktheburgh/v1"
+	"hacktheburgh/backend/internal/events"
 )
 
-func (s *ConnectService) CreateProject(_ context.Context, _ *v1.CreateProjectRequest) (*v1.CreateProjectResponse, error) {
-	return nil, connect.NewError(connect.CodeFailedPrecondition, "project creation requires the workflow generation service, which is not configured")
+func (s *ConnectService) CreateProject(ctx context.Context, req *v1.CreateProjectRequest) (*v1.CreateProjectResponse, error) {
+	name := strings.TrimSpace(req.GetName())
+	if name == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "name is required")
+	}
+	goal := strings.TrimSpace(req.GetGoal())
+	if goal == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "goal is required")
+	}
+	requestedSourceIDs := req.GetSourceIds()
+	if len(requestedSourceIDs) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "at least one source_id is required")
+	}
+	if s.Store == nil || s.Store.Pool == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, "database unavailable")
+	}
+
+	tx, err := s.Store.Pool.Begin(ctx)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	defer tx.Rollback(context.WithoutCancel(ctx))
+
+	sourceIDs := make([]string, 0, len(requestedSourceIDs))
+	seenSourceIDs := make(map[string]struct{}, len(requestedSourceIDs))
+	for _, requestedID := range requestedSourceIDs {
+		requestedID = strings.TrimSpace(requestedID)
+		if requestedID == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, "source_ids cannot contain an empty id")
+		}
+		var sourceID string
+		err := tx.QueryRow(ctx, `SELECT id::text FROM data_sources WHERE id = $1::uuid`, requestedID).Scan(&sourceID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, "source_id does not identify an existing source")
+		}
+		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "22P02" {
+				return nil, connect.NewError(connect.CodeInvalidArgument, "source_ids must contain UUIDs")
+			}
+			return nil, internalError(err)
+		}
+		if _, duplicate := seenSourceIDs[sourceID]; duplicate {
+			return nil, connect.NewError(connect.CodeInvalidArgument, "source_ids cannot contain duplicates")
+		}
+		seenSourceIDs[sourceID] = struct{}{}
+		sourceIDs = append(sourceIDs, sourceID)
+	}
+
+	var project v1.Project
+	var lastError *string
+	var createdAt time.Time
+	err = tx.QueryRow(ctx, `
+		INSERT INTO projects (name, goal)
+		VALUES ($1, $2)
+		RETURNING id::text, name, goal, last_error, created_at`, name, goal).
+		Scan(&project.Id, &project.Name, &project.Goal, &lastError, &createdAt)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	for _, sourceID := range sourceIDs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO project_sources (project_id, data_source_id)
+			VALUES ($1::uuid, $2::uuid)`, project.Id, sourceID); err != nil {
+			return nil, internalError(err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, internalError(err)
+	}
+	project.SourceIds = sourceIDs
+	project.LastError = stringValue(lastError)
+	project.CreatedAt = timestamppb.New(createdAt)
+
+	// Workflow generation and run scheduling are separate services that are not
+	// wired yet, so the response intentionally contains only the persisted project.
+	if s.Bus != nil {
+		s.Bus.Publish(events.Event{Type: events.ProjectUpdated, ID: project.Id})
+	}
+	return &v1.CreateProjectResponse{Project: &project}, nil
 }
 
 func (s *ConnectService) RegenerateWorkflow(_ context.Context, _ *v1.RegenerateWorkflowRequest) (*v1.RegenerateWorkflowResponse, error) {
