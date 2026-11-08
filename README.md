@@ -5,6 +5,13 @@ integrates heterogeneous data flows with real-time AI synthesis, dynamically
 generating statistical analyses to expose unseen correlations and deliver
 actionable intelligence.
 
+## Screenshots
+
+|  |  |
+| --- | --- |
+| <img src="assets/project-overview.png" alt="Anduin project overview" width="100%"> | <img src="assets/data-view.png" alt="Anduin data view" width="100%"> |
+| <img src="assets/data-sources.png" alt="Anduin data sources" width="100%"> | <img src="assets/create-project.png" alt="Anduin create project form" width="100%"> |
+
 ## Description
 
 Anduin is a general-purpose, autonomous data-flow platform that gathers
