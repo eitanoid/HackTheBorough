@@ -112,7 +112,7 @@ function NewProjectDialog({
       <section className="project-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-heading">
         <div className="project-dialog-heading">
           <div>
-            <span className="eyebrow">PROJECT WORKSPACE</span>
+            <span className="eyebrow">NEW PROJECT</span>
             <h2 id="new-project-heading">{createdProject ? "Project created" : "Start a project"}</h2>
             <p>{createdProject ? "Your project is saved and linked to its sources." : "Give your question a focus and choose the data it should use."}</p>
           </div>

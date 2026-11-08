@@ -361,7 +361,7 @@ export default function ProjectBrowser() {
     <section className="projects-panel" id="projects" aria-labelledby="projects-panel-heading">
       <div className="projects-panel-heading">
         <div>
-          <span className="eyebrow">WORKSPACE</span>
+          <span className="eyebrow">PROJECTS</span>
           <h2 id="projects-panel-heading">Your projects</h2>
         </div>
         <NewProjectLauncher onCreated={projectCreated} />
