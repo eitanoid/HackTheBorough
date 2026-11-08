@@ -12,21 +12,21 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file hacktheburgh/v1/service.proto.
  */
 export const file_hacktheburgh_v1_service: GenFile = /*@__PURE__*/
-  fileDesc("Ch1oYWNrdGhlYnVyZ2gvdjEvc2VydmljZS5wcm90bxIPaGFja3RoZWJ1cmdoLnYxIlcKDFNvdXJjZUNvbmZpZxILCgN1cmwYASABKAkSFAoMcmVjb3Jkc19wYXRoGAIgASgJEhAKCGlkX2ZpZWxkGAMgASgJEhIKCnRpbWVfZmllbGQYBCABKAkiqgEKDEZpZWxkUHJvZmlsZRIMCgRwYXRoGAEgASgJEigKBHJvbGUYAiABKA4yGi5oYWNrdGhlYnVyZ2gudjEuRmllbGRSb2xlEhEKBHVuaXQYAyABKAlIAIgBARIxCgthZ2dyZWdhdGlvbhgEIAEoDjIcLmhhY2t0aGVidXJnaC52MS5BZ2dyZWdhdGlvbhITCgtkZXNjcmlwdGlvbhgFIAEoCUIHCgVfdW5pdCJ/Cg1Tb3VyY2VQcm9maWxlEi0KBmZpZWxkcxgBIAMoCzIdLmhhY2t0aGVidXJnaC52MS5GaWVsZFByb2ZpbGUSGwoOdGltZXN0YW1wX3BhdGgYAiABKAlIAIgBARIPCgdzdW1tYXJ5GAMgASgJQhEKD190aW1lc3RhbXBfcGF0aCKMAgoGU291cmNlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSKQoEa2luZBgDIAEoDjIbLmhhY2t0aGVidXJnaC52MS5Tb3VyY2VLaW5kEhQKDHJlY29yZF9jb3VudBgEIAEoAxIyCg5sYXN0X3BvbGxlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASEgoKbGFzdF9lcnJvchgGIAEoCRIvCgdwcm9maWxlGAcgASgLMh4uaGFja3RoZWJ1cmdoLnYxLlNvdXJjZVByb2ZpbGUSLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAiiAEKCkRhdGFSZWNvcmQSCgoCaWQYASABKAMSEwoLZXh0ZXJuYWxfaWQYAiABKAkSLwoLb2JzZXJ2ZWRfYXQYAyABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEigKB3BheWxvYWQYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0IpwBChNDcmVhdGVTb3VyY2VSZXF1ZXN0EgwKBG5hbWUYASABKAkSKQoEa2luZBgCIAEoDjIbLmhhY2t0aGVidXJnaC52MS5Tb3VyY2VLaW5kEi0KBmNvbmZpZxgDIAEoCzIdLmhhY2t0aGVidXJnaC52MS5Tb3VyY2VDb25maWcSHQoVcG9sbF9pbnRlcnZhbF9zZWNvbmRzGAQgASgFIj8KFENyZWF0ZVNvdXJjZVJlc3BvbnNlEicKBnNvdXJjZRgBIAEoCzIXLmhhY2t0aGVidXJnaC52MS5Tb3VyY2UiSwoWVXBsb2FkQ1NWU291cmNlUmVxdWVzdBIMCgRuYW1lGAEgASgJEhEKCWZpbGVfbmFtZRgCIAEoCRIQCghjc3ZfZGF0YRgDIAEoDCJCChdVcGxvYWRDU1ZTb3VyY2VSZXNwb25zZRInCgZzb3VyY2UYASABKAsyFy5oYWNrdGhlYnVyZ2gudjEuU291cmNlIhQKEkxpc3RTb3VyY2VzUmVxdWVzdCI/ChNMaXN0U291cmNlc1Jlc3BvbnNlEigKB3NvdXJjZXMYASADKAsyFy5oYWNrdGhlYnVyZ2gudjEuU291cmNlIh4KEEdldFNvdXJjZVJlcXVlc3QSCgoCaWQYASABKAkicQoRR2V0U291cmNlUmVzcG9uc2USJwoGc291cmNlGAEgASgLMhcuaGFja3RoZWJ1cmdoLnYxLlNvdXJjZRIzCg5yZWNlbnRfcmVjb3JkcxgCIAMoCzIbLmhhY2t0aGVidXJnaC52MS5EYXRhUmVjb3JkIokBCgdQcm9qZWN0EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEZ29hbBgDIAEoCRISCgpzb3VyY2VfaWRzGAQgAygJEhIKCmxhc3RfZXJyb3IYBSABKAkSLgoKY3JlYXRlZF9hdBgGIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXAimwIKA1J1bhIKCgJpZBgBIAEoCRITCgt3b3JrZmxvd19pZBgCIAEoCRIuCgpkYXRhX3VwX3RvGAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIqCgZzdGF0dXMYBCABKA4yGi5oYWNrdGhlYnVyZ2gudjEuUnVuU3RhdHVzEicKBnJlc3VsdBgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSDQoFZXJyb3IYBiABKAkSLgoKc3RhcnRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLwoLZmluaXNoZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wImYKDkFuYWx5c2lzRnVubmVsEhEKCXRlc3RzX3J1bhgBIAEoBRITCgtyYXdfcF9sdF8wNRgCIAEoBRISCgpwYXNzZWRfZmRyGAMgASgFEhgKEHBhc3NlZF9zdGFiaWxpdHkYBCABKAUiiQEKDlByb2plY3RTdW1tYXJ5EikKB3Byb2plY3QYASABKAsyGC5oYWNrdGhlYnVyZ2gudjEuUHJvamVjdBI1ChFsYXRlc3RfcnVuX3N0YXR1cxgCIAEoDjIaLmhhY2t0aGVidXJnaC52MS5SdW5TdGF0dXMSFQoNZmluZGluZ19jb3VudBgDIAEoBSKYAgoIV29ya2Zsb3cSCgoCaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRIrCgRraW5kGAMgASgOMh0uaGFja3RoZWJ1cmdoLnYxLldvcmtmbG93S2luZBIPCgd2ZXJzaW9uGAQgASgFEhEKCWlzX2FjdGl2ZRgFIAEoCBIWCg5pbnNpZ2h0X3Byb21wdBgGIAEoCRIRCglyYXRpb25hbGUYByABKAkSLgoKY3JlYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFwoPYW5hbHlzaXNfc2NyaXB0GAkgASgJEicKBnJlcG9ydBgKIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QiwwMKB0luc2lnaHQSCgoCaWQYASABKAkSDgoGcnVuX2lkGAIgASgJEhIKCnByb2plY3RfaWQYAyABKAkSLgoGb3JpZ2luGAQgASgOMh4uaGFja3RoZWJ1cmdoLnYxLkluc2lnaHRPcmlnaW4SEwoLZmluZGluZ19rZXkYBSABKAkSKgoEa2luZBgGIAEoDjIcLmhhY2t0aGVidXJnaC52MS5JbnNpZ2h0S2luZBIQCghoZWFkbGluZRgHIAEoCRITCgtleHBsYW5hdGlvbhgIIAEoCRIPCgdjYXZlYXRzGAkgAygJEiYKBXN0YXRzGAogASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIoCghldmlkZW5jZRgLIAEoCzIWLmdvb2dsZS5wcm90b2J1Zi5WYWx1ZRIrCgpjaGFydF9zcGVjGAwgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBIwCgtuYXJyYXRlZF9ieRgNIAEoDjIbLmhhY2t0aGVidXJnaC52MS5OYXJyYXRlZEJ5Ei4KCmNyZWF0ZWRfYXQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIo8BCgxXb3JrZmxvd1N0ZXASEwoLd29ya2Zsb3dfaWQYASABKAkSCwoDc2VxGAIgASgFEgwKBHRvb2wYAyABKAkSJgoFaW5wdXQYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EicKBm91dHB1dBgFIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QiRgoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIMCgRnb2FsGAIgASgJEhIKCnNvdXJjZV9pZHMYAyADKAkioAEKFUNyZWF0ZVByb2plY3RSZXNwb25zZRIpCgdwcm9qZWN0GAEgASgLMhguaGFja3RoZWJ1cmdoLnYxLlByb2plY3QSMgoPYWN0aXZlX3dvcmtmbG93GAIgASgLMhkuaGFja3RoZWJ1cmdoLnYxLldvcmtmbG93EigKCmxhdGVzdF9ydW4YAyABKAsyFC5oYWNrdGhlYnVyZ2gudjEuUnVuIhUKE0xpc3RQcm9qZWN0c1JlcXVlc3QiSQoUTGlzdFByb2plY3RzUmVzcG9uc2USMQoIcHJvamVjdHMYASADKAsyHy5oYWNrdGhlYnVyZ2gudjEuUHJvamVjdFN1bW1hcnkiHwoRR2V0UHJvamVjdFJlcXVlc3QSCgoCaWQYASABKAkizwEKEkdldFByb2plY3RSZXNwb25zZRIpCgdwcm9qZWN0GAEgASgLMhguaGFja3RoZWJ1cmdoLnYxLlByb2plY3QSMwoQYWN0aXZlX3dvcmtmbG93cxgCIAMoCzIZLmhhY2t0aGVidXJnaC52MS5Xb3JrZmxvdxIoCgpsYXRlc3RfcnVuGAMgASgLMhQuaGFja3RoZWJ1cmdoLnYxLlJ1bhIvCgZmdW5uZWwYBCABKAsyHy5oYWNrdGhlYnVyZ2gudjEuQW5hbHlzaXNGdW5uZWwiKQoTTGlzdEluc2lnaHRzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIkIKFExpc3RJbnNpZ2h0c1Jlc3BvbnNlEioKCGluc2lnaHRzGAEgAygLMhguaGFja3RoZWJ1cmdoLnYxLkluc2lnaHQiKgoUTGlzdFdvcmtmbG93c1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSJFChVMaXN0V29ya2Zsb3dzUmVzcG9uc2USLAoJd29ya2Zsb3dzGAEgAygLMhkuaGFja3RoZWJ1cmdoLnYxLldvcmtmbG93Ii8KGExpc3RXb3JrZmxvd1N0ZXBzUmVxdWVzdBITCgt3b3JrZmxvd19pZBgBIAEoCSJJChlMaXN0V29ya2Zsb3dTdGVwc1Jlc3BvbnNlEiwKBXN0ZXBzGAEgAygLMh0uaGFja3RoZWJ1cmdoLnYxLldvcmtmbG93U3RlcCJcChlSZWdlbmVyYXRlV29ya2Zsb3dSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSKwoEa2luZBgCIAEoDjIdLmhhY2t0aGVidXJnaC52MS5Xb3JrZmxvd0tpbmQiSQoaUmVnZW5lcmF0ZVdvcmtmbG93UmVzcG9uc2USKwoId29ya2Zsb3cYASABKAsyGS5oYWNrdGhlYnVyZ2gudjEuV29ya2Zsb3ciVwoNUmVwbGF5UmVxdWVzdBISCgpzb3VyY2VfaWRzGAEgAygJEhoKEnBlcmlvZHNfcGVyX3NlY29uZBgCIAEoBRIWCg5zdGFydF9mcmFjdGlvbhgDIAEoASIzCg5SZXBsYXlSZXNwb25zZRIQCghhY2NlcHRlZBgBIAEoCBIPCgdtZXNzYWdlGAIgASgJKm4KClNvdXJjZUtpbmQSGwoXU09VUkNFX0tJTkRfVU5TUEVDSUZJRUQQABITCg9TT1VSQ0VfS0lORF9DU1YQARITCg9TT1VSQ0VfS0lORF9SU1MQAhIZChVTT1VSQ0VfS0lORF9IVFRQX0pTT04QAyqxAQoJRmllbGRSb2xlEhoKFkZJRUxEX1JPTEVfVU5TUEVDSUZJRUQQABIYChRGSUVMRF9ST0xFX1RJTUVTVEFNUBABEhYKEkZJRUxEX1JPTEVfTUVBU1VSRRACEhcKE0ZJRUxEX1JPTEVfQ0FURUdPUlkQAxITCg9GSUVMRF9ST0xFX1RFWFQQBBIRCg1GSUVMRF9ST0xFX0lEEAUSFQoRRklFTERfUk9MRV9JR05PUkUQBiqCAQoLQWdncmVnYXRpb24SGwoXQUdHUkVHQVRJT05fVU5TUEVDSUZJRUQQABIUChBBR0dSRUdBVElPTl9NRUFOEAESEwoPQUdHUkVHQVRJT05fU1VNEAISFAoQQUdHUkVHQVRJT05fTEFTVBADEhUKEUFHR1JFR0FUSU9OX0NPVU5UEAQqbQoMV29ya2Zsb3dLaW5kEh0KGVdPUktGTE9XX0tJTkRfVU5TUEVDSUZJRUQQABIdChlXT1JLRkxPV19LSU5EX1NUQVRJU1RJQ0FMEAESHwobV09SS0ZMT1dfS0lORF9JTlZFU1RJR0FUSU9OEAIqcAoJUnVuU3RhdHVzEhoKFlJVTl9TVEFUVVNfVU5TUEVDSUZJRUQQABIWChJSVU5fU1RBVFVTX1JVTk5JTkcQARIYChRSVU5fU1RBVFVTX1NVQ0NFRURFRBACEhUKEVJVTl9TVEFUVVNfRkFJTEVEEAMqmgEKC0luc2lnaHRLaW5kEhwKGElOU0lHSFRfS0lORF9VTlNQRUNJRklFRBAAEhwKGElOU0lHSFRfS0lORF9DT1JSRUxBVElPThABEhgKFElOU0lHSFRfS0lORF9BTk9NQUxZEAISHAoYSU5TSUdIVF9LSU5EX09CU0VSVkFUSU9OEAMSFwoTSU5TSUdIVF9LSU5EX0NVU1RPTRAEKnEKDUluc2lnaHRPcmlnaW4SHgoaSU5TSUdIVF9PUklHSU5fVU5TUEVDSUZJRUQQABIeChpJTlNJR0hUX09SSUdJTl9TVEFUSVNUSUNBTBABEiAKHElOU0lHSFRfT1JJR0lOX0lOVkVTVElHQVRJT04QAipYCgpOYXJyYXRlZEJ5EhsKF05BUlJBVEVEX0JZX1VOU1BFQ0lGSUVEEAASEwoPTkFSUkFURURfQllfTExNEAESGAoUTkFSUkFURURfQllfVEVNUExBVEUQAjL3CAoNQW5kdWluU2VydmljZRJbCgxDcmVhdGVTb3VyY2USJC5oYWNrdGhlYnVyZ2gudjEuQ3JlYXRlU291cmNlUmVxdWVzdBolLmhhY2t0aGVidXJnaC52MS5DcmVhdGVTb3VyY2VSZXNwb25zZRJkCg9VcGxvYWRDU1ZTb3VyY2USJy5oYWNrdGhlYnVyZ2gudjEuVXBsb2FkQ1NWU291cmNlUmVxdWVzdBooLmhhY2t0aGVidXJnaC52MS5VcGxvYWRDU1ZTb3VyY2VSZXNwb25zZRJYCgtMaXN0U291cmNlcxIjLmhhY2t0aGVidXJnaC52MS5MaXN0U291cmNlc1JlcXVlc3QaJC5oYWNrdGhlYnVyZ2gudjEuTGlzdFNvdXJjZXNSZXNwb25zZRJSCglHZXRTb3VyY2USIS5oYWNrdGhlYnVyZ2gudjEuR2V0U291cmNlUmVxdWVzdBoiLmhhY2t0aGVidXJnaC52MS5HZXRTb3VyY2VSZXNwb25zZRJeCg1DcmVhdGVQcm9qZWN0EiUuaGFja3RoZWJ1cmdoLnYxLkNyZWF0ZVByb2plY3RSZXF1ZXN0GiYuaGFja3RoZWJ1cmdoLnYxLkNyZWF0ZVByb2plY3RSZXNwb25zZRJbCgxMaXN0UHJvamVjdHMSJC5oYWNrdGhlYnVyZ2gudjEuTGlzdFByb2plY3RzUmVxdWVzdBolLmhhY2t0aGVidXJnaC52MS5MaXN0UHJvamVjdHNSZXNwb25zZRJVCgpHZXRQcm9qZWN0EiIuaGFja3RoZWJ1cmdoLnYxLkdldFByb2plY3RSZXF1ZXN0GiMuaGFja3RoZWJ1cmdoLnYxLkdldFByb2plY3RSZXNwb25zZRJbCgxMaXN0SW5zaWdodHMSJC5oYWNrdGhlYnVyZ2gudjEuTGlzdEluc2lnaHRzUmVxdWVzdBolLmhhY2t0aGVidXJnaC52MS5MaXN0SW5zaWdodHNSZXNwb25zZRJeCg1MaXN0V29ya2Zsb3dzEiUuaGFja3RoZWJ1cmdoLnYxLkxpc3RXb3JrZmxvd3NSZXF1ZXN0GiYuaGFja3RoZWJ1cmdoLnYxLkxpc3RXb3JrZmxvd3NSZXNwb25zZRJqChFMaXN0V29ya2Zsb3dTdGVwcxIpLmhhY2t0aGVidXJnaC52MS5MaXN0V29ya2Zsb3dTdGVwc1JlcXVlc3QaKi5oYWNrdGhlYnVyZ2gudjEuTGlzdFdvcmtmbG93U3RlcHNSZXNwb25zZRJtChJSZWdlbmVyYXRlV29ya2Zsb3cSKi5oYWNrdGhlYnVyZ2gudjEuUmVnZW5lcmF0ZVdvcmtmbG93UmVxdWVzdBorLmhhY2t0aGVidXJnaC52MS5SZWdlbmVyYXRlV29ya2Zsb3dSZXNwb25zZRJJCgZSZXBsYXkSHi5oYWNrdGhlYnVyZ2gudjEuUmVwbGF5UmVxdWVzdBofLmhhY2t0aGVidXJnaC52MS5SZXBsYXlSZXNwb25zZUK5AQoTY29tLmhhY2t0aGVidXJnaC52MUIMU2VydmljZVByb3RvUAFaN2hhY2t0aGVidXJnaC9iYWNrZW5kL2dlbi9oYWNrdGhlYnVyZ2gvdjE7aGFja3RoZWJ1cmdodjGiAgNIWFiqAg9IYWNrdGhlYnVyZ2guVjHKAg9IYWNrdGhlYnVyZ2hcVjHiAhtIYWNrdGhlYnVyZ2hcVjFcR1BCTWV0YWRhdGHqAhBIYWNrdGhlYnVyZ2g6OlYxYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Ch1oYWNrdGhlYnVyZ2gvdjEvc2VydmljZS5wcm90bxIPaGFja3RoZWJ1cmdoLnYxItUBCgxTb3VyY2VDb25maWcSCwoDdXJsGAEgASgJEhQKDHJlY29yZHNfcGF0aBgCIAEoCRIQCghpZF9maWVsZBgDIAEoCRISCgp0aW1lX2ZpZWxkGAQgASgJEg0KBXF1ZXJ5GAUgASgJEicKBnNjaGVtYRgGIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSEAoIcHJvdmlkZXIYByABKAkSMgoKcGFnaW5hdGlvbhgIIAEoCzIeLmhhY2t0aGVidXJnaC52MS5XZWJQYWdpbmF0aW9uIsoBCg1XZWJQYWdpbmF0aW9uEjUKCHN0cmF0ZWd5GAEgASgOMiMuaGFja3RoZWJ1cmdoLnYxLlBhZ2luYXRpb25TdHJhdGVneRIRCgltYXhfcGFnZXMYAiABKAUSEwoLbWF4X3Njcm9sbHMYAyABKAUSHAoUc2Nyb2xsX2RlbGF5X3NlY29uZHMYBCABKAESEAoIc2VsZWN0b3IYBSABKAkSGQoMbmV3ZXN0X2ZpcnN0GAYgASgISACIAQFCDwoNX25ld2VzdF9maXJzdCKqAQoMRmllbGRQcm9maWxlEgwKBHBhdGgYASABKAkSKAoEcm9sZRgCIAEoDjIaLmhhY2t0aGVidXJnaC52MS5GaWVsZFJvbGUSEQoEdW5pdBgDIAEoCUgAiAEBEjEKC2FnZ3JlZ2F0aW9uGAQgASgOMhwuaGFja3RoZWJ1cmdoLnYxLkFnZ3JlZ2F0aW9uEhMKC2Rlc2NyaXB0aW9uGAUgASgJQgcKBV91bml0In8KDVNvdXJjZVByb2ZpbGUSLQoGZmllbGRzGAEgAygLMh0uaGFja3RoZWJ1cmdoLnYxLkZpZWxkUHJvZmlsZRIbCg50aW1lc3RhbXBfcGF0aBgCIAEoCUgAiAEBEg8KB3N1bW1hcnkYAyABKAlCEQoPX3RpbWVzdGFtcF9wYXRoIsoCCgZTb3VyY2USCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIpCgRraW5kGAMgASgOMhsuaGFja3RoZWJ1cmdoLnYxLlNvdXJjZUtpbmQSFAoMcmVjb3JkX2NvdW50GAQgASgDEjIKDmxhc3RfcG9sbGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBISCgpsYXN0X2Vycm9yGAYgASgJEi8KB3Byb2ZpbGUYByABKAsyHi5oYWNrdGhlYnVyZ2gudjEuU291cmNlUHJvZmlsZRIuCgpjcmVhdGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIiChVwb2xsX2ludGVydmFsX3NlY29uZHMYCSABKAVIAIgBAUIYChZfcG9sbF9pbnRlcnZhbF9zZWNvbmRzIogBCgpEYXRhUmVjb3JkEgoKAmlkGAEgASgDEhMKC2V4dGVybmFsX2lkGAIgASgJEi8KC29ic2VydmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIoCgdwYXlsb2FkGAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdCKcAQoTQ3JlYXRlU291cmNlUmVxdWVzdBIMCgRuYW1lGAEgASgJEikKBGtpbmQYAiABKA4yGy5oYWNrdGhlYnVyZ2gudjEuU291cmNlS2luZBItCgZjb25maWcYAyABKAsyHS5oYWNrdGhlYnVyZ2gudjEuU291cmNlQ29uZmlnEh0KFXBvbGxfaW50ZXJ2YWxfc2Vjb25kcxgEIAEoBSI/ChRDcmVhdGVTb3VyY2VSZXNwb25zZRInCgZzb3VyY2UYASABKAsyFy5oYWNrdGhlYnVyZ2gudjEuU291cmNlIksKFlVwbG9hZENTVlNvdXJjZVJlcXVlc3QSDAoEbmFtZRgBIAEoCRIRCglmaWxlX25hbWUYAiABKAkSEAoIY3N2X2RhdGEYAyABKAwiQgoXVXBsb2FkQ1NWU291cmNlUmVzcG9uc2USJwoGc291cmNlGAEgASgLMhcuaGFja3RoZWJ1cmdoLnYxLlNvdXJjZSIUChJMaXN0U291cmNlc1JlcXVlc3QiPwoTTGlzdFNvdXJjZXNSZXNwb25zZRIoCgdzb3VyY2VzGAEgAygLMhcuaGFja3RoZWJ1cmdoLnYxLlNvdXJjZSIeChBHZXRTb3VyY2VSZXF1ZXN0EgoKAmlkGAEgASgJInEKEUdldFNvdXJjZVJlc3BvbnNlEicKBnNvdXJjZRgBIAEoCzIXLmhhY2t0aGVidXJnaC52MS5Tb3VyY2USMwoOcmVjZW50X3JlY29yZHMYAiADKAsyGy5oYWNrdGhlYnVyZ2gudjEuRGF0YVJlY29yZCKJAQoHUHJvamVjdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEgwKBGdvYWwYAyABKAkSEgoKc291cmNlX2lkcxgEIAMoCRISCgpsYXN0X2Vycm9yGAUgASgJEi4KCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIpsCCgNSdW4SCgoCaWQYASABKAkSEwoLd29ya2Zsb3dfaWQYAiABKAkSLgoKZGF0YV91cF90bxgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoGc3RhdHVzGAQgASgOMhouaGFja3RoZWJ1cmdoLnYxLlJ1blN0YXR1cxInCgZyZXN1bHQYBSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Eg0KBWVycm9yGAYgASgJEi4KCnN0YXJ0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi8KC2ZpbmlzaGVkX2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCJmCg5BbmFseXNpc0Z1bm5lbBIRCgl0ZXN0c19ydW4YASABKAUSEwoLcmF3X3BfbHRfMDUYAiABKAUSEgoKcGFzc2VkX2ZkchgDIAEoBRIYChBwYXNzZWRfc3RhYmlsaXR5GAQgASgFIokBCg5Qcm9qZWN0U3VtbWFyeRIpCgdwcm9qZWN0GAEgASgLMhguaGFja3RoZWJ1cmdoLnYxLlByb2plY3QSNQoRbGF0ZXN0X3J1bl9zdGF0dXMYAiABKA4yGi5oYWNrdGhlYnVyZ2gudjEuUnVuU3RhdHVzEhUKDWZpbmRpbmdfY291bnQYAyABKAUimAIKCFdvcmtmbG93EgoKAmlkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSKwoEa2luZBgDIAEoDjIdLmhhY2t0aGVidXJnaC52MS5Xb3JrZmxvd0tpbmQSDwoHdmVyc2lvbhgEIAEoBRIRCglpc19hY3RpdmUYBSABKAgSFgoOaW5zaWdodF9wcm9tcHQYBiABKAkSEQoJcmF0aW9uYWxlGAcgASgJEi4KCmNyZWF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhcKD2FuYWx5c2lzX3NjcmlwdBgJIAEoCRInCgZyZXBvcnQYCiABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0IsMDCgdJbnNpZ2h0EgoKAmlkGAEgASgJEg4KBnJ1bl9pZBgCIAEoCRISCgpwcm9qZWN0X2lkGAMgASgJEi4KBm9yaWdpbhgEIAEoDjIeLmhhY2t0aGVidXJnaC52MS5JbnNpZ2h0T3JpZ2luEhMKC2ZpbmRpbmdfa2V5GAUgASgJEioKBGtpbmQYBiABKA4yHC5oYWNrdGhlYnVyZ2gudjEuSW5zaWdodEtpbmQSEAoIaGVhZGxpbmUYByABKAkSEwoLZXhwbGFuYXRpb24YCCABKAkSDwoHY2F2ZWF0cxgJIAMoCRImCgVzdGF0cxgKIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSKAoIZXZpZGVuY2UYCyABKAsyFi5nb29nbGUucHJvdG9idWYuVmFsdWUSKwoKY2hhcnRfc3BlYxgMIAEoCzIXLmdvb2dsZS5wcm90b2J1Zi5TdHJ1Y3QSMAoLbmFycmF0ZWRfYnkYDSABKA4yGy5oYWNrdGhlYnVyZ2gudjEuTmFycmF0ZWRCeRIuCgpjcmVhdGVkX2F0GA4gASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCKPAQoMV29ya2Zsb3dTdGVwEhMKC3dvcmtmbG93X2lkGAEgASgJEgsKA3NlcRgCIAEoBRIMCgR0b29sGAMgASgJEiYKBWlucHV0GAQgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdBInCgZvdXRwdXQYBSABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0IkYKFENyZWF0ZVByb2plY3RSZXF1ZXN0EgwKBG5hbWUYASABKAkSDAoEZ29hbBgCIAEoCRISCgpzb3VyY2VfaWRzGAMgAygJIqABChVDcmVhdGVQcm9qZWN0UmVzcG9uc2USKQoHcHJvamVjdBgBIAEoCzIYLmhhY2t0aGVidXJnaC52MS5Qcm9qZWN0EjIKD2FjdGl2ZV93b3JrZmxvdxgCIAEoCzIZLmhhY2t0aGVidXJnaC52MS5Xb3JrZmxvdxIoCgpsYXRlc3RfcnVuGAMgASgLMhQuaGFja3RoZWJ1cmdoLnYxLlJ1biIVChNMaXN0UHJvamVjdHNSZXF1ZXN0IkkKFExpc3RQcm9qZWN0c1Jlc3BvbnNlEjEKCHByb2plY3RzGAEgAygLMh8uaGFja3RoZWJ1cmdoLnYxLlByb2plY3RTdW1tYXJ5Ih8KEUdldFByb2plY3RSZXF1ZXN0EgoKAmlkGAEgASgJIs8BChJHZXRQcm9qZWN0UmVzcG9uc2USKQoHcHJvamVjdBgBIAEoCzIYLmhhY2t0aGVidXJnaC52MS5Qcm9qZWN0EjMKEGFjdGl2ZV93b3JrZmxvd3MYAiADKAsyGS5oYWNrdGhlYnVyZ2gudjEuV29ya2Zsb3cSKAoKbGF0ZXN0X3J1bhgDIAEoCzIULmhhY2t0aGVidXJnaC52MS5SdW4SLwoGZnVubmVsGAQgASgLMh8uaGFja3RoZWJ1cmdoLnYxLkFuYWx5c2lzRnVubmVsIikKE0xpc3RJbnNpZ2h0c1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSJCChRMaXN0SW5zaWdodHNSZXNwb25zZRIqCghpbnNpZ2h0cxgBIAMoCzIYLmhhY2t0aGVidXJnaC52MS5JbnNpZ2h0IioKFExpc3RXb3JrZmxvd3NSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkiRQoVTGlzdFdvcmtmbG93c1Jlc3BvbnNlEiwKCXdvcmtmbG93cxgBIAMoCzIZLmhhY2t0aGVidXJnaC52MS5Xb3JrZmxvdyIvChhMaXN0V29ya2Zsb3dTdGVwc1JlcXVlc3QSEwoLd29ya2Zsb3dfaWQYASABKAkiSQoZTGlzdFdvcmtmbG93U3RlcHNSZXNwb25zZRIsCgVzdGVwcxgBIAMoCzIdLmhhY2t0aGVidXJnaC52MS5Xb3JrZmxvd1N0ZXAiXAoZUmVnZW5lcmF0ZVdvcmtmbG93UmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEisKBGtpbmQYAiABKA4yHS5oYWNrdGhlYnVyZ2gudjEuV29ya2Zsb3dLaW5kIkkKGlJlZ2VuZXJhdGVXb3JrZmxvd1Jlc3BvbnNlEisKCHdvcmtmbG93GAEgASgLMhkuaGFja3RoZWJ1cmdoLnYxLldvcmtmbG93IlcKDVJlcGxheVJlcXVlc3QSEgoKc291cmNlX2lkcxgBIAMoCRIaChJwZXJpb2RzX3Blcl9zZWNvbmQYAiABKAUSFgoOc3RhcnRfZnJhY3Rpb24YAyABKAEiMwoOUmVwbGF5UmVzcG9uc2USEAoIYWNjZXB0ZWQYASABKAgSDwoHbWVzc2FnZRgCIAEoCSpoCgpTb3VyY2VLaW5kEhsKF1NPVVJDRV9LSU5EX1VOU1BFQ0lGSUVEEAASEwoPU09VUkNFX0tJTkRfQ1NWEAESEwoPU09VUkNFX0tJTkRfUlNTEAISEwoPU09VUkNFX0tJTkRfV0VCEAMqmwEKElBhZ2luYXRpb25TdHJhdGVneRIjCh9QQUdJTkFUSU9OX1NUUkFURUdZX1VOU1BFQ0lGSUVEEAASHAoYUEFHSU5BVElPTl9TVFJBVEVHWV9ORVhUEAESIgoeUEFHSU5BVElPTl9TVFJBVEVHWV9QQUdFX0xJTktTEAISHgoaUEFHSU5BVElPTl9TVFJBVEVHWV9TQ1JPTEwQAyqxAQoJRmllbGRSb2xlEhoKFkZJRUxEX1JPTEVfVU5TUEVDSUZJRUQQABIYChRGSUVMRF9ST0xFX1RJTUVTVEFNUBABEhYKEkZJRUxEX1JPTEVfTUVBU1VSRRACEhcKE0ZJRUxEX1JPTEVfQ0FURUdPUlkQAxITCg9GSUVMRF9ST0xFX1RFWFQQBBIRCg1GSUVMRF9ST0xFX0lEEAUSFQoRRklFTERfUk9MRV9JR05PUkUQBiqCAQoLQWdncmVnYXRpb24SGwoXQUdHUkVHQVRJT05fVU5TUEVDSUZJRUQQABIUChBBR0dSRUdBVElPTl9NRUFOEAESEwoPQUdHUkVHQVRJT05fU1VNEAISFAoQQUdHUkVHQVRJT05fTEFTVBADEhUKEUFHR1JFR0FUSU9OX0NPVU5UEAQqbQoMV29ya2Zsb3dLaW5kEh0KGVdPUktGTE9XX0tJTkRfVU5TUEVDSUZJRUQQABIdChlXT1JLRkxPV19LSU5EX1NUQVRJU1RJQ0FMEAESHwobV09SS0ZMT1dfS0lORF9JTlZFU1RJR0FUSU9OEAIqcAoJUnVuU3RhdHVzEhoKFlJVTl9TVEFUVVNfVU5TUEVDSUZJRUQQABIWChJSVU5fU1RBVFVTX1JVTk5JTkcQARIYChRSVU5fU1RBVFVTX1NVQ0NFRURFRBACEhUKEVJVTl9TVEFUVVNfRkFJTEVEEAMqmgEKC0luc2lnaHRLaW5kEhwKGElOU0lHSFRfS0lORF9VTlNQRUNJRklFRBAAEhwKGElOU0lHSFRfS0lORF9DT1JSRUxBVElPThABEhgKFElOU0lHSFRfS0lORF9BTk9NQUxZEAISHAoYSU5TSUdIVF9LSU5EX09CU0VSVkFUSU9OEAMSFwoTSU5TSUdIVF9LSU5EX0NVU1RPTRAEKnEKDUluc2lnaHRPcmlnaW4SHgoaSU5TSUdIVF9PUklHSU5fVU5TUEVDSUZJRUQQABIeChpJTlNJR0hUX09SSUdJTl9TVEFUSVNUSUNBTBABEiAKHElOU0lHSFRfT1JJR0lOX0lOVkVTVElHQVRJT04QAipYCgpOYXJyYXRlZEJ5EhsKF05BUlJBVEVEX0JZX1VOU1BFQ0lGSUVEEAASEwoPTkFSUkFURURfQllfTExNEAESGAoUTkFSUkFURURfQllfVEVNUExBVEUQAjL3CAoNQW5kdWluU2VydmljZRJbCgxDcmVhdGVTb3VyY2USJC5oYWNrdGhlYnVyZ2gudjEuQ3JlYXRlU291cmNlUmVxdWVzdBolLmhhY2t0aGVidXJnaC52MS5DcmVhdGVTb3VyY2VSZXNwb25zZRJkCg9VcGxvYWRDU1ZTb3VyY2USJy5oYWNrdGhlYnVyZ2gudjEuVXBsb2FkQ1NWU291cmNlUmVxdWVzdBooLmhhY2t0aGVidXJnaC52MS5VcGxvYWRDU1ZTb3VyY2VSZXNwb25zZRJYCgtMaXN0U291cmNlcxIjLmhhY2t0aGVidXJnaC52MS5MaXN0U291cmNlc1JlcXVlc3QaJC5oYWNrdGhlYnVyZ2gudjEuTGlzdFNvdXJjZXNSZXNwb25zZRJSCglHZXRTb3VyY2USIS5oYWNrdGhlYnVyZ2gudjEuR2V0U291cmNlUmVxdWVzdBoiLmhhY2t0aGVidXJnaC52MS5HZXRTb3VyY2VSZXNwb25zZRJeCg1DcmVhdGVQcm9qZWN0EiUuaGFja3RoZWJ1cmdoLnYxLkNyZWF0ZVByb2plY3RSZXF1ZXN0GiYuaGFja3RoZWJ1cmdoLnYxLkNyZWF0ZVByb2plY3RSZXNwb25zZRJbCgxMaXN0UHJvamVjdHMSJC5oYWNrdGhlYnVyZ2gudjEuTGlzdFByb2plY3RzUmVxdWVzdBolLmhhY2t0aGVidXJnaC52MS5MaXN0UHJvamVjdHNSZXNwb25zZRJVCgpHZXRQcm9qZWN0EiIuaGFja3RoZWJ1cmdoLnYxLkdldFByb2plY3RSZXF1ZXN0GiMuaGFja3RoZWJ1cmdoLnYxLkdldFByb2plY3RSZXNwb25zZRJbCgxMaXN0SW5zaWdodHMSJC5oYWNrdGhlYnVyZ2gudjEuTGlzdEluc2lnaHRzUmVxdWVzdBolLmhhY2t0aGVidXJnaC52MS5MaXN0SW5zaWdodHNSZXNwb25zZRJeCg1MaXN0V29ya2Zsb3dzEiUuaGFja3RoZWJ1cmdoLnYxLkxpc3RXb3JrZmxvd3NSZXF1ZXN0GiYuaGFja3RoZWJ1cmdoLnYxLkxpc3RXb3JrZmxvd3NSZXNwb25zZRJqChFMaXN0V29ya2Zsb3dTdGVwcxIpLmhhY2t0aGVidXJnaC52MS5MaXN0V29ya2Zsb3dTdGVwc1JlcXVlc3QaKi5oYWNrdGhlYnVyZ2gudjEuTGlzdFdvcmtmbG93U3RlcHNSZXNwb25zZRJtChJSZWdlbmVyYXRlV29ya2Zsb3cSKi5oYWNrdGhlYnVyZ2gudjEuUmVnZW5lcmF0ZVdvcmtmbG93UmVxdWVzdBorLmhhY2t0aGVidXJnaC52MS5SZWdlbmVyYXRlV29ya2Zsb3dSZXNwb25zZRJJCgZSZXBsYXkSHi5oYWNrdGhlYnVyZ2gudjEuUmVwbGF5UmVxdWVzdBofLmhhY2t0aGVidXJnaC52MS5SZXBsYXlSZXNwb25zZUK5AQoTY29tLmhhY2t0aGVidXJnaC52MUIMU2VydmljZVByb3RvUAFaN2hhY2t0aGVidXJnaC9iYWNrZW5kL2dlbi9oYWNrdGhlYnVyZ2gvdjE7aGFja3RoZWJ1cmdodjGiAgNIWFiqAg9IYWNrdGhlYnVyZ2guVjHKAg9IYWNrdGhlYnVyZ2hcVjHiAhtIYWNrdGhlYnVyZ2hcVjFcR1BCTWV0YWRhdGHqAhBIYWNrdGhlYnVyZ2g6OlYxYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message hacktheburgh.v1.SourceConfig
  */
 export type SourceConfig = Message<"hacktheburgh.v1.SourceConfig"> & {
   /**
-   * URL is used by RSS and HTTP JSON sources.
+   * URL is used by RSS and web sources.
    *
    * @generated from field: string url = 1;
    */
   url: string;
 
   /**
-   * HTTP JSON adapter settings. These are ignored for RSS sources.
+   * Web adapter settings. These are ignored for RSS sources.
    *
    * @generated from field: string records_path = 2;
    */
@@ -41,6 +41,28 @@ export type SourceConfig = Message<"hacktheburgh.v1.SourceConfig"> & {
    * @generated from field: string time_field = 4;
    */
   timeField: string;
+
+  /**
+   * Extraction settings are used by web sources and ignored for RSS sources.
+   *
+   * @generated from field: string query = 5;
+   */
+  query: string;
+
+  /**
+   * @generated from field: google.protobuf.Struct schema = 6;
+   */
+  schema?: JsonObject | undefined;
+
+  /**
+   * @generated from field: string provider = 7;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: hacktheburgh.v1.WebPagination pagination = 8;
+   */
+  pagination?: WebPagination | undefined;
 };
 
 /**
@@ -49,6 +71,48 @@ export type SourceConfig = Message<"hacktheburgh.v1.SourceConfig"> & {
  */
 export const SourceConfigSchema: GenMessage<SourceConfig> = /*@__PURE__*/
   messageDesc(file_hacktheburgh_v1_service, 0);
+
+/**
+ * @generated from message hacktheburgh.v1.WebPagination
+ */
+export type WebPagination = Message<"hacktheburgh.v1.WebPagination"> & {
+  /**
+   * @generated from field: hacktheburgh.v1.PaginationStrategy strategy = 1;
+   */
+  strategy: PaginationStrategy;
+
+  /**
+   * @generated from field: int32 max_pages = 2;
+   */
+  maxPages: number;
+
+  /**
+   * @generated from field: int32 max_scrolls = 3;
+   */
+  maxScrolls: number;
+
+  /**
+   * @generated from field: double scroll_delay_seconds = 4;
+   */
+  scrollDelaySeconds: number;
+
+  /**
+   * @generated from field: string selector = 5;
+   */
+  selector: string;
+
+  /**
+   * @generated from field: optional bool newest_first = 6;
+   */
+  newestFirst?: boolean | undefined;
+};
+
+/**
+ * Describes the message hacktheburgh.v1.WebPagination.
+ * Use `create(WebPaginationSchema)` to create a new message.
+ */
+export const WebPaginationSchema: GenMessage<WebPagination> = /*@__PURE__*/
+  messageDesc(file_hacktheburgh_v1_service, 1);
 
 /**
  * @generated from message hacktheburgh.v1.FieldProfile
@@ -85,7 +149,7 @@ export type FieldProfile = Message<"hacktheburgh.v1.FieldProfile"> & {
  * Use `create(FieldProfileSchema)` to create a new message.
  */
 export const FieldProfileSchema: GenMessage<FieldProfile> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 1);
+  messageDesc(file_hacktheburgh_v1_service, 2);
 
 /**
  * @generated from message hacktheburgh.v1.SourceProfile
@@ -112,7 +176,7 @@ export type SourceProfile = Message<"hacktheburgh.v1.SourceProfile"> & {
  * Use `create(SourceProfileSchema)` to create a new message.
  */
 export const SourceProfileSchema: GenMessage<SourceProfile> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 2);
+  messageDesc(file_hacktheburgh_v1_service, 3);
 
 /**
  * @generated from message hacktheburgh.v1.Source
@@ -157,6 +221,13 @@ export type Source = Message<"hacktheburgh.v1.Source"> & {
    * @generated from field: google.protobuf.Timestamp created_at = 8;
    */
   createdAt?: Timestamp | undefined;
+
+  /**
+   * Absent for one-off sources such as CSV uploads.
+   *
+   * @generated from field: optional int32 poll_interval_seconds = 9;
+   */
+  pollIntervalSeconds?: number | undefined;
 };
 
 /**
@@ -164,7 +235,7 @@ export type Source = Message<"hacktheburgh.v1.Source"> & {
  * Use `create(SourceSchema)` to create a new message.
  */
 export const SourceSchema: GenMessage<Source> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 3);
+  messageDesc(file_hacktheburgh_v1_service, 4);
 
 /**
  * @generated from message hacktheburgh.v1.DataRecord
@@ -196,7 +267,7 @@ export type DataRecord = Message<"hacktheburgh.v1.DataRecord"> & {
  * Use `create(DataRecordSchema)` to create a new message.
  */
 export const DataRecordSchema: GenMessage<DataRecord> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 4);
+  messageDesc(file_hacktheburgh_v1_service, 5);
 
 /**
  * @generated from message hacktheburgh.v1.CreateSourceRequest
@@ -230,7 +301,7 @@ export type CreateSourceRequest = Message<"hacktheburgh.v1.CreateSourceRequest">
  * Use `create(CreateSourceRequestSchema)` to create a new message.
  */
 export const CreateSourceRequestSchema: GenMessage<CreateSourceRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 5);
+  messageDesc(file_hacktheburgh_v1_service, 6);
 
 /**
  * @generated from message hacktheburgh.v1.CreateSourceResponse
@@ -247,7 +318,7 @@ export type CreateSourceResponse = Message<"hacktheburgh.v1.CreateSourceResponse
  * Use `create(CreateSourceResponseSchema)` to create a new message.
  */
 export const CreateSourceResponseSchema: GenMessage<CreateSourceResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 6);
+  messageDesc(file_hacktheburgh_v1_service, 7);
 
 /**
  * @generated from message hacktheburgh.v1.UploadCSVSourceRequest
@@ -274,7 +345,7 @@ export type UploadCSVSourceRequest = Message<"hacktheburgh.v1.UploadCSVSourceReq
  * Use `create(UploadCSVSourceRequestSchema)` to create a new message.
  */
 export const UploadCSVSourceRequestSchema: GenMessage<UploadCSVSourceRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 7);
+  messageDesc(file_hacktheburgh_v1_service, 8);
 
 /**
  * @generated from message hacktheburgh.v1.UploadCSVSourceResponse
@@ -291,7 +362,7 @@ export type UploadCSVSourceResponse = Message<"hacktheburgh.v1.UploadCSVSourceRe
  * Use `create(UploadCSVSourceResponseSchema)` to create a new message.
  */
 export const UploadCSVSourceResponseSchema: GenMessage<UploadCSVSourceResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 8);
+  messageDesc(file_hacktheburgh_v1_service, 9);
 
 /**
  * @generated from message hacktheburgh.v1.ListSourcesRequest
@@ -304,7 +375,7 @@ export type ListSourcesRequest = Message<"hacktheburgh.v1.ListSourcesRequest"> &
  * Use `create(ListSourcesRequestSchema)` to create a new message.
  */
 export const ListSourcesRequestSchema: GenMessage<ListSourcesRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 9);
+  messageDesc(file_hacktheburgh_v1_service, 10);
 
 /**
  * @generated from message hacktheburgh.v1.ListSourcesResponse
@@ -321,7 +392,7 @@ export type ListSourcesResponse = Message<"hacktheburgh.v1.ListSourcesResponse">
  * Use `create(ListSourcesResponseSchema)` to create a new message.
  */
 export const ListSourcesResponseSchema: GenMessage<ListSourcesResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 10);
+  messageDesc(file_hacktheburgh_v1_service, 11);
 
 /**
  * @generated from message hacktheburgh.v1.GetSourceRequest
@@ -338,7 +409,7 @@ export type GetSourceRequest = Message<"hacktheburgh.v1.GetSourceRequest"> & {
  * Use `create(GetSourceRequestSchema)` to create a new message.
  */
 export const GetSourceRequestSchema: GenMessage<GetSourceRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 11);
+  messageDesc(file_hacktheburgh_v1_service, 12);
 
 /**
  * @generated from message hacktheburgh.v1.GetSourceResponse
@@ -360,7 +431,7 @@ export type GetSourceResponse = Message<"hacktheburgh.v1.GetSourceResponse"> & {
  * Use `create(GetSourceResponseSchema)` to create a new message.
  */
 export const GetSourceResponseSchema: GenMessage<GetSourceResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 12);
+  messageDesc(file_hacktheburgh_v1_service, 13);
 
 /**
  * @generated from message hacktheburgh.v1.Project
@@ -402,7 +473,7 @@ export type Project = Message<"hacktheburgh.v1.Project"> & {
  * Use `create(ProjectSchema)` to create a new message.
  */
 export const ProjectSchema: GenMessage<Project> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 13);
+  messageDesc(file_hacktheburgh_v1_service, 14);
 
 /**
  * @generated from message hacktheburgh.v1.Run
@@ -457,7 +528,7 @@ export type Run = Message<"hacktheburgh.v1.Run"> & {
  * Use `create(RunSchema)` to create a new message.
  */
 export const RunSchema: GenMessage<Run> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 14);
+  messageDesc(file_hacktheburgh_v1_service, 15);
 
 /**
  * @generated from message hacktheburgh.v1.AnalysisFunnel
@@ -489,7 +560,7 @@ export type AnalysisFunnel = Message<"hacktheburgh.v1.AnalysisFunnel"> & {
  * Use `create(AnalysisFunnelSchema)` to create a new message.
  */
 export const AnalysisFunnelSchema: GenMessage<AnalysisFunnel> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 15);
+  messageDesc(file_hacktheburgh_v1_service, 16);
 
 /**
  * @generated from message hacktheburgh.v1.ProjectSummary
@@ -516,7 +587,7 @@ export type ProjectSummary = Message<"hacktheburgh.v1.ProjectSummary"> & {
  * Use `create(ProjectSummarySchema)` to create a new message.
  */
 export const ProjectSummarySchema: GenMessage<ProjectSummary> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 16);
+  messageDesc(file_hacktheburgh_v1_service, 17);
 
 /**
  * @generated from message hacktheburgh.v1.Workflow
@@ -583,7 +654,7 @@ export type Workflow = Message<"hacktheburgh.v1.Workflow"> & {
  * Use `create(WorkflowSchema)` to create a new message.
  */
 export const WorkflowSchema: GenMessage<Workflow> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 17);
+  messageDesc(file_hacktheburgh_v1_service, 18);
 
 /**
  * @generated from message hacktheburgh.v1.Insight
@@ -665,7 +736,7 @@ export type Insight = Message<"hacktheburgh.v1.Insight"> & {
  * Use `create(InsightSchema)` to create a new message.
  */
 export const InsightSchema: GenMessage<Insight> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 18);
+  messageDesc(file_hacktheburgh_v1_service, 19);
 
 /**
  * @generated from message hacktheburgh.v1.WorkflowStep
@@ -702,7 +773,7 @@ export type WorkflowStep = Message<"hacktheburgh.v1.WorkflowStep"> & {
  * Use `create(WorkflowStepSchema)` to create a new message.
  */
 export const WorkflowStepSchema: GenMessage<WorkflowStep> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 19);
+  messageDesc(file_hacktheburgh_v1_service, 20);
 
 /**
  * @generated from message hacktheburgh.v1.CreateProjectRequest
@@ -729,7 +800,7 @@ export type CreateProjectRequest = Message<"hacktheburgh.v1.CreateProjectRequest
  * Use `create(CreateProjectRequestSchema)` to create a new message.
  */
 export const CreateProjectRequestSchema: GenMessage<CreateProjectRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 20);
+  messageDesc(file_hacktheburgh_v1_service, 21);
 
 /**
  * @generated from message hacktheburgh.v1.CreateProjectResponse
@@ -756,7 +827,7 @@ export type CreateProjectResponse = Message<"hacktheburgh.v1.CreateProjectRespon
  * Use `create(CreateProjectResponseSchema)` to create a new message.
  */
 export const CreateProjectResponseSchema: GenMessage<CreateProjectResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 21);
+  messageDesc(file_hacktheburgh_v1_service, 22);
 
 /**
  * @generated from message hacktheburgh.v1.ListProjectsRequest
@@ -769,7 +840,7 @@ export type ListProjectsRequest = Message<"hacktheburgh.v1.ListProjectsRequest">
  * Use `create(ListProjectsRequestSchema)` to create a new message.
  */
 export const ListProjectsRequestSchema: GenMessage<ListProjectsRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 22);
+  messageDesc(file_hacktheburgh_v1_service, 23);
 
 /**
  * @generated from message hacktheburgh.v1.ListProjectsResponse
@@ -786,7 +857,7 @@ export type ListProjectsResponse = Message<"hacktheburgh.v1.ListProjectsResponse
  * Use `create(ListProjectsResponseSchema)` to create a new message.
  */
 export const ListProjectsResponseSchema: GenMessage<ListProjectsResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 23);
+  messageDesc(file_hacktheburgh_v1_service, 24);
 
 /**
  * @generated from message hacktheburgh.v1.GetProjectRequest
@@ -803,7 +874,7 @@ export type GetProjectRequest = Message<"hacktheburgh.v1.GetProjectRequest"> & {
  * Use `create(GetProjectRequestSchema)` to create a new message.
  */
 export const GetProjectRequestSchema: GenMessage<GetProjectRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 24);
+  messageDesc(file_hacktheburgh_v1_service, 25);
 
 /**
  * @generated from message hacktheburgh.v1.GetProjectResponse
@@ -835,7 +906,7 @@ export type GetProjectResponse = Message<"hacktheburgh.v1.GetProjectResponse"> &
  * Use `create(GetProjectResponseSchema)` to create a new message.
  */
 export const GetProjectResponseSchema: GenMessage<GetProjectResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 25);
+  messageDesc(file_hacktheburgh_v1_service, 26);
 
 /**
  * @generated from message hacktheburgh.v1.ListInsightsRequest
@@ -852,7 +923,7 @@ export type ListInsightsRequest = Message<"hacktheburgh.v1.ListInsightsRequest">
  * Use `create(ListInsightsRequestSchema)` to create a new message.
  */
 export const ListInsightsRequestSchema: GenMessage<ListInsightsRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 26);
+  messageDesc(file_hacktheburgh_v1_service, 27);
 
 /**
  * @generated from message hacktheburgh.v1.ListInsightsResponse
@@ -869,7 +940,7 @@ export type ListInsightsResponse = Message<"hacktheburgh.v1.ListInsightsResponse
  * Use `create(ListInsightsResponseSchema)` to create a new message.
  */
 export const ListInsightsResponseSchema: GenMessage<ListInsightsResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 27);
+  messageDesc(file_hacktheburgh_v1_service, 28);
 
 /**
  * @generated from message hacktheburgh.v1.ListWorkflowsRequest
@@ -886,7 +957,7 @@ export type ListWorkflowsRequest = Message<"hacktheburgh.v1.ListWorkflowsRequest
  * Use `create(ListWorkflowsRequestSchema)` to create a new message.
  */
 export const ListWorkflowsRequestSchema: GenMessage<ListWorkflowsRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 28);
+  messageDesc(file_hacktheburgh_v1_service, 29);
 
 /**
  * @generated from message hacktheburgh.v1.ListWorkflowsResponse
@@ -903,7 +974,7 @@ export type ListWorkflowsResponse = Message<"hacktheburgh.v1.ListWorkflowsRespon
  * Use `create(ListWorkflowsResponseSchema)` to create a new message.
  */
 export const ListWorkflowsResponseSchema: GenMessage<ListWorkflowsResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 29);
+  messageDesc(file_hacktheburgh_v1_service, 30);
 
 /**
  * @generated from message hacktheburgh.v1.ListWorkflowStepsRequest
@@ -920,7 +991,7 @@ export type ListWorkflowStepsRequest = Message<"hacktheburgh.v1.ListWorkflowStep
  * Use `create(ListWorkflowStepsRequestSchema)` to create a new message.
  */
 export const ListWorkflowStepsRequestSchema: GenMessage<ListWorkflowStepsRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 30);
+  messageDesc(file_hacktheburgh_v1_service, 31);
 
 /**
  * @generated from message hacktheburgh.v1.ListWorkflowStepsResponse
@@ -937,7 +1008,7 @@ export type ListWorkflowStepsResponse = Message<"hacktheburgh.v1.ListWorkflowSte
  * Use `create(ListWorkflowStepsResponseSchema)` to create a new message.
  */
 export const ListWorkflowStepsResponseSchema: GenMessage<ListWorkflowStepsResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 31);
+  messageDesc(file_hacktheburgh_v1_service, 32);
 
 /**
  * @generated from message hacktheburgh.v1.RegenerateWorkflowRequest
@@ -959,7 +1030,7 @@ export type RegenerateWorkflowRequest = Message<"hacktheburgh.v1.RegenerateWorkf
  * Use `create(RegenerateWorkflowRequestSchema)` to create a new message.
  */
 export const RegenerateWorkflowRequestSchema: GenMessage<RegenerateWorkflowRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 32);
+  messageDesc(file_hacktheburgh_v1_service, 33);
 
 /**
  * @generated from message hacktheburgh.v1.RegenerateWorkflowResponse
@@ -976,7 +1047,7 @@ export type RegenerateWorkflowResponse = Message<"hacktheburgh.v1.RegenerateWork
  * Use `create(RegenerateWorkflowResponseSchema)` to create a new message.
  */
 export const RegenerateWorkflowResponseSchema: GenMessage<RegenerateWorkflowResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 33);
+  messageDesc(file_hacktheburgh_v1_service, 34);
 
 /**
  * @generated from message hacktheburgh.v1.ReplayRequest
@@ -1005,7 +1076,7 @@ export type ReplayRequest = Message<"hacktheburgh.v1.ReplayRequest"> & {
  * Use `create(ReplayRequestSchema)` to create a new message.
  */
 export const ReplayRequestSchema: GenMessage<ReplayRequest> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 34);
+  messageDesc(file_hacktheburgh_v1_service, 35);
 
 /**
  * @generated from message hacktheburgh.v1.ReplayResponse
@@ -1029,7 +1100,7 @@ export type ReplayResponse = Message<"hacktheburgh.v1.ReplayResponse"> & {
  * Use `create(ReplayResponseSchema)` to create a new message.
  */
 export const ReplayResponseSchema: GenMessage<ReplayResponse> = /*@__PURE__*/
-  messageDesc(file_hacktheburgh_v1_service, 35);
+  messageDesc(file_hacktheburgh_v1_service, 36);
 
 /**
  * @generated from enum hacktheburgh.v1.SourceKind
@@ -1051,9 +1122,9 @@ export enum SourceKind {
   RSS = 2,
 
   /**
-   * @generated from enum value: SOURCE_KIND_HTTP_JSON = 3;
+   * @generated from enum value: SOURCE_KIND_WEB = 3;
    */
-  HTTP_JSON = 3,
+  WEB = 3,
 }
 
 /**
@@ -1061,6 +1132,37 @@ export enum SourceKind {
  */
 export const SourceKindSchema: GenEnum<SourceKind> = /*@__PURE__*/
   enumDesc(file_hacktheburgh_v1_service, 0);
+
+/**
+ * @generated from enum hacktheburgh.v1.PaginationStrategy
+ */
+export enum PaginationStrategy {
+  /**
+   * @generated from enum value: PAGINATION_STRATEGY_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PAGINATION_STRATEGY_NEXT = 1;
+   */
+  NEXT = 1,
+
+  /**
+   * @generated from enum value: PAGINATION_STRATEGY_PAGE_LINKS = 2;
+   */
+  PAGE_LINKS = 2,
+
+  /**
+   * @generated from enum value: PAGINATION_STRATEGY_SCROLL = 3;
+   */
+  SCROLL = 3,
+}
+
+/**
+ * Describes the enum hacktheburgh.v1.PaginationStrategy.
+ */
+export const PaginationStrategySchema: GenEnum<PaginationStrategy> = /*@__PURE__*/
+  enumDesc(file_hacktheburgh_v1_service, 1);
 
 /**
  * @generated from enum hacktheburgh.v1.FieldRole
@@ -1106,7 +1208,7 @@ export enum FieldRole {
  * Describes the enum hacktheburgh.v1.FieldRole.
  */
 export const FieldRoleSchema: GenEnum<FieldRole> = /*@__PURE__*/
-  enumDesc(file_hacktheburgh_v1_service, 1);
+  enumDesc(file_hacktheburgh_v1_service, 2);
 
 /**
  * @generated from enum hacktheburgh.v1.Aggregation
@@ -1142,7 +1244,7 @@ export enum Aggregation {
  * Describes the enum hacktheburgh.v1.Aggregation.
  */
 export const AggregationSchema: GenEnum<Aggregation> = /*@__PURE__*/
-  enumDesc(file_hacktheburgh_v1_service, 2);
+  enumDesc(file_hacktheburgh_v1_service, 3);
 
 /**
  * @generated from enum hacktheburgh.v1.WorkflowKind
@@ -1168,7 +1270,7 @@ export enum WorkflowKind {
  * Describes the enum hacktheburgh.v1.WorkflowKind.
  */
 export const WorkflowKindSchema: GenEnum<WorkflowKind> = /*@__PURE__*/
-  enumDesc(file_hacktheburgh_v1_service, 3);
+  enumDesc(file_hacktheburgh_v1_service, 4);
 
 /**
  * @generated from enum hacktheburgh.v1.RunStatus
@@ -1199,7 +1301,7 @@ export enum RunStatus {
  * Describes the enum hacktheburgh.v1.RunStatus.
  */
 export const RunStatusSchema: GenEnum<RunStatus> = /*@__PURE__*/
-  enumDesc(file_hacktheburgh_v1_service, 4);
+  enumDesc(file_hacktheburgh_v1_service, 5);
 
 /**
  * @generated from enum hacktheburgh.v1.InsightKind
@@ -1235,7 +1337,7 @@ export enum InsightKind {
  * Describes the enum hacktheburgh.v1.InsightKind.
  */
 export const InsightKindSchema: GenEnum<InsightKind> = /*@__PURE__*/
-  enumDesc(file_hacktheburgh_v1_service, 5);
+  enumDesc(file_hacktheburgh_v1_service, 6);
 
 /**
  * @generated from enum hacktheburgh.v1.InsightOrigin
@@ -1261,7 +1363,7 @@ export enum InsightOrigin {
  * Describes the enum hacktheburgh.v1.InsightOrigin.
  */
 export const InsightOriginSchema: GenEnum<InsightOrigin> = /*@__PURE__*/
-  enumDesc(file_hacktheburgh_v1_service, 6);
+  enumDesc(file_hacktheburgh_v1_service, 7);
 
 /**
  * @generated from enum hacktheburgh.v1.NarratedBy
@@ -1287,7 +1389,7 @@ export enum NarratedBy {
  * Describes the enum hacktheburgh.v1.NarratedBy.
  */
 export const NarratedBySchema: GenEnum<NarratedBy> = /*@__PURE__*/
-  enumDesc(file_hacktheburgh_v1_service, 7);
+  enumDesc(file_hacktheburgh_v1_service, 8);
 
 /**
  * Anduin's browser-facing API. The existing SSE endpoint remains HTTP while

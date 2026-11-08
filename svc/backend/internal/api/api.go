@@ -1,4 +1,4 @@
-// Package api holds HTTP handlers, SSE and replay.
+// Package api holds the Connect service and the remaining HTTP handlers, including SSE.
 package api
 
 import (
@@ -8,7 +8,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"connectrpc.com/connect/v2"
+	"connectrpc.com/connect/v2/connecthttp"
+	v1connect "hacktheburgh/backend/gen/hacktheburgh/v1/hacktheburghv1connect"
 	"hacktheburgh/backend/internal/events"
+	"hacktheburgh/backend/internal/ingest"
 	"hacktheburgh/backend/internal/llm"
 	"hacktheburgh/backend/internal/workflows"
 )
@@ -21,6 +25,9 @@ type Server struct {
 	Author *workflows.Author
 	// DebugLLM enables /api/debug/chat, which spends the API key on any caller.
 	DebugLLM bool
+
+	Store  *ingest.Store
+	Ingest *ingest.Loop
 	// AnalysisDebug enables the /api/debug seed/generate/state endpoints,
 	// which write to Pool and spend LLM budget for any caller.
 	AnalysisDebug bool
@@ -64,17 +71,24 @@ func (s *Server) Routes() http.Handler {
 	if s.DebugLLM && s.LLM != nil {
 		mux.HandleFunc("POST /api/debug/chat", s.debugChat)
 	}
+	connectServer := connect.NewServer()
+	v1connect.RegisterAnduinServiceHandler(connectServer, &ConnectService{Store: s.Store})
+	connecthttp.Mount(mux, connectServer, connecthttp.WithReadMaxBytes(ingest.MaxCSVBytes*4/3+(1<<20)))
 
 	if s.AnalysisDebug && s.Pool != nil {
 		s.registerAnalysisDebug(mux)
 	}
 
 	// Stubs: 501 until workstream A implements them.
+	// Legacy source REST routes remain temporarily available for existing clients.
+	mux.HandleFunc("POST /api/sources", s.createSource)
+	mux.HandleFunc("GET /api/sources", s.listSources)
+	mux.HandleFunc("GET /api/sources/{id}", s.getSource)
+	mux.HandleFunc("POST /api/sources/{id}/poll", s.pollSource)
+
+	// Legacy REST project and replay stubs remain during the Connect migration.
 	for _, route := range []string{
-		"POST /api/sources",
 		"POST /api/sources/csv",
-		"GET /api/sources",
-		"GET /api/sources/{id}",
 		"POST /api/projects",
 		"GET /api/projects",
 		"GET /api/projects/{id}",

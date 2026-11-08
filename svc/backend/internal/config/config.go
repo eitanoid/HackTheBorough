@@ -10,8 +10,11 @@ import (
 type Config struct {
 	Addr        string
 	DatabaseURL string
-	LLMStub     bool
-	LLMLogPath  string
+	Crawl4AIURL      string
+	Crawl4AIToken    string
+	Crawl4AIProvider string
+	LLMStub          bool
+	LLMLogPath       string
 
 	// Provider-neutral LLM settings. Model ids are read from the environment
 	// and live here and nowhere else.
@@ -54,10 +57,13 @@ type Config struct {
 
 func Load() Config {
 	return Config{
-		Addr:        env("ADDR", ":8080"),
-		DatabaseURL: env("DATABASE_URL", ""),
-		LLMStub:     env("LLM_STUB", "") == "1",
-		LLMLogPath:  env("LLM_LOG_PATH", "llm_calls.jsonl"),
+		Addr:             env("ADDR", ":8080"),
+		DatabaseURL:      env("DATABASE_URL", ""),
+		Crawl4AIURL:      env("CRAWL4AI_API", env("CRAWL4AI_BASE_URL", "http://127.0.0.1:11235")),
+		Crawl4AIToken:    env("CRAWL4AI_API_TOKEN", ""),
+		Crawl4AIProvider: env("CRAWL4AI_PROVIDER", ""),
+		LLMStub:          env("LLM_STUB", "") == "1",
+		LLMLogPath:       env("LLM_LOG_PATH", "llm_calls.jsonl"),
 
 		LLMAPIKey:         env("OPENAPI_KEY", ""),
 		LLMBaseURL:        env("LLM_BASE_URL", ""),

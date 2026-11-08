@@ -1,0 +1,194 @@
+# Run the backend with a working DATABASE_URL, then execute these requests in
+# httpyac CLI/extension (the request assertions use httpyac syntax).
+# CLI: cd tests/http && httpyac send anduin.http, then choose a request region.
+# Connect unary methods use the JSON codec and regular HTTP POST requests.
+
+@baseUrl = http://127.0.0.1:8081
+@projectId = replace-with-an-existing-project-uuid
+@workflowId = replace-with-an-existing-workflow-uuid
+
+### Liveness
+GET {{baseUrl}}/healthz
+
+### Create an RSS source (default polling interval is 300 seconds)
+# @name createRssSource
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/CreateSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "name": "Manual RSS source",
+  "kind": "SOURCE_KIND_RSS",
+  "config": {
+    "url": "https://example.com/feed.xml"
+  }
+}
+
+?? status == 200
+?? body source.id exists
+?? body source.pollIntervalSeconds == 300
+
+### List sources
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListSources
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{}
+
+?? status == 200
+?? body sources isArray
+
+### Get the source created above
+# @ref createRssSource
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/GetSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "id": "{{createRssSource.source.id}}"
+}
+
+?? status == 200
+?? body source.id exists
+?? body recentRecords isArray
+
+### Upload a CSV source (csvData is base64-encoded UTF-8)
+# @name uploadCsv
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/UploadCSVSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "name": "Manual CSV source",
+  "fileName": "rows.csv",
+  "csvData": "ZGF0ZSx2YWx1ZQoyMDI2LTAxLTAxLDQKMjAyNi0wMS0wMiw3Cg=="
+}
+
+?? status == 200
+?? body source.kind == SOURCE_KIND_CSV
+?? body source.recordCount == "2"
+
+### Verify uploaded CSV records
+# @ref uploadCsv
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/GetSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "id": "{{uploadCsv.source.id}}"
+}
+
+?? status == 200
+?? body recentRecords isArray
+?? js response.parsedBody.recentRecords.length == 2
+
+### Create a web source with typed extraction and pagination options
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/CreateSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "name": "Manual web source",
+  "kind": "SOURCE_KIND_WEB",
+  "config": {
+    "url": "https://example.com/data",
+    "query": "Extract daily records",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "value": { "type": "number" }
+      }
+    },
+    "pagination": {
+      "strategy": "PAGINATION_STRATEGY_NEXT",
+      "maxPages": 5
+    }
+  }
+}
+
+?? status == 200
+?? body source.kind == SOURCE_KIND_WEB
+
+### Invalid request should return Connect InvalidArgument (HTTP 400)
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/CreateSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "name": "Bad RSS source",
+  "kind": "SOURCE_KIND_RSS",
+  "config": { "url": "not-a-url" }
+}
+
+?? status == 400
+?? body code == invalid_argument
+
+### Legacy manual polling endpoint remains plain HTTP
+# @ref createRssSource
+POST {{baseUrl}}/api/sources/{{createRssSource.source.id}}/poll
+
+### Project creation currently returns FailedPrecondition until workflow generation is wired
+# @ref uploadCsv
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/CreateProject
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "name": "Manual project",
+  "goal": "Explore the uploaded data",
+  "sourceIds": [ "{{uploadCsv.source.id}}" ]
+}
+
+?? status == 412
+?? body code == failed_precondition
+
+### Project list is available; read RPCs need an existing project/workflow id
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListProjects
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{}
+
+### Get an existing project (set @projectId above first)
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/GetProject
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "id": "{{projectId}}" }
+
+### List insights for an existing project
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListInsights
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "projectId": "{{projectId}}" }
+
+### List workflow versions for an existing project
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListWorkflows
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "projectId": "{{projectId}}" }
+
+### List recorded steps for an existing workflow
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListWorkflowSteps
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "workflowId": "{{workflowId}}" }
+
+### Regeneration and replay currently return FailedPrecondition until their services are wired
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/RegenerateWorkflow
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "projectId": "{{projectId}}", "kind": "WORKFLOW_KIND_STATISTICAL" }
+
+### Replay
+# @ref uploadCsv
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/Replay
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "sourceIds": [ "{{uploadCsv.source.id}}" ], "periodsPerSecond": 10, "startFraction": 0.5 }

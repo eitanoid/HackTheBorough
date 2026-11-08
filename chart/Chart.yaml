@@ -1,6 +1,6 @@
 apiVersion: v2
 name: hacktheburgh
-description: React frontend and Go backend for local kind development
+description: React frontend, Go backend, PostgreSQL, and Crawl4AI for local kind development
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
