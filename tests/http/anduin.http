@@ -1,0 +1,223 @@
+### Manual Connect / HTTP checks
+# Run the backend with a working DATABASE_URL, then execute these requests in
+# VS Code with the REST Client extension (or adapt them for another HTTP client).
+# Connect unary methods use the JSON codec and regular HTTP POST requests.
+
+@baseUrl = http://127.0.0.1:8081
+@sourceId = {{createRssSource.response.body.$.source.id}}
+@csvSourceId = {{uploadCsv.response.body.$.source.id}}
+@projectId = replace-with-an-existing-project-uuid
+@workflowId = replace-with-an-existing-workflow-uuid
+
+### Liveness
+GET {{baseUrl}}/healthz
+
+### Create an RSS source (default polling interval is 300 seconds)
+# @name createRssSource
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/CreateSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "name": "Manual RSS source",
+  "kind": "SOURCE_KIND_RSS",
+  "config": {
+    "url": "https://example.com/feed.xml"
+  }
+}
+
+> {%
+client.test("RSS source is created", function () {
+  client.assert(response.status === 200, `expected HTTP 200, got ${response.status}`);
+  client.assert(response.body.source.id, "response should include a source id");
+  client.assert(response.body.source.pollIntervalSeconds === 300, "default poll interval should be 300");
+});
+%}
+
+### List sources
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListSources
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{}
+
+> {%
+client.test("source list returns successfully", function () {
+  client.assert(response.status === 200, `expected HTTP 200, got ${response.status}`);
+  client.assert(Array.isArray(response.body.sources), "response should include sources[]");
+});
+%}
+
+### Get the source created above (replace @sourceId if your client does not support response variables)
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/GetSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "id": "{{sourceId}}"
+}
+
+> {%
+client.test("source detail returns successfully", function () {
+  client.assert(response.status === 200, `expected HTTP 200, got ${response.status}`);
+  client.assert(response.body.source.id, "response should include the source");
+  client.assert(Array.isArray(response.body.recentRecords), "response should include recentRecords[]");
+});
+%}
+
+### Upload a CSV source (csvData is base64-encoded UTF-8)
+# @name uploadCsv
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/UploadCSVSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "name": "Manual CSV source",
+  "fileName": "rows.csv",
+  "csvData": "ZGF0ZSx2YWx1ZQoyMDI2LTAxLTAxLDQKMjAyNi0wMS0wMiw3Cg=="
+}
+
+> {%
+client.test("CSV upload creates a source and records", function () {
+  client.assert(response.status === 200, `expected HTTP 200, got ${response.status}`);
+  client.assert(response.body.source.kind === "SOURCE_KIND_CSV", "source kind should be CSV");
+  client.assert(response.body.source.recordCount === "2" || response.body.source.recordCount === 2, "two rows should be ingested");
+  client.assert(response.body.source.pollIntervalSeconds === undefined, "one-off CSV source should not have a poll interval");
+});
+%}
+
+### Verify uploaded CSV records
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/GetSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "id": "{{csvSourceId}}"
+}
+
+> {%
+client.test("CSV detail contains the uploaded rows", function () {
+  client.assert(response.status === 200, `expected HTTP 200, got ${response.status}`);
+  client.assert(response.body.recentRecords.length === 2, "expected two recent records");
+});
+%}
+
+### Create a web source with typed extraction and pagination options
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/CreateSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "name": "Manual web source",
+  "kind": "SOURCE_KIND_WEB",
+  "config": {
+    "url": "https://example.com/data",
+    "query": "Extract daily records",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "value": { "type": "number" }
+      }
+    },
+    "pagination": {
+      "strategy": "PAGINATION_STRATEGY_NEXT",
+      "maxPages": 5
+    }
+  }
+}
+
+> {%
+client.test("web source config is accepted", function () {
+  client.assert(response.status === 200, `expected HTTP 200, got ${response.status}`);
+  client.assert(response.body.source.kind === "SOURCE_KIND_WEB", "source kind should be WEB");
+});
+%}
+
+### Invalid request should return Connect InvalidArgument (HTTP 400)
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/CreateSource
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "name": "Bad RSS source",
+  "kind": "SOURCE_KIND_RSS",
+  "config": { "url": "not-a-url" }
+}
+
+> {%
+client.test("invalid RSS URL is rejected", function () {
+  client.assert(response.status === 400, `expected HTTP 400, got ${response.status}`);
+  client.assert(response.body.code === "invalid_argument", "Connect error code should be invalid_argument");
+});
+%}
+
+### Legacy manual polling endpoint remains plain HTTP
+POST {{baseUrl}}/api/sources/{{sourceId}}/poll
+
+### Project creation currently returns FailedPrecondition until workflow generation is wired
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/CreateProject
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{
+  "name": "Manual project",
+  "goal": "Explore the uploaded data",
+  "sourceIds": [ "{{csvSourceId}}" ]
+}
+
+> {%
+client.test("unconfigured project generation is reported", function () {
+  client.assert(response.status === 412, `expected HTTP 412, got ${response.status}`);
+  client.assert(response.body.code === "failed_precondition", "Connect error code should be failed_precondition");
+});
+%}
+
+### Project list is available; read RPCs need an existing project/workflow id
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListProjects
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{}
+
+### Get an existing project (set @projectId above first)
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/GetProject
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "id": "{{projectId}}" }
+
+### List insights for an existing project
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListInsights
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "projectId": "{{projectId}}" }
+
+### List workflow versions for an existing project
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListWorkflows
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "projectId": "{{projectId}}" }
+
+### List recorded steps for an existing workflow
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/ListWorkflowSteps
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "workflowId": "{{workflowId}}" }
+
+### Regeneration and replay currently return FailedPrecondition until their services are wired
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/RegenerateWorkflow
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "projectId": "{{projectId}}", "kind": "WORKFLOW_KIND_STATISTICAL" }
+
+### Replay
+POST {{baseUrl}}/hacktheburgh.v1.AnduinService/Replay
+Content-Type: application/json
+Connect-Protocol-Version: 1
+
+{ "sourceIds": [ "{{csvSourceId}}" ], "periodsPerSecond": 10, "startFraction": 0.5 }
