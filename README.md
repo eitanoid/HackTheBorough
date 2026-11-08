@@ -53,9 +53,10 @@ Register the demo sources:
 
 ```sh
 cd svc/backend
+kpf deployments/hacktheburgh-postgres 5432:5432
 export DATABASE_URL='postgres://hacktheburgh:hacktheburgh@127.0.0.1:5432/hacktheburgh?sslmode=disable'
 go run ./cmd/seed
-curl http://127.0.0.1:8080/api/sources
+curl http://127.0.0.1:8081/api/sources
 # Force one immediate poll; normal polling runs every 300 seconds.
-curl -X POST http://127.0.0.1:8080/api/sources/<source-uuid>/poll
+curl -X POST http://127.0.0.1:8081/api/sources/<source-uuid>/poll
 ```

@@ -17,14 +17,6 @@ spec:
         app.kubernetes.io/name: crawl4ai
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
-      terminationGracePeriodSeconds: 30
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 999
-        runAsGroup: 999
-        fsGroup: 999
-        seccompProfile:
-          type: RuntimeDefault
       containers:
         - name: crawl4ai
           image: "{{ .Values.crawl4ai.image.repository }}:{{ .Values.crawl4ai.image.tag }}"
@@ -32,48 +24,9 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.crawl4ai.service.port }}
-          env:
-            - name: CRAWL4AI_API_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: hacktheburgh-crawl4ai
-                  key: CRAWL4AI_API_TOKEN
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: openai-key
-                  key: API_KEY
-            - name: LLM_PROVIDER
-              value: {{ .Values.crawl4ai.llm.provider | quote }}
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-          startupProbe:
-            httpGet:
-              path: /health
-              port: http
-            failureThreshold: 36
-            periodSeconds: 5
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            periodSeconds: 20
-            failureThreshold: 3
-          volumeMounts:
-            - name: shm
-              mountPath: /dev/shm
-      volumes:
-        - name: shm
-          emptyDir:
-            medium: Memory
+          {{- if .Values.crawl4ai.env }}
+          env: {{ toYaml .Values.crawl4ai.env | nindent 10 }}
+          {{- end }}
 ---
 apiVersion: v1
 kind: Service

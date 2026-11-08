@@ -90,8 +90,19 @@ crawl4ai:
     repository: unclecode/crawl4ai
     tag: "0.9.5"
     pullPolicy: IfNotPresent
-  llm:
-    # OpenAI only. The Crawl4AI pod receives the key as OPENAI_API_KEY.
-    provider: "openai/gpt-4o-mini"
+  env:
+    - name: CRAWL4AI_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: hacktheburgh-crawl4ai
+          key: CRAWL4AI_API_TOKEN
+    - name: OPENAI_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: openai-key
+          key: API_KEY
+    - name: LLM_PROVIDER
+      # OpenAI only. The Crawl4AI pod receives the key as OPENAI_API_KEY.
+      value: openai/gpt-4o-mini
   service:
     port: 11235
