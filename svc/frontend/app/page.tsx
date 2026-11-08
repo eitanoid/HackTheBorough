@@ -1,36 +1,7 @@
 import ProjectBrowser from "@/components/project-browser";
 import SourceManager from "@/components/source-manager";
 
-function NavigationIcon({ kind }: { kind: "overview" | "sources" | "findings" | "plan" }) {
-  if (kind === "overview") {
-    return (
-      <svg viewBox="0 0 20 20" aria-hidden="true">
-        <rect x="2.5" y="2.5" width="6" height="6" rx="1.5" />
-        <rect x="11.5" y="2.5" width="6" height="6" rx="1.5" />
-        <rect x="2.5" y="11.5" width="6" height="6" rx="1.5" />
-        <rect x="11.5" y="11.5" width="6" height="6" rx="1.5" />
-      </svg>
-    );
-  }
-
-  if (kind === "sources") {
-    return (
-      <svg viewBox="0 0 20 20" aria-hidden="true">
-        <ellipse cx="10" cy="5" rx="6.5" ry="2.5" />
-        <path d="M3.5 5v5c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5V5M3.5 10v5c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5v-5" />
-      </svg>
-    );
-  }
-
-  if (kind === "findings") {
-    return (
-      <svg viewBox="0 0 20 20" aria-hidden="true">
-        <path d="M3 15.5 7.2 11l3 2.2 6.8-8" />
-        <path d="M12.8 5.2H17v4.2" />
-      </svg>
-    );
-  }
-
+function PlanIcon() {
   return (
     <svg viewBox="0 0 20 20" aria-hidden="true">
       <path d="M5 2.8h6.5L16 7.3v9.9H5z" />
@@ -70,8 +41,8 @@ function CorrelationChart() {
       >
         <defs>
           <linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#82d7bd" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#82d7bd" stopOpacity="0" />
+            <stop offset="0%" stopColor="#61b8ce" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#61b8ce" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path className="chart-gridline" d="M34 24H510M34 61H510M34 98H510M34 135H510M34 172H510" />
@@ -117,59 +88,20 @@ function TrendChart() {
 export default function Home() {
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <header className="app-header">
         <a className="brand" href="#project" aria-label="Anduin home">
           <BrandMark />
-          <span className="brand-copy"><strong>anduin</strong><small>INSIGHT STUDIO</small></span>
+          <span className="brand-copy"><strong>anduin</strong><small>DATA FLOWS</small></span>
         </a>
-
-        <a className="workspace-switcher" href="#projects" aria-label="Open project workspace">
-          <span className="workspace-avatar">H</span>
-          <span className="workspace-copy"><small>WORKSPACE</small><strong>Hack the Borough</strong></span>
-          <span className="workspace-chevron" aria-hidden="true">⌄</span>
-        </a>
-
-        <nav className="sidebar-nav" aria-label="Main navigation">
-          <p className="nav-label">WORKSPACE</p>
-          <a className="nav-link active" href="#projects">
-            <NavigationIcon kind="overview" /> <span>Projects</span>
-          </a>
-          <a className="nav-link" href="#sources">
-            <NavigationIcon kind="sources" /> <span>Sources</span>
-          </a>
-          <a className="nav-link" href="#findings">
-            <NavigationIcon kind="findings" /> <span>Insights</span>
-          </a>
-          <p className="nav-label nav-label-spaced">PROJECT</p>
-          <a className="nav-link" href="#analysis-plan">
-            <NavigationIcon kind="plan" /> <span>Analysis plan</span>
-          </a>
+        <nav className="top-nav" aria-label="Main navigation">
+          <a href="#projects">Projects</a>
+          <a href="#sources">Sources</a>
+          <a href="#findings">Insights</a>
         </nav>
-
-        <div className="sidebar-bottom">
-          <div className="system-status"><span className="status-dot" /> PROJECT WORKSPACE</div>
-          <p>Insights that hold up.</p>
-          <span>Built for curious people in Hackney.</span>
-        </div>
-      </aside>
-
-      <div className="mobile-header">
-        <a className="brand" href="#project">
-          <BrandMark />
-          <span className="brand-copy"><strong>anduin</strong><small>INSIGHT STUDIO</small></span>
-        </a>
-        <span className="mobile-demo-label"><i className="status-dot" /> DEMO PREVIEW</span>
-      </div>
+        <a className="button button-outline header-plan-link" href="#analysis-plan">Analysis methods <span aria-hidden="true">↗</span></a>
+      </header>
 
       <main className="main-content" id="project">
-        <header className="topbar">
-          <div className="breadcrumbs"><span>Projects</span><span className="crumb-divider">/</span><strong>Workspace overview</strong></div>
-          <div className="topbar-actions">
-            <span className="preview-badge"><span className="preview-dot" /> UI PREVIEW</span>
-            <a className="button button-outline" href="#analysis-plan">Review analysis plan <span aria-hidden="true">↗</span></a>
-          </div>
-        </header>
-
         <div className="page-content">
           <ProjectBrowser />
 
@@ -232,7 +164,7 @@ export default function Home() {
 
               <details className="analysis-card" id="analysis-plan">
                 <summary>
-                  <span className="plan-icon"><NavigationIcon kind="plan" /></span>
+                  <span className="plan-icon"><PlanIcon /></span>
                   <span className="plan-title"><span className="eyebrow">AGENT-AUTHORED WORKFLOW · V3</span><strong>Analysis plan</strong><small>What was tested, and why</small></span>
                   <span className="details-chevron" aria-hidden="true">⌄</span>
                 </summary>
