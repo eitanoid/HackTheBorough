@@ -148,7 +148,7 @@ export default function ProjectBrowser() {
   const runStatus = latestRun?.status ?? selectedSummary?.latestRunStatus ?? RunStatus.UNSPECIFIED;
 
   return (
-    <section className="projects-panel" aria-labelledby="projects-panel-heading">
+    <section className="projects-panel" id="projects" aria-labelledby="projects-panel-heading">
       <div className="projects-panel-heading">
         <div>
           <span className="eyebrow">WORKSPACE</span>
@@ -261,7 +261,7 @@ export default function ProjectBrowser() {
                 )}
 
                 {insights.length > 0 ? (
-                  <div className="project-insights">
+                  <div className="project-insights" id="findings">
                     <span className="eyebrow">LATEST INSIGHTS</span>
                     {insights.map((insight) => (
                       <article className="project-insight-card" key={insight.id}>
@@ -271,7 +271,7 @@ export default function ProjectBrowser() {
                     ))}
                   </div>
                 ) : (
-                  <p className="project-no-insights">
+                  <p className="project-no-insights" id="findings">
                     {workflows.length ? "No insights have been published for this project yet." : "This project is saved; workflow generation has not been started."}
                   </p>
                 )}
