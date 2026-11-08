@@ -98,4 +98,4 @@ curl -sS http://127.0.0.1:8081/hacktheburgh.v1.AnduinService/ListSources \
 ```
 
 The seed sources are picked up by the normal ingestion loop according to their
-configured polling intervals.
+configured polling intervals and asynchronously backfilled with a changeable value.
