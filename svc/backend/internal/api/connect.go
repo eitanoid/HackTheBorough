@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect/v2"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -151,6 +152,113 @@ func (s *ConnectService) GetSource(ctx context.Context, req *v1.GetSourceRequest
 		})
 	}
 	return response, nil
+}
+
+func (s *ConnectService) DeleteSource(ctx context.Context, req *v1.DeleteSourceRequest) (*v1.DeleteSourceResponse, error) {
+	if s.Store == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, "database unavailable")
+	}
+	rawID := strings.TrimSpace(req.GetId())
+	id, err := uuid.Parse(rawID)
+	if rawID == "" || err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "id must be a UUID")
+	}
+	tx, err := s.Store.Pool.Begin(ctx)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	defer tx.Rollback(context.WithoutCancel(ctx))
+
+	var name string
+	if err := tx.QueryRow(ctx, `SELECT name FROM data_sources WHERE id = $1 FOR UPDATE`, id).Scan(&name); err != nil {
+		return nil, sourceLookupError(err)
+	}
+	rows, err := tx.Query(ctx, `
+		SELECT p.id::text
+		FROM projects p
+		JOIN project_sources ps ON ps.project_id = p.id
+		WHERE ps.data_source_id = $1
+		ORDER BY p.id
+		FOR UPDATE OF p`, id)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	var affected []uuid.UUID
+	for rows.Next() {
+		var projectID uuid.UUID
+		if err := rows.Scan(&projectID); err != nil {
+			rows.Close()
+			return nil, internalError(err)
+		}
+		affected = append(affected, projectID)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, internalError(err)
+	}
+	rows.Close()
+
+	if len(affected) > 0 {
+		message := fmt.Sprintf("Source %q was deleted; workflow results were cleared.", name)
+		if _, err := tx.Exec(ctx, `UPDATE projects SET last_error = $2 WHERE id = ANY($1)`, affected, message); err != nil {
+			return nil, internalError(err)
+		}
+		if _, err := tx.Exec(ctx, `UPDATE workflows SET is_active = false WHERE project_id = ANY($1) AND is_active`, affected); err != nil {
+			return nil, internalError(err)
+		}
+		// Reports derived from the deleted source are no longer valid. Removing
+		// runs cascades their insights and review records while preserving the
+		// inactive workflow versions as history.
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM runs
+			WHERE workflow_id IN (SELECT id FROM workflows WHERE project_id = ANY($1))`, affected); err != nil {
+			return nil, internalError(err)
+		}
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM data_sources WHERE id = $1`, id); err != nil {
+		return nil, internalError(err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, internalError(err)
+	}
+	for _, projectID := range affected {
+		s.publishProjectUpdated(projectID.String())
+	}
+	return &v1.DeleteSourceResponse{Deleted: true, AffectedProjectIds: uuidStrings(affected)}, nil
+}
+
+func (s *ConnectService) DeleteProject(ctx context.Context, req *v1.DeleteProjectRequest) (*v1.DeleteProjectResponse, error) {
+	if s.Store == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, "database unavailable")
+	}
+	rawID := strings.TrimSpace(req.GetId())
+	id, err := uuid.Parse(rawID)
+	if rawID == "" || err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "id must be a UUID")
+	}
+	tag, err := s.Store.Pool.Exec(ctx, `DELETE FROM projects WHERE id = $1`, id)
+	if err != nil {
+		return nil, internalError(err)
+	}
+	if tag.RowsAffected() == 0 {
+		return nil, connect.NewError(connect.CodeNotFound, "project not found")
+	}
+	s.publishProjectUpdated(id.String())
+	return &v1.DeleteProjectResponse{Deleted: true}, nil
+}
+
+func uuidStrings(ids []uuid.UUID) []string {
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+	return out
+}
+
+func (s *ConnectService) publishProjectUpdated(projectID string) {
+	if s.Bus != nil {
+		s.Bus.Publish(events.Event{Type: events.ProjectUpdated, ID: projectID})
+	}
 }
 
 func sourceConfig(kind v1.SourceKind, config *v1.SourceConfig) (string, json.RawMessage, error) {

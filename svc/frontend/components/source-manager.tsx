@@ -9,6 +9,8 @@ import {
   type Source,
   type SourceKind,
 } from "@/lib/source-api";
+import { getAnduinClient } from "@/lib/anduin-client";
+import ConfirmDeleteDialog from "@/components/confirm-delete-dialog";
 
 const defaultSchema = JSON.stringify(
   {
@@ -104,6 +106,9 @@ export default function SourceManager() {
   const [polling, setPolling] = useState(false);
   const [pollNotice, setPollNotice] = useState("");
   const [pollError, setPollError] = useState("");
+  const [deletingSourceId, setDeletingSourceId] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [sourceToDelete, setSourceToDelete] = useState<Source | null>(null);
 
   async function refreshSources(signal?: AbortSignal) {
     setLoadError("");
@@ -221,6 +226,31 @@ export default function SourceManager() {
     }
   }
 
+  async function deleteSource() {
+    const source = sourceToDelete;
+    if (!source) return;
+    setDeletingSourceId(source.id);
+    setDeleteError("");
+    try {
+      const response = await getAnduinClient().deleteSource({ id: source.id });
+      setSources((current) => current.filter((item) => item.id !== source.id));
+      if (selectedId === source.id) {
+        setSelectedId("");
+        setSelectedSource(null);
+      }
+      setSourceToDelete(null);
+      if (response.affectedProjectIds.length > 0) {
+        window.dispatchEvent(new CustomEvent("anduin:source-deleted", {
+          detail: response.affectedProjectIds,
+        }));
+      }
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : "Could not delete this source.");
+    } finally {
+      setDeletingSourceId("");
+    }
+  }
+
   function openSource(source: Source) {
     setSelectedSource(source);
     setDetailLoading(true);
@@ -265,6 +295,7 @@ export default function SourceManager() {
           <button type="button" onClick={() => void refreshSources()}>Try again</button>
         </div>
       )}
+      {deleteError && !sourceToDelete && <div className="source-notice source-notice-error" role="alert">{deleteError}</div>}
 
       {loading ? (
         <div className="source-list" aria-label="Loading sources">
@@ -282,31 +313,45 @@ export default function SourceManager() {
           </button>
         </div>
       ) : (
-        <div className="source-list">
+        <div className="source-list" role="list" aria-label="Connected sources">
           {sources.map((source) => {
             const failed = Boolean(lastError(source));
             return (
-              <button
-                type="button"
-                className="source-item source-item-button"
-                key={source.id}
-                onClick={() => openSource(source)}
-                aria-label={`View ${source.name}, ${kindLabel(source.kind)}`}
-              >
-                <span className={`source-icon source-${normalizedKind(source.kind)}`}>
-                  {kindBadge(source.kind)}
-                </span>
-                <span className="source-item-copy">
-                  <strong>{source.name}</strong>
-                  <small>
-                    {recordCount(source).toLocaleString()} records
-                    {interval(source) ? ` · checks every ${interval(source)}s` : " · one-off source"}
-                  </small>
-                </span>
-                <span className={`source-state ${failed ? "source-state-error" : ""}`}>
-                  <i aria-hidden="true" />{failed ? "Issue" : "Connected"}
-                </span>
-              </button>
+              <div className="source-item source-item-row" key={source.id} role="listitem">
+                <button
+                  type="button"
+                  className="source-item-select"
+                  onClick={() => openSource(source)}
+                  aria-label={`View ${source.name}, ${kindLabel(source.kind)}`}
+                >
+                  <span className={`source-icon source-${normalizedKind(source.kind)}`}>
+                    {kindBadge(source.kind)}
+                  </span>
+                  <span className="source-item-copy">
+                    <strong>{source.name}</strong>
+                    <small>
+                      {recordCount(source).toLocaleString()} records
+                      {interval(source) ? ` · checks every ${interval(source)}s` : " · one-off source"}
+                    </small>
+                  </span>
+                  <span className={`source-state ${failed ? "source-state-error" : ""}`}>
+                    <i aria-hidden="true" />{failed ? "Issue" : "Connected"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="source-delete-button"
+                  aria-label={`Delete ${source.name}`}
+                  title={`Delete ${source.name}`}
+                  disabled={Boolean(deletingSourceId)}
+                  onClick={() => {
+                    setDeleteError("");
+                    setSourceToDelete(source);
+                  }}
+                >
+                  {deletingSourceId === source.id ? "…" : "×"}
+                </button>
+              </div>
             );
           })}
         </div>
@@ -339,6 +384,18 @@ export default function SourceManager() {
           }}
         />
       )}
+      <ConfirmDeleteDialog
+        open={Boolean(sourceToDelete)}
+        itemName={sourceToDelete?.name ?? ""}
+        itemType="source"
+        impact="Its stored records will be removed. Any linked projects will lose their current workflow results and need to rebuild their analysis."
+        busy={Boolean(sourceToDelete && deletingSourceId === sourceToDelete.id)}
+        error={deleteError}
+        onCancel={() => {
+          if (!deletingSourceId) setSourceToDelete(null);
+        }}
+        onConfirm={() => void deleteSource()}
+      />
     </section>
   );
 }
