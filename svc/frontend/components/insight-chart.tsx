@@ -3,6 +3,30 @@
 import { useEffect, useRef, useState } from "react";
 import embed, { type Result, type VisualizationSpec } from "vega-embed";
 
+const chartConfig = {
+  background: "transparent",
+  font: "var(--font-geist-sans), system-ui, sans-serif",
+  axis: {
+    labelColor: "#7b8d83",
+    titleColor: "#3b5d4b",
+    gridColor: "#edf1ee",
+    domainColor: "#dce7df",
+    tickColor: "#dce7df",
+    labelFontSize: 9,
+    titleFontSize: 9,
+  },
+  legend: {
+    labelColor: "#3b5d4b",
+    titleColor: "#3b5d4b",
+    labelFontSize: 9,
+    titleFontSize: 9,
+  },
+  range: {
+    category: ["#17745d", "#b4653a", "#4c9670", "#8a6f4d"],
+  },
+  view: { stroke: null },
+};
+
 export default function InsightChart({ spec }: { spec: VisualizationSpec }) {
   const host = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
@@ -13,7 +37,7 @@ export default function InsightChart({ spec }: { spec: VisualizationSpec }) {
 
     let cancelled = false;
     let result: Result | undefined;
-    embed(element, spec, { actions: false, renderer: "canvas" })
+    embed(element, spec, { actions: false, renderer: "svg", config: chartConfig })
       .then((value) => {
         if (cancelled) {
           value.finalize();

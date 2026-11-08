@@ -69,6 +69,7 @@ function InsightCard({ insight }: { insight: Insight }) {
             className="chart-collapse"
             aria-expanded={!collapsed}
             aria-controls={panelId}
+            aria-label={`${collapsed ? "Expand" : "Collapse"} chart for ${insight.headline}`}
             onClick={() => setCollapsed((current) => !current)}
           >
             {collapsed ? "Expand" : "Collapse"}
@@ -97,6 +98,7 @@ function InsightsSection({ insights }: { insights: Insight[] }) {
           className="chart-collapse"
           aria-expanded={!collapsed}
           aria-controls="insights-panel"
+          aria-label={`${collapsed ? "Expand" : "Collapse"} insights`}
           onClick={() => setCollapsed((current) => !current)}
         >
           {collapsed ? "Expand" : "Collapse"}
