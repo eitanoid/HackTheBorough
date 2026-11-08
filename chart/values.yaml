@@ -6,6 +6,9 @@ frontend:
     repository: hacktheburgh/frontend
     tag: latest
     pullPolicy: IfNotPresent
+  env:
+    - name: BACKEND_API_URL
+      value: "http://hacktheburgh-backend:8080"
   service:
     port: 80
     targetPort: 3000

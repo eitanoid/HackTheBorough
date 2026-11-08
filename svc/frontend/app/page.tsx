@@ -1,3 +1,5 @@
+import NewProjectLauncher from "@/components/new-project-launcher";
+
 function NavigationIcon({ kind }: { kind: "overview" | "sources" | "findings" | "plan" }) {
   if (kind === "overview") {
     return (
@@ -156,6 +158,7 @@ export default function Home() {
           <div className="breadcrumbs"><span>Projects</span><span className="crumb-divider">/</span><strong>City mobility &amp; weather</strong></div>
           <div className="topbar-actions">
             <span className="preview-badge"><span className="preview-dot" /> UI PREVIEW</span>
+            <NewProjectLauncher />
             <a className="button button-outline" href="#analysis-plan">Review analysis plan <span aria-hidden="true">↗</span></a>
           </div>
         </header>
