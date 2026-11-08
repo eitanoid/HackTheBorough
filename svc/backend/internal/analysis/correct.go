@@ -13,7 +13,6 @@ import (
 	"hacktheburgh/backend/internal/contracts"
 )
 
-// Thresholds are the correction settings.
 type Thresholds struct {
 	FDRQ float64 // Benjamini–Hochberg level
 	MinN int     // fewest observations a test may rest on
@@ -50,7 +49,6 @@ func BH(p []float64) []float64 {
 	return q
 }
 
-// pairKey names the unordered set of series a test is about.
 func pairKey(series []string) string {
 	s := append([]string(nil), series...)
 	sort.Strings(s)
@@ -114,7 +112,6 @@ func Correct(r contracts.ScriptResult, th Thresholds) (findings, rejected []cont
 	findings = append(findings, anomalyFindings(r.Anomalies)...)
 	sort.SliceStable(findings, func(a, b int) bool { return findings[a].FindingKey < findings[b].FindingKey })
 
-	// Rejected: the best-looking failed test per pair, three at most.
 	order := make([]int, 0, len(r.Tests))
 	for i := range r.Tests {
 		if failedBy[i] != "" {
@@ -152,7 +149,6 @@ func Correct(r contracts.ScriptResult, th Thresholds) (findings, rejected []cont
 	return findings, rejected, funnel
 }
 
-// beats reports whether test i should replace test w as its pair's winner.
 func beats(tests []contracts.Test, q []float64, i, w int) bool {
 	ei, ew := math.Abs(tests[i].Effect), math.Abs(tests[w].Effect)
 	if ei != ew {
@@ -187,7 +183,6 @@ func testFinding(t contracts.Test, q float64, rejectedBy string) contracts.Findi
 	}
 }
 
-// anomalyFindings keeps the three highest-|score| anomalies per series.
 func anomalyFindings(all []contracts.Anomaly) []contracts.Finding {
 	bySeries := map[string][]contracts.Anomaly{}
 	for _, a := range all {

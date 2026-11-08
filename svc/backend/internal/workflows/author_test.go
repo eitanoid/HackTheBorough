@@ -26,10 +26,6 @@ const validScript = "df = INPUT['sources']['news']['records']\nresult = {'series
 
 var watermark = time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
 
-// ---- fakes ----
-
-// scriptedLLM answers each chat call with the next scripted reply and records
-// every request it receives.
 type scriptedLLM struct {
 	mu      sync.Mutex
 	replies []string
@@ -56,7 +52,6 @@ func (s *scriptedLLM) Chat(_ context.Context, req llm.ChatRequest) (llm.ChatResp
 
 func (s *scriptedLLM) calls() int { s.mu.Lock(); defer s.mu.Unlock(); return len(s.reqs) }
 
-// userMessage is the first user message of the n-th request.
 func (s *scriptedLLM) userMessage(n int) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -131,8 +126,6 @@ func (m *memAuthorStore) lastError() string {
 	return m.errs[len(m.errs)-1]
 }
 
-// ---- harness ----
-
 type harness struct {
 	author *Author
 	prov   *scriptedLLM
@@ -142,8 +135,6 @@ type harness struct {
 	pid    uuid.UUID
 }
 
-// newHarness builds an Author whose analyser runs `runner`. The project has two
-// sources keyed "news" and "trips", and data up to the watermark.
 func newHarness(t *testing.T, runner pyrunner.Runner, replies ...string) *harness {
 	t.Helper()
 	news := analysis.SourceMeta{ID: uuid.New(), Name: "News", Kind: "rss", CreatedAt: watermark.Add(-48 * time.Hour)}
@@ -192,7 +183,6 @@ func goodResult() contracts.ScriptResult {
 	}
 }
 
-// sequence returns a runner that answers with the given fakes in order.
 func sequence(fakes ...*pyrunnertest.Fake) *pyrunnertest.Fake {
 	var mu sync.Mutex
 	i := 0
@@ -217,8 +207,6 @@ func collect(ch <-chan events.Event, n int) []events.Event {
 	}
 	return out
 }
-
-// ---- tests ----
 
 func TestHappyPath(t *testing.T) {
 	runner := pyrunnertest.Returns(goodResult())

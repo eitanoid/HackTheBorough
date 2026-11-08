@@ -13,14 +13,10 @@ var authorSystem string
 //go:embed prompts/example_script.py
 var exampleScript string
 
-// systemPrompt is the role, contracts and rules, followed by the example
-// script verbatim.
 func systemPrompt() string {
 	return authorSystem + "```python\n" + strings.TrimRight(exampleScript, "\n") + "\n```\n"
 }
 
-// userPrompt describes this project's goal and sources. A regeneration adds
-// the previous script and the reviewer's reason.
 func userPrompt(in AuthorInputs, t *Trigger) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Goal: %s\n\nSources (use these keys in INPUT['sources']):\n", in.Goal)
@@ -54,8 +50,6 @@ func userPrompt(in AuthorInputs, t *Trigger) string {
 	return b.String()
 }
 
-// retryBlock is appended to the user prompt when the dry run failed. It shows
-// the author the error and its script, and nothing about results.
 func retryBlock(script, forAuthor string) string {
 	return fmt.Sprintf("\nYour script failed when run on the current data:\n\n%s\n\nThe script that failed:\n\n```python\n%s\n```\n\nFix it and reply with the complete corrected script.\n",
 		forAuthor, strings.TrimRight(script, "\n"))

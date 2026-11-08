@@ -10,15 +10,12 @@ import (
 	"hacktheburgh/backend/internal/contracts"
 )
 
-// Store reads what the analysis needs.
 type Store interface {
 	ProjectSources(ctx context.Context, projectID uuid.UUID) ([]SourceMeta, error)
 	Records(ctx context.Context, sourceIDs []uuid.UUID, from, to time.Time) (map[uuid.UUID][]Record, error)
 	MaxObservedAt(ctx context.Context, projectID uuid.UUID) (*time.Time, error)
 }
 
-// PgStore is the Postgres implementation: plain SQL over project_sources,
-// data_sources and data_records.
 type PgStore struct{ Pool *pgxpool.Pool }
 
 var _ Store = (*PgStore)(nil)

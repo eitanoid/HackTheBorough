@@ -14,7 +14,6 @@ import (
 	"hacktheburgh/backend/internal/contracts"
 )
 
-// AuthorSource is one source as the author's prompt describes it.
 type AuthorSource struct {
 	Key     string // key in INPUT['sources']
 	ID      uuid.UUID
@@ -26,7 +25,6 @@ type AuthorSource struct {
 	LastAt  time.Time
 }
 
-// AuthorInputs is what the author needs to know about a project.
 type AuthorInputs struct {
 	Goal        string
 	Sources     []AuthorSource
@@ -35,7 +33,6 @@ type AuthorInputs struct {
 	PrevVersion int     // 0 if none
 }
 
-// SaveVersion is one new statistical version together with its dry run.
 type SaveVersion struct {
 	ProjectID uuid.UUID
 	Draft     contracts.WorkflowDraft
@@ -54,7 +51,6 @@ type AuthorStore interface {
 	SetProjectError(ctx context.Context, projectID uuid.UUID, msg string) error
 }
 
-// PgAuthorStore is the Postgres AuthorStore.
 type PgAuthorStore struct {
 	Pool *pgxpool.Pool
 	// Sources supplies the project's sources; it is the same store the

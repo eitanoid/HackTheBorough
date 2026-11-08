@@ -79,7 +79,6 @@ func (s *Server) Routes() http.Handler {
 		s.registerAnalysisDebug(mux)
 	}
 
-	// Stubs: 501 until workstream A implements them.
 	// Legacy source REST routes remain temporarily available for existing clients.
 	mux.HandleFunc("POST /api/sources", s.createSource)
 	mux.HandleFunc("GET /api/sources", s.listSources)

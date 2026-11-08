@@ -1,5 +1,4 @@
 // Package pyrunner defines how the backend executes model-written Python.
-// The implementation is provided separately; this package has none.
 package pyrunner
 
 import (
@@ -8,7 +7,6 @@ import (
 	"time"
 )
 
-// Request is one execution of model-written code.
 type Request struct {
 	Code    string        // Python source
 	Input   any           // JSON-marshalable; the code sees it as the global dict INPUT

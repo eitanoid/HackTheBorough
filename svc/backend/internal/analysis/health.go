@@ -6,7 +6,6 @@ import (
 	"hacktheburgh/backend/internal/contracts"
 )
 
-// sourceHealth describes the records in one source's INPUT window.
 func sourceHealth(recs []InputRecord) contracts.SourceHealth {
 	h := contracts.SourceHealth{Records: len(recs)}
 	if len(recs) == 0 {
@@ -45,8 +44,6 @@ func payloadPaths(prefix string, v map[string]any, out map[string]bool) {
 	}
 }
 
-// unprofiledKeys lists payload paths seen in the window that the profile does
-// not describe, sorted. It is nil when there are none.
 func unprofiledKeys(src InputSource) []string {
 	profiled := make(map[string]bool, len(src.Fields))
 	for _, f := range src.Fields {
@@ -66,9 +63,6 @@ func unprofiledKeys(src InputSource) []string {
 	return out
 }
 
-// buildHealth computes Health from INPUT and the script's reported series.
-// Sources are keyed by source id; sources with nothing unprofiled are omitted
-// from UnprofiledKeys.
 func buildHealth(in Input, series []contracts.SeriesInfo) contracts.Health {
 	h := contracts.Health{
 		Series:         append([]contracts.SeriesInfo{}, series...),

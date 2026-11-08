@@ -8,13 +8,10 @@ import (
 	"time"
 )
 
-// MaxScriptChars is the longest script the author may write.
 const MaxScriptChars = 20000
 
-// MaxAnomalies is the most anomalies a script may report.
 const MaxAnomalies = 50
 
-// MaxChartPoints is the most points one chart may carry.
 const MaxChartPoints = 500
 
 var (
@@ -42,8 +39,6 @@ var (
 	}
 )
 
-// Validate checks the draft is usable. Semantic checks (the script runs and
-// produces a valid result) happen in the author's dry run through the runner.
 func (d WorkflowDraft) Validate() error {
 	if strings.TrimSpace(d.Script) == "" {
 		return fmt.Errorf("script is empty")
@@ -72,7 +67,6 @@ var keyRe = regexp.MustCompile(`^[a-z0-9_:+\-]{1,120}$`)
 
 var grains = map[string]bool{"hour": true, "day": true, "week": true}
 
-// chartColumns are the columns each chart type must carry.
 var chartColumns = map[string][]string{
 	"dual_line":    {"t", "a", "b"},
 	"lag_scatter":  {"x", "y"},

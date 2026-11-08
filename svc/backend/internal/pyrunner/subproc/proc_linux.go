@@ -10,7 +10,6 @@ import (
 	"syscall"
 )
 
-// cred is the identity jobs run as when the backend is root.
 type cred struct{ uid, gid uint32 }
 
 // dropTarget returns the unprivileged identity to run jobs as, or nil when the
@@ -31,8 +30,6 @@ func dropTarget() *cred {
 	return c
 }
 
-// prepare puts the child in its own process group and, when c is set, runs it
-// as that user with dir (its temp directory) handed over.
 func prepare(cmd *exec.Cmd, dir string, c *cred) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if c == nil {
@@ -45,14 +42,12 @@ func prepare(cmd *exec.Cmd, dir string, c *cred) error {
 	return nil
 }
 
-// killGroup kills the child and everything it started.
 func killGroup(cmd *exec.Cmd) {
 	if cmd.Process != nil {
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
 }
 
-// peakRSSKB is the child's peak resident memory in KB (0 if unknown).
 func peakRSSKB(ps *os.ProcessState) int64 {
 	if ps == nil {
 		return 0

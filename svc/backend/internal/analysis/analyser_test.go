@@ -57,8 +57,6 @@ func rec(id string, at time.Time, payload map[string]any) Record {
 	return Record{ExternalID: id, ObservedAt: at, Payload: payload}
 }
 
-// goodResult is a ScriptResult over the source keys "news" and "trips" that
-// passes validation and yields one finding.
 func goodResult() contracts.ScriptResult {
 	return contracts.ScriptResult{
 		Series: []contracts.SeriesInfo{
@@ -77,7 +75,6 @@ func newAnalyser(st Store, r pyrunner.Runner) *Analyser {
 		Timeout: 60 * time.Second, History: 90 * 24 * time.Hour, MaxTests: 2000}
 }
 
-// twoSources returns a project with a "News" and a "Trips" source.
 func twoSources() (uuid.UUID, *memStore, SourceMeta, SourceMeta) {
 	news, trips := source("News", 0, "title"), source("Trips", 1, "count")
 	pid := uuid.New()

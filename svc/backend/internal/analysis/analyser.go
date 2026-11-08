@@ -12,11 +12,8 @@ import (
 	"hacktheburgh/backend/internal/pyrunner"
 )
 
-// nanHint is appended to decode failures: the usual cause is a statistic that
-// came out undefined.
 const nanHint = "NaN and Infinity aren't valid JSON; skip tests whose statistic is undefined"
 
-// Analyser runs a statistical script against a project's data.
 type Analyser struct {
 	Store    Store
 	Runner   pyrunner.Runner
@@ -26,9 +23,6 @@ type Analyser struct {
 	MaxTests int
 }
 
-// Run builds INPUT up to dataUpTo, executes script, validates what it reports,
-// applies multiple-testing correction and returns the AnalysisResult.
-//
 // A *ScriptError means the script failed (raised, timed out, or reported an
 // invalid result). Any other error is infrastructure: the store or the runner
 // failed, and the script is not at fault.
@@ -63,7 +57,6 @@ func (a *Analyser) Run(ctx context.Context, projectID uuid.UUID, script string, 
 		return zero, &ScriptError{Kind: "raised", Traceback: out.Error}
 	}
 
-	// Unknown keys in result are ignored; stdout is ignored too.
 	var sr contracts.ScriptResult
 	if err := json.Unmarshal(out.Result, &sr); err != nil {
 		return zero, &ScriptError{Kind: "invalid_result", Message: fmt.Sprintf("%v. %s", err, nanHint)}

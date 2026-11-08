@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// ErrNoRunner means no pyrunner.Runner is wired in yet.
 var ErrNoRunner = errors.New("analysis: no Python runner is configured")
 
 // ScriptError is a failure of the author's script, as opposed to the runner

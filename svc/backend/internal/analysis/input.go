@@ -13,7 +13,6 @@ import (
 	"hacktheburgh/backend/internal/contracts"
 )
 
-// SourceMeta is a data source as the analysis sees it.
 type SourceMeta struct {
 	ID        uuid.UUID
 	Name      string
@@ -23,7 +22,6 @@ type SourceMeta struct {
 	CreatedAt time.Time
 }
 
-// Record is one data_records row.
 type Record struct {
 	ExternalID string
 	ObservedAt time.Time
@@ -54,8 +52,6 @@ type InputRecord struct {
 
 var nonAlnum = regexp.MustCompile(`[^a-z0-9]+`)
 
-// slug lowercases a name, replaces each run of non-alphanumerics with "_" and
-// trims "_"; an empty result becomes "source".
 func slug(name string) string {
 	s := strings.Trim(nonAlnum.ReplaceAllString(strings.ToLower(name), "_"), "_")
 	if s == "" {
@@ -64,7 +60,6 @@ func slug(name string) string {
 	return s
 }
 
-// sortedByCreation returns the sources ordered by (created_at, id).
 func sortedByCreation(sources []SourceMeta) []SourceMeta {
 	s := append([]SourceMeta(nil), sources...)
 	sort.SliceStable(s, func(i, j int) bool {

@@ -21,7 +21,6 @@ var (
 	ErrNoData = errors.New("project has no records yet")
 )
 
-// Trigger says why a generation was started.
 type Trigger struct {
 	ReviewID *uuid.UUID // nil: project created or manual regenerate
 	Reason   string     // the reviewer's reason, shown to the author
@@ -41,8 +40,7 @@ type Author struct {
 	Store    AuthorStore
 	Bus      *events.Bus
 	Budget   time.Duration
-	// OnFirstRun hands the dry run to the run loop's insight steps (narrate,
-	// store insights, review). Owned by runner.go; may be nil.
+	// OnFirstRun hands the dry run to the insight steps; may be nil.
 	OnFirstRun func(ctx context.Context, workflowID, runID uuid.UUID, res contracts.AnalysisResult)
 
 	mu       sync.Mutex
@@ -188,7 +186,6 @@ func reviewID(t *Trigger) *uuid.UUID {
 	return t.ReviewID
 }
 
-// fail records msg on the project, tells clients, and returns it as an error.
 func (a *Author) fail(ctx context.Context, projectID uuid.UUID, msg string) error {
 	a.recordFailure(ctx, projectID, msg)
 	return errors.New(msg)

@@ -24,5 +24,4 @@ func killGroup(cmd *exec.Cmd) {
 
 func peakRSSKB(ps *os.ProcessState) int64 { return 0 }
 
-// Harden is a no-op off Linux.
 func Harden() error { return nil }

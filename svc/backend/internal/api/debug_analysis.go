@@ -23,7 +23,6 @@ func (s *Server) registerAnalysisDebug(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/debug/projects/{id}/state", s.debugState)
 }
 
-// debugSeed replaces the demo project with fresh data and returns its ids.
 func (s *Server) debugSeed(w http.ResponseWriter, r *http.Request) {
 	seeded, err := demo.SeedStrikeDemo(r.Context(), s.Pool, time.Now())
 	if err != nil {
@@ -33,7 +32,6 @@ func (s *Server) debugSeed(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, seeded)
 }
 
-// debugGenerate runs the author synchronously and returns what it produced.
 // Add ?reason=... to run it as a regeneration (it needs an active version), and
 // ?model=... to author with a different model than configured.
 func (s *Server) debugGenerate(w http.ResponseWriter, r *http.Request) {
@@ -94,8 +92,6 @@ func (s *Server) debugState(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, state)
 }
 
-// loadDebugState reads the project, its active statistical workflow and that
-// workflow's newest run.
 func (s *Server) loadDebugState(r *http.Request, id uuid.UUID) (map[string]any, error) {
 	ctx := r.Context()
 	var name, goal string

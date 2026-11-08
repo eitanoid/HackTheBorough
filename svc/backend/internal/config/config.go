@@ -8,8 +8,8 @@ import (
 )
 
 type Config struct {
-	Addr        string
-	DatabaseURL string
+	Addr             string
+	DatabaseURL      string
 	Crawl4AIURL      string
 	Crawl4AIToken    string
 	Crawl4AIProvider string
@@ -29,7 +29,6 @@ type Config struct {
 	ModelReviewer     string
 	ModelNarrator     string
 
-	// Python runner (restricted child processes of the backend).
 	PythonBin           string
 	RunnerMaxConcurrent int
 	RunnerMemMB         int

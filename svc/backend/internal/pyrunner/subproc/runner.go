@@ -1,7 +1,7 @@
 // Package subproc is the Python runner: it executes model-written code in a
 // fresh restricted child process of the backend, one process per job.
 //
-// Isolation is deliberately light (see python-runner-plan.md): a scrubbed
+// Isolation is deliberately light: a scrubbed
 // environment, its own process group, rlimits, a private temp directory, a
 // run-as-nobody drop when the backend is root, and a soft audit hook inside
 // the child. It limits accidents and casual misuse of model-written code; it
@@ -36,7 +36,6 @@ const (
 	stderrKeep     = 4 << 10
 )
 
-// Config tunes a Runner. Zero values take the defaults.
 type Config struct {
 	Python        string // interpreter; "python3" if empty
 	MaxConcurrent int    // jobs at once; 2 if zero
@@ -46,7 +45,6 @@ type Config struct {
 	Logger        *slog.Logger
 }
 
-// Runner implements pyrunner.Runner with restricted child processes.
 type Runner struct {
 	cfg    Config
 	sem    chan struct{}
@@ -57,7 +55,6 @@ type Runner struct {
 
 var _ pyrunner.Runner = (*Runner)(nil)
 
-// New builds a Runner. Call SelfCheck before relying on it.
 func New(cfg Config) *Runner {
 	if cfg.Python == "" {
 		cfg.Python = "python3"
@@ -99,9 +96,7 @@ func (r *Runner) SelfCheck(ctx context.Context) (map[string]string, error) {
 	return v, nil
 }
 
-// Run executes one job. Only a failure of the machinery is an error.
 func (r *Runner) Run(ctx context.Context, req pyrunner.Request) (pyrunner.Outcome, error) {
-	// Admission: wait for a slot until the caller gives up.
 	select {
 	case r.sem <- struct{}{}:
 		defer func() { <-r.sem }()
@@ -236,7 +231,6 @@ func (r *Runner) run(ctx context.Context, req pyrunner.Request) (out pyrunner.Ou
 	return out, "", len(in), rssKB, fmt.Errorf("subproc: no usable reply (exit %s): %s", exitString(cmd.ProcessState), stderr.String())
 }
 
-// childEnv is everything the child gets: nothing is inherited.
 func childEnv(dir string) []string {
 	env := []string{
 		"PATH=/usr/local/bin:/usr/bin:/bin",
@@ -270,7 +264,6 @@ func exitString(ps *os.ProcessState) string {
 	return strconv.Itoa(ps.ExitCode())
 }
 
-// tailBuffer keeps the last max bytes written to it (the child's stderr).
 type tailBuffer struct {
 	max int
 	buf []byte

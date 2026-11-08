@@ -17,7 +17,6 @@ import (
 )
 
 const (
-	// ProjectName identifies the demo project so a reseed can replace it.
 	ProjectName = "Debug demo: strikes vs bus trips"
 	Goal        = "Do bus strike announcements in the local news lead to fewer bus trips, and if so how many days later? Also flag anything unusual in recent trips."
 
@@ -29,7 +28,6 @@ const (
 	seed = 42
 )
 
-// Seeded describes what a seed created.
 type Seeded struct {
 	ProjectID uuid.UUID      `json:"project_id"`
 	DataUpTo  time.Time      `json:"data_up_to"`
@@ -78,7 +76,6 @@ func SeedStrikeDemo(ctx context.Context, pool *pgxpool.Pool, now time.Time) (See
 	}
 	defer tx.Rollback(context.WithoutCancel(ctx))
 
-	// Drop the previous demo project and the sources it owned.
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM data_sources WHERE id IN (
 			SELECT ps.data_source_id FROM project_sources ps JOIN projects p ON p.id = ps.project_id WHERE p.name = $1)`,
@@ -155,7 +152,6 @@ var (
 	outlets = []string{"Edinburgh Echo", "Lothian Post", "Capital Times"}
 )
 
-// build generates the three sources for the `days` days ending at `end` (inclusive).
 func build(end time.Time) []source {
 	rng := rand.New(rand.NewSource(seed))
 	start := end.AddDate(0, 0, -(days - 1))
@@ -168,7 +164,6 @@ func build(end time.Time) []source {
 		profile: contracts.SourceProfile{
 			Summary: "Local news headlines from Edinburgh outlets.",
 			Fields:  []contracts.FieldProfile{{Path: "title", Role: "text", Description: "Headline text"}},
-			// outlet is deliberately left out of the profile: the health report should flag it.
 		},
 	}
 	trips := source{
