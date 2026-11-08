@@ -20,14 +20,17 @@ import (
 	"hacktheburgh/backend/internal/contracts"
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/ingest"
+	"hacktheburgh/backend/internal/workflows"
 )
 
 // ConnectService implements the browser-facing RPCs. Project creation persists
-// the project and its source links; workflow generation, regeneration, and
-// replay still require domain services that are not configured.
+// the project and its source links, then starts statistical workflow generation
+// when an author is configured.
 type ConnectService struct {
-	Store *ingest.Store
-	Bus   *events.Bus
+	Store  *ingest.Store
+	Bus    *events.Bus
+	Author *workflows.Author
+	Runner *workflows.Runner
 }
 
 var _ v1connect.AnduinServiceHandler = (*ConnectService)(nil)

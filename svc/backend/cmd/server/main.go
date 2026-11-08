@@ -56,8 +56,6 @@ func main() {
 	loop := ingest.NewLoop(store, bus, adapters, cfg.IngestTick, cfg.IngestMaxPar)
 	go loop.Run(ctx)
 
-	// TODO: start the run loop.
-
 	llmClient, err := llm.New(cfg)
 	if err != nil {
 		// Keep serving without an LLM so the rest of the app still works.
@@ -90,33 +88,47 @@ func main() {
 		slog.Warn("ANALYSIS_DEBUG is on: debug endpoints are exposed")
 	}
 	var author *workflows.Author
+	analysisStore := &analysis.PgStore{Pool: pool}
+	analyser := &analysis.Analyser{
+		Store:    analysisStore,
+		Runner:   runner,
+		Th:       analysis.Thresholds{FDRQ: cfg.FDRQ, MinN: cfg.MinN},
+		Timeout:  cfg.ScriptTimeout,
+		History:  cfg.AnalysisHistory,
+		MaxTests: cfg.MaxTests,
+	}
+	insightBuilder := &workflows.InsightBuilder{
+		Store: &workflows.PgInsightStore{Pool: pool},
+	}
 	if llmClient != nil {
-		analysisStore := &analysis.PgStore{Pool: pool}
+		insightBuilder.Narrator = &narration.Narrator{LLM: llmClient}
+		insightBuilder.MaxNarrations = cfg.MaxNarrations
+		insightBuilder.Chart = charts.Build
 		author = &workflows.Author{
-			LLM: llmClient,
-			Analyser: &analysis.Analyser{
-				Store:    analysisStore,
-				Runner:   runner,
-				Th:       analysis.Thresholds{FDRQ: cfg.FDRQ, MinN: cfg.MinN},
-				Timeout:  cfg.ScriptTimeout,
-				History:  cfg.AnalysisHistory,
-				MaxTests: cfg.MaxTests,
-			},
-			Store:  &workflows.PgAuthorStore{Pool: pool, Sources: analysisStore},
-			Bus:    bus,
-			Budget: cfg.AuthorBudget,
-			Insights: &workflows.InsightBuilder{
-				Store:         &workflows.PgInsightStore{Pool: pool},
-				Narrator:      &narration.Narrator{LLM: llmClient},
-				MaxNarrations: cfg.MaxNarrations,
-				Chart:         charts.Build,
-			},
+			LLM:      llmClient,
+			Analyser: analyser,
+			Store:    &workflows.PgAuthorStore{Pool: pool, Sources: analysisStore},
+			Bus:      bus,
+			Budget:   cfg.AuthorBudget,
+			Insights: insightBuilder,
 		}
 	}
 
+	runLoop := &workflows.Runner{
+		Store:         &workflows.PgRunStore{Pool: pool, Sources: analysisStore},
+		Analyser:      analyser,
+		Insights:      insightBuilder,
+		Author:        author,
+		Bus:           bus,
+		SweepInterval: cfg.RunSweep,
+		Debounce:      cfg.RunDebounce,
+	}
+	runLoop.SetServiceContext(ctx)
+	go runLoop.Run(ctx)
+
 	srv := &http.Server{Addr: cfg.Addr, Handler: (&api.Server{
 		Bus: bus, LLM: llmClient, Author: author, DebugLLM: cfg.LLMDebug,
-		AnalysisDebug: cfg.AnalysisDebug, Pool: pool, Store: store, Ingest: loop,
+		AnalysisDebug: cfg.AnalysisDebug, Pool: pool, Store: store, Ingest: loop, Runner: runLoop,
 	}).Routes()}
 	go func() {
 		slog.Info("backend listening", "addr", cfg.Addr)

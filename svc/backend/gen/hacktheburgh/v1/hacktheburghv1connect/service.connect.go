@@ -42,6 +42,8 @@ const (
 	AnduinServiceGetProjectProcedure = "/hacktheburgh.v1.AnduinService/GetProject"
 	// AnduinServiceListInsightsProcedure is the procedure name of the AnduinService's ListInsights RPC.
 	AnduinServiceListInsightsProcedure = "/hacktheburgh.v1.AnduinService/ListInsights"
+	// AnduinServiceRunWorkflowProcedure is the procedure name of the AnduinService's RunWorkflow RPC.
+	AnduinServiceRunWorkflowProcedure = "/hacktheburgh.v1.AnduinService/RunWorkflow"
 	// AnduinServiceListWorkflowsProcedure is the procedure name of the AnduinService's ListWorkflows
 	// RPC.
 	AnduinServiceListWorkflowsProcedure = "/hacktheburgh.v1.AnduinService/ListWorkflows"
@@ -112,6 +114,13 @@ var (
 			Procedure:  AnduinServiceListInsightsProcedure,
 		}
 	})
+	anduinServiceRunWorkflowSpec = sync.OnceValue(func() connect.Spec {
+		return connect.Spec{
+			StreamType: connect.StreamTypeUnary,
+			Schema:     v1.File_hacktheburgh_v1_service_proto.Services().ByName("AnduinService").Methods().ByName("RunWorkflow"),
+			Procedure:  AnduinServiceRunWorkflowProcedure,
+		}
+	})
 	anduinServiceListWorkflowsSpec = sync.OnceValue(func() connect.Spec {
 		return connect.Spec{
 			StreamType: connect.StreamTypeUnary,
@@ -152,6 +161,7 @@ type AnduinServiceClient interface {
 	ListProjects(context.Context, *v1.ListProjectsRequest) (*v1.ListProjectsResponse, error)
 	GetProject(context.Context, *v1.GetProjectRequest) (*v1.GetProjectResponse, error)
 	ListInsights(context.Context, *v1.ListInsightsRequest) (*v1.ListInsightsResponse, error)
+	RunWorkflow(context.Context, *v1.RunWorkflowRequest) (*v1.RunWorkflowResponse, error)
 	ListWorkflows(context.Context, *v1.ListWorkflowsRequest) (*v1.ListWorkflowsResponse, error)
 	ListWorkflowSteps(context.Context, *v1.ListWorkflowStepsRequest) (*v1.ListWorkflowStepsResponse, error)
 	RegenerateWorkflow(context.Context, *v1.RegenerateWorkflowRequest) (*v1.RegenerateWorkflowResponse, error)
@@ -174,6 +184,7 @@ type AnduinServiceHandler interface {
 	ListProjects(context.Context, *v1.ListProjectsRequest) (*v1.ListProjectsResponse, error)
 	GetProject(context.Context, *v1.GetProjectRequest) (*v1.GetProjectResponse, error)
 	ListInsights(context.Context, *v1.ListInsightsRequest) (*v1.ListInsightsResponse, error)
+	RunWorkflow(context.Context, *v1.RunWorkflowRequest) (*v1.RunWorkflowResponse, error)
 	ListWorkflows(context.Context, *v1.ListWorkflowsRequest) (*v1.ListWorkflowsResponse, error)
 	ListWorkflowSteps(context.Context, *v1.ListWorkflowStepsRequest) (*v1.ListWorkflowStepsResponse, error)
 	RegenerateWorkflow(context.Context, *v1.RegenerateWorkflowRequest) (*v1.RegenerateWorkflowResponse, error)
@@ -193,6 +204,7 @@ func RegisterAnduinServiceHandler(server *connect.Server, svc AnduinServiceHandl
 		connect.Method{Spec: anduinServiceListProjectsSpec(), Handler: adapter.listProjects},
 		connect.Method{Spec: anduinServiceGetProjectSpec(), Handler: adapter.getProject},
 		connect.Method{Spec: anduinServiceListInsightsSpec(), Handler: adapter.listInsights},
+		connect.Method{Spec: anduinServiceRunWorkflowSpec(), Handler: adapter.runWorkflow},
 		connect.Method{Spec: anduinServiceListWorkflowsSpec(), Handler: adapter.listWorkflows},
 		connect.Method{Spec: anduinServiceListWorkflowStepsSpec(), Handler: adapter.listWorkflowSteps},
 		connect.Method{Spec: anduinServiceRegenerateWorkflowSpec(), Handler: adapter.regenerateWorkflow},
@@ -233,6 +245,10 @@ func (UnimplementedAnduinServiceHandler) GetProject(context.Context, *v1.GetProj
 
 func (UnimplementedAnduinServiceHandler) ListInsights(context.Context, *v1.ListInsightsRequest) (*v1.ListInsightsResponse, error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, "hacktheburgh.v1.AnduinService.ListInsights is not implemented")
+}
+
+func (UnimplementedAnduinServiceHandler) RunWorkflow(context.Context, *v1.RunWorkflowRequest) (*v1.RunWorkflowResponse, error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, "hacktheburgh.v1.AnduinService.RunWorkflow is not implemented")
 }
 
 func (UnimplementedAnduinServiceHandler) ListWorkflows(context.Context, *v1.ListWorkflowsRequest) (*v1.ListWorkflowsResponse, error) {
@@ -314,6 +330,14 @@ func (c *anduinServiceClient) GetProject(ctx context.Context, req *v1.GetProject
 func (c *anduinServiceClient) ListInsights(ctx context.Context, req *v1.ListInsightsRequest) (*v1.ListInsightsResponse, error) {
 	var res v1.ListInsightsResponse
 	if err := c.client.CallUnary(ctx, anduinServiceListInsightsSpec(), req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+func (c *anduinServiceClient) RunWorkflow(ctx context.Context, req *v1.RunWorkflowRequest) (*v1.RunWorkflowResponse, error) {
+	var res v1.RunWorkflowResponse
+	if err := c.client.CallUnary(ctx, anduinServiceRunWorkflowSpec(), req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -443,6 +467,18 @@ func (h anduinServiceHandler) listInsights(ctx context.Context, _ connect.Spec, 
 		return err
 	}
 	res, err := h.svc.ListInsights(ctx, &req)
+	if err != nil {
+		return err
+	}
+	return stream.Send(res)
+}
+
+func (h anduinServiceHandler) runWorkflow(ctx context.Context, _ connect.Spec, stream connect.ServerStream) error {
+	var req v1.RunWorkflowRequest
+	if err := stream.Receive(&req); err != nil {
+		return err
+	}
+	res, err := h.svc.RunWorkflow(ctx, &req)
 	if err != nil {
 		return err
 	}

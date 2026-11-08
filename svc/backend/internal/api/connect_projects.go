@@ -5,16 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect/v2"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	v1 "hacktheburgh/backend/gen/hacktheburgh/v1"
 	"hacktheburgh/backend/internal/events"
+	"hacktheburgh/backend/internal/workflows"
 )
 
 func (s *ConnectService) CreateProject(ctx context.Context, req *v1.CreateProjectRequest) (*v1.CreateProjectResponse, error) {
@@ -91,8 +94,16 @@ func (s *ConnectService) CreateProject(ctx context.Context, req *v1.CreateProjec
 	project.LastError = stringValue(lastError)
 	project.CreatedAt = timestamppb.New(createdAt)
 
-	// Workflow generation and run scheduling are separate services that are not
-	// wired yet, so the response intentionally contains only the persisted project.
+	// Generate the initial statistical workflow asynchronously. If the sources
+	// are empty, Author returns without saving; the workflow runner retries once
+	// data arrives (and its ticker recovers missed source events).
+	if s.Author != nil {
+		if id, err := uuid.Parse(project.Id); err == nil {
+			if err := s.Author.Start(id, nil); err != nil && !errors.Is(err, workflows.ErrBusy) {
+				slog.Warn("could not start initial statistical workflow", "project", id, "err", err)
+			}
+		}
+	}
 	if s.Bus != nil {
 		s.Bus.Publish(events.Event{Type: events.ProjectUpdated, ID: project.Id})
 	}
@@ -183,6 +194,44 @@ func (s *ConnectService) GetProject(ctx context.Context, req *v1.GetProjectReque
 		response.Funnel = analysisFunnel(result)
 	}
 	return response, nil
+}
+
+func (s *ConnectService) RunWorkflow(ctx context.Context, req *v1.RunWorkflowRequest) (*v1.RunWorkflowResponse, error) {
+	if s.Store == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, "database unavailable")
+	}
+	if s.Runner == nil {
+		return nil, connect.NewError(connect.CodeUnavailable, "workflow runner is not configured")
+	}
+	projectID := strings.TrimSpace(req.GetProjectId())
+	if projectID == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "project_id is required")
+	}
+	id, err := uuid.Parse(projectID)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "project_id must be a UUID")
+	}
+	if req.GetKind() != v1.WorkflowKind_WORKFLOW_KIND_STATISTICAL {
+		return nil, connect.NewError(connect.CodeInvalidArgument, "only statistical workflows can be run manually")
+	}
+	if err := s.ensureExists(ctx, "projects", projectID, "project"); err != nil {
+		return nil, err
+	}
+	if err := s.Runner.ForceRun(ctx, id); err != nil {
+		switch {
+		case errors.Is(err, workflows.ErrBusy):
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "the statistical workflow is already running")
+		case errors.Is(err, workflows.ErrNoData):
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "the project has no data to analyze")
+		case errors.Is(err, workflows.ErrNoActiveStatisticalWorkflow):
+			return nil, connect.NewError(connect.CodeFailedPrecondition, "the project has no active statistical workflow")
+		case errors.Is(err, workflows.ErrRunnerNotRunning):
+			return nil, connect.NewError(connect.CodeUnavailable, err.Error())
+		default:
+			return nil, internalError(err)
+		}
+	}
+	return &v1.RunWorkflowResponse{Accepted: true, Message: "statistical workflow run queued"}, nil
 }
 
 func (s *ConnectService) ListInsights(ctx context.Context, req *v1.ListInsightsRequest) (*v1.ListInsightsResponse, error) {
