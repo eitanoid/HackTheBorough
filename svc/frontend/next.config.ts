@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
   async rewrites() {
@@ -11,6 +10,8 @@ const nextConfig: NextConfig = {
         source: "/rpc/:path*",
         destination: `${backendURL}/:path*`,
       },
+      { source: "/api/sources", destination: `${backendURL}/api/sources` },
+      { source: "/api/sources/:path*", destination: `${backendURL}/api/sources/:path*` },
     ];
   },
   turbopack: {

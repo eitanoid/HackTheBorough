@@ -1,0 +1,76 @@
+{
+  "data_up_to": "2026-11-01T00:00:00Z",
+  "findings": [
+    {
+      "finding_key": "corr:strike_news:trips:lag+2",
+      "kind": "correlation",
+      "series": [
+        "strike_news",
+        "trips"
+      ],
+      "stats": {
+        "effect": -0.42,
+        "lag": 2,
+        "n": 88,
+        "p": 0.0004,
+        "q": 0.004,
+        "rho": -0.42
+      },
+      "chart": {
+        "type": "lag_scatter",
+        "points": [
+          {
+            "x": 1.5,
+            "y": null
+          },
+          {
+            "x": 2,
+            "y": 3.25
+          }
+        ]
+      }
+    }
+  ],
+  "funnel": {
+    "kept": 1,
+    "passed_fdr": 1,
+    "raw_p_lt_05": 1,
+    "tests_run": 15
+  },
+  "rejected": [],
+  "health": {
+    "series": [
+      {
+        "id": "strike_news",
+        "label": "Strike news",
+        "source": "news",
+        "unit": "articles",
+        "grain": "day",
+        "periods": 90,
+        "points": 90
+      },
+      {
+        "id": "trips",
+        "label": "Trips",
+        "source": "trips",
+        "unit": null,
+        "grain": "day",
+        "periods": 90,
+        "points": 88
+      }
+    ],
+    "sources": {
+      "news": {
+        "records": 400,
+        "first_at": "2026-08-03T00:00:00Z",
+        "last_at": "2026-11-01T00:00:00Z",
+        "median_gap_s": 3600
+      }
+    },
+    "unprofiled_keys": {
+      "news": [
+        "extra.field"
+      ]
+    }
+  }
+}

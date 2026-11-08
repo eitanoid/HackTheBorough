@@ -1,4 +1,5 @@
 import NewProjectLauncher from "@/components/new-project-launcher";
+import SourceManager from "@/components/source-manager";
 
 function NavigationIcon({ kind }: { kind: "overview" | "sources" | "findings" | "plan" }) {
   if (kind === "overview") {
@@ -127,7 +128,7 @@ export default function Home() {
             <NavigationIcon kind="overview" /> <span>Overview</span>
           </a>
           <a className="nav-link" href="#sources">
-            <NavigationIcon kind="sources" /> <span>Sources</span><span className="nav-count">3</span>
+            <NavigationIcon kind="sources" /> <span>Sources</span>
           </a>
           <a className="nav-link" href="#findings">
             <NavigationIcon kind="findings" /> <span>Findings</span><span className="nav-count">2</span>
@@ -176,17 +177,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="source-row" id="sources" aria-labelledby="sources-heading">
-            <div className="source-row-heading">
-              <div><span className="eyebrow">CONNECTED SOURCES</span><h2 id="sources-heading">A fuller picture, from three feeds</h2></div>
-              <a className="text-link" href="#sources-list">View sources <span aria-hidden="true">→</span></a>
-            </div>
-            <div className="source-list" id="sources-list">
-              <div className="source-item"><span className="source-icon source-csv">CSV</span><span><strong>Bike hire activity</strong><small>Daily counts · 180 days</small></span><i className="source-check">✓</i></div>
-              <div className="source-item"><span className="source-icon source-weather">°</span><span><strong>Local weather</strong><small>Temperature &amp; rainfall</small></span><i className="source-check">✓</i></div>
-              <div className="source-item"><span className="source-icon source-rss">RSS</span><span><strong>City news feed</strong><small>Contextual headlines</small></span><i className="source-check">✓</i></div>
-            </div>
-          </section>
+          <SourceManager />
 
           <section className="funnel-section" aria-labelledby="funnel-heading">
             <div className="section-heading">

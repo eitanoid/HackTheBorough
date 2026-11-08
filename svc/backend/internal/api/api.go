@@ -6,22 +6,32 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"connectrpc.com/connect/v2"
 	"connectrpc.com/connect/v2/connecthttp"
 	v1connect "hacktheburgh/backend/gen/hacktheburgh/v1/hacktheburghv1connect"
 	"hacktheburgh/backend/internal/events"
 	"hacktheburgh/backend/internal/ingest"
 	"hacktheburgh/backend/internal/llm"
+	"hacktheburgh/backend/internal/workflows"
 )
 
 type Server struct {
 	Bus *events.Bus
 	LLM *llm.Client // nil disables /api/debug/chat
+	// Author generates statistical workflows; nil when the LLM is not
+	// configured. The project-create and regenerate handlers call Author.Start.
+	Author *workflows.Author
 	// DebugLLM enables /api/debug/chat, which spends the API key on any caller.
 	DebugLLM bool
 
 	Store  *ingest.Store
 	Ingest *ingest.Loop
+	// AnalysisDebug enables the /api/debug seed/generate/state endpoints,
+	// which write to Pool and spend LLM budget for any caller.
+	AnalysisDebug bool
+	Pool          *pgxpool.Pool
 }
 
 type debugChatReq struct {
@@ -64,6 +74,10 @@ func (s *Server) Routes() http.Handler {
 	connectServer := connect.NewServer()
 	v1connect.RegisterAnduinServiceHandler(connectServer, &ConnectService{Store: s.Store, Bus: s.Bus})
 	connecthttp.Mount(mux, connectServer, connecthttp.WithReadMaxBytes(ingest.MaxCSVBytes*4/3+(1<<20)))
+
+	if s.AnalysisDebug && s.Pool != nil {
+		s.registerAnalysisDebug(mux)
+	}
 
 	// Legacy source REST routes remain temporarily available for existing clients.
 	mux.HandleFunc("POST /api/sources", s.createSource)
