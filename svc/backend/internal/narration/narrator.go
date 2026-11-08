@@ -19,6 +19,26 @@ type Narrator struct {
 	LLM *llm.Client // nil: every finding gets template text, no calls
 }
 
+// WithModel returns a Narrator that shares this one's client but asks for
+// `model`. It is for experiments (the debug endpoint's ?model=).
+func (n *Narrator) WithModel(model string) *Narrator {
+	if n == nil || n.LLM == nil {
+		return n
+	}
+	c := *n.LLM
+	c.Models = make(map[llm.Purpose]string, len(n.LLM.Models))
+	for p, m := range n.LLM.Models {
+		c.Models[p] = m
+	}
+	c.Models[llm.Narrator] = model
+	return &Narrator{LLM: &c}
+}
+
+// Prompts returns the system and user messages the narrator would send for fs.
+func Prompts(c Context, fs []contracts.Finding) (system, user string) {
+	return systemPrompt(), userPrompt(c, fs)
+}
+
 // Narrate writes text for each finding. It never fails: any finding the model
 // doesn't narrate acceptably gets Template text. At most one Generate call
 // (two model calls with its internal retry).

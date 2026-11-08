@@ -325,7 +325,7 @@ func TestNarrationContext(t *testing.T) {
 		{ID: "t", Label: "Trips", Source: "trips", Unit: &unit, Grain: "day"},
 	}}}
 	sources := []AuthorSource{{Key: "trips", Profile: contracts.SourceProfile{Summary: "Daily trips"}}}
-	c := narrationContext("goal", "focus", sources, res)
+	c := NarrationContext("goal", "focus", sources, res)
 	s := c.Series["t"]
 	if c.Goal != "goal" || c.InsightPrompt != "focus" || s.Label != "Trips" || s.Grain != "day" || s.SourceSummary != "Daily trips" || *s.Unit != "trips" {
 		t.Errorf("context = %+v", c)

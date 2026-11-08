@@ -168,7 +168,7 @@ func (a *Author) Generate(ctx context.Context, projectID uuid.UUID, t *Trigger) 
 	// transaction, so the dashboard never shows a succeeded run with no cards.
 	var rows []InsightRow
 	if a.Insights != nil {
-		rows = a.Insights.Build(ctx, projectID, narrationContext(in.Goal, draft.InsightPrompt, in.Sources, res), res)
+		rows = a.Insights.Build(ctx, projectID, NarrationContext(in.Goal, draft.InsightPrompt, in.Sources, res), res)
 	}
 	wf, run, err := a.Store.SaveVersion(ctx, SaveVersion{
 		ProjectID: projectID, Draft: draft, SourceIDs: in.SourceIDs, DataUpTo: watermark,

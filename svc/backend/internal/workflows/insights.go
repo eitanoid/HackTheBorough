@@ -152,10 +152,10 @@ func magnitude(f contracts.Finding) float64 {
 	return v
 }
 
-// narrationContext builds the narrator's view of the project from what the
+// NarrationContext builds the narrator's view of the project from what the
 // author or the run loop already holds. Series come from the analysis health;
 // each series' description is its source profile's summary.
-func narrationContext(goal, insightPrompt string, sources []AuthorSource, res contracts.AnalysisResult) narration.Context {
+func NarrationContext(goal, insightPrompt string, sources []AuthorSource, res contracts.AnalysisResult) narration.Context {
 	summaries := make(map[string]string, len(sources))
 	for _, s := range sources {
 		summaries[s.Key] = s.Profile.Summary
@@ -167,4 +167,52 @@ func narrationContext(goal, insightPrompt string, sources []AuthorSource, res co
 		}
 	}
 	return narration.Context{Goal: goal, InsightPrompt: insightPrompt, Series: series}
+}
+
+// PreviewCard is one finding as the narrator would see it and answer it.
+type PreviewCard struct {
+	FindingKey string         `json:"finding_key"`
+	Kind       string         `json:"kind"`
+	Direction  string         `json:"direction"`
+	Leader     *string        `json:"leader"`
+	Stats      map[string]any `json:"stats"`
+	Narrated   bool           `json:"narrated"` // went to the narrator (the rest got template text)
+	narration.Text
+}
+
+// NarrationPreview is the result of Preview: nothing in it is stored.
+type NarrationPreview struct {
+	System string        `json:"system_prompt"`
+	User   string        `json:"user_prompt"`
+	Cards  []PreviewCard `json:"cards"`
+}
+
+// Preview narrates the findings like Build would for new findings (ranked,
+// capped at MaxNarrations, the rest templated) but ignores earlier texts and
+// stores nothing. `model` overrides the narrator model when not empty.
+func (b *InsightBuilder) Preview(ctx context.Context, c narration.Context, fs []contracts.Finding, model string) NarrationPreview {
+	fs = slices.Clone(fs)
+	rank(fs)
+	limit := max(b.MaxNarrations, 0)
+	toNarrate := fs[:min(limit, len(fs))]
+	narrator := b.Narrator
+	if model != "" {
+		narrator = narrator.WithModel(model)
+	}
+	texts := narrator.Narrate(ctx, c, toNarrate)
+	p := NarrationPreview{Cards: make([]PreviewCard, 0, len(fs))}
+	p.System, p.User = narration.Prompts(c, toNarrate)
+	for i, f := range fs {
+		card := PreviewCard{FindingKey: f.FindingKey, Kind: f.Kind, Direction: narration.Direction(f), Stats: f.Stats, Narrated: i < len(toNarrate)}
+		if l := narration.Leader(f); l != nil {
+			card.Leader = l
+		}
+		if t, ok := texts[f.FindingKey]; ok {
+			card.Text = t
+		} else {
+			card.Text = narration.Template(c, f)
+		}
+		p.Cards = append(p.Cards, card)
+	}
+	return p
 }
