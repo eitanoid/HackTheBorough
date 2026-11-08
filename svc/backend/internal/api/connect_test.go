@@ -71,6 +71,26 @@ func TestConnectSourceErrors(t *testing.T) {
 	})
 }
 
+func TestConnectCreateProjectValidation(t *testing.T) {
+	svc := &ConnectService{Store: &ingest.Store{}}
+	tests := []struct {
+		name string
+		req  *v1.CreateProjectRequest
+	}{
+		{name: "missing name", req: &v1.CreateProjectRequest{Goal: "Explore data", SourceIds: []string{"id"}}},
+		{name: "missing goal", req: &v1.CreateProjectRequest{Name: "Project", SourceIds: []string{"id"}}},
+		{name: "missing sources", req: &v1.CreateProjectRequest{Name: "Project", Goal: "Explore data"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := svc.CreateProject(context.Background(), test.req)
+			if got := connect.CodeOf(err); got != connect.CodeInvalidArgument {
+				t.Fatalf("code = %v, want InvalidArgument; err=%v", got, err)
+			}
+		})
+	}
+}
+
 func TestConnectHTTPRoutes(t *testing.T) {
 	t.Run("unavailable dependency", func(t *testing.T) {
 		httpServer := httptest.NewServer((&Server{}).Routes())
@@ -245,5 +265,50 @@ func TestConnectProjectReadRPCsIntegration(t *testing.T) {
 	}
 	if len(steps.GetSteps()) != 1 || steps.GetSteps()[0].GetOutput().GetFields()["records"].GetNumberValue() != 2 {
 		t.Fatalf("steps = %#v", steps.GetSteps())
+	}
+}
+
+func TestConnectCreateProjectIntegration(t *testing.T) {
+	pool := testdb.Open(t)
+	store := ingest.NewStore(pool)
+	source, err := store.CreateSource(context.Background(), "Source for project", "rss", []byte(`{"url":"https://example.com/feed.xml"}`), intPtr(300))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	httpServer := httptest.NewServer((&Server{Store: store}).Routes())
+	t.Cleanup(httpServer.Close)
+	client := connectTestClient(t, httpServer)
+
+	created, err := client.CreateProject(context.Background(), &v1.CreateProjectRequest{
+		Name: "Mobility study", Goal: "Understand travel patterns", SourceIds: []string{source.ID},
+	})
+	if err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+	project := created.GetProject()
+	if project.GetId() == "" || project.GetName() != "Mobility study" || project.GetGoal() != "Understand travel patterns" {
+		t.Fatalf("project = %#v", project)
+	}
+	if len(project.GetSourceIds()) != 1 || project.GetSourceIds()[0] != source.ID {
+		t.Fatalf("source ids = %v, want [%s]", project.GetSourceIds(), source.ID)
+	}
+	if created.ActiveWorkflow != nil || created.LatestRun != nil {
+		t.Fatalf("workflows/runs should be absent until orchestration is wired: %#v", created)
+	}
+
+	detail, err := client.GetProject(context.Background(), &v1.GetProjectRequest{Id: project.GetId()})
+	if err != nil {
+		t.Fatalf("GetProject after create: %v", err)
+	}
+	if detail.GetProject().GetId() != project.GetId() || len(detail.GetActiveWorkflows()) != 0 {
+		t.Fatalf("project detail = %#v", detail)
+	}
+
+	_, err = client.CreateProject(context.Background(), &v1.CreateProjectRequest{
+		Name: "Invalid project", Goal: "Uses missing source", SourceIds: []string{"00000000-0000-0000-0000-000000000000"},
+	})
+	if got := connect.CodeOf(err); got != connect.CodeInvalidArgument {
+		t.Fatalf("missing source code = %v, want InvalidArgument; err=%v", got, err)
 	}
 }
