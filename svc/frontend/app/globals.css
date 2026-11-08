@@ -285,6 +285,9 @@ h1, h2, h3, p { margin-top: 0; }
 .source-profile-summary code { color: #426c55; font-size: 9px; }
 .source-detail-loading { display: flex; align-items: center; gap: 8px; padding: 20px 0; color: #82938a; font-size: 10px; }
 .source-detail-loading .source-spinner { border-color: #c3d8ca; border-top-color: #438567; }
+.source-poll-status { margin: 10px 0 0; padding: 9px 10px; border-radius: 7px; font-size: 10px; line-height: 1.5; }
+.source-poll-ok { border: 1px solid #cfe6d6; background: #f4fbf6; color: #3f7a5a; }
+.source-poll-fail { border: 1px solid #f0d8d1; background: #fff8f6; color: #a65e51; }
 @keyframes source-spin { to { transform: rotate(360deg); } }
 @keyframes source-shimmer { to { background-position-x: -200%; } }
 
