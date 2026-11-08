@@ -93,7 +93,7 @@ postgres:
     nodePort: 30082
 
 crawl4ai:
-  replicaCount: 0
+  replicaCount: 1
   image:
     repository: unclecode/crawl4ai
     tag: "0.9.5"
